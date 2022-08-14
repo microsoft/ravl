@@ -1,0 +1,56 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+enclave {
+    from "openenclave/edl/attestation.edl" import *;
+    from "openenclave/edl/syscall.edl" import *;
+    from "openenclave/edl/sgx/platform.edl" import *;
+    from "openenclave/edl/time.edl" import *;
+    from "openenclave/edl/logging.edl" import *;    
+
+    struct buffer_t
+    {
+        [size=size] uint8_t* buffer;
+        size_t size;
+    };  
+
+
+    struct optional_parameters_t
+    {
+        [size=size] uint8_t* buffer;
+        size_t size;
+    };
+
+    struct data_t
+    {
+        [size=size] uint8_t* buffer;
+        size_t size;
+    };
+
+    struct evidence_t
+    {
+        [size=size] uint8_t* buffer;
+        size_t size;
+    };
+
+    struct endorsements_t
+    {
+        [size=size] uint8_t* buffer;
+        size_t size;
+    };
+
+    trusted {
+        public int get_optional_parameters(
+            [in] const oe_uuid_t* format_id,
+            [out] optional_parameters_t* optional_parameters);
+
+        public int get_evidence_with_data(
+            [in] const oe_uuid_t* format_id,
+            [in] optional_parameters_t* optional_parameters,
+            [in] data_t *data,
+            [out] evidence_t *evidence_buffer,
+            [out] endorsements_t *endorsements_buffer,);
+    };
+
+    //untrusted {};
+};
