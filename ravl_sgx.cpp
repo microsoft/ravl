@@ -201,8 +201,9 @@ namespace ravl
         n = get<size_t>(data, pos);
         qe_identity = get_n(data, n, pos);
 
-        if (pos != data.size())
-          throw std::runtime_error("excess collateral data");
+        // TODO: Investigate why there are sometimes extra null bytes
+        // if (pos != data.size())
+        //   throw std::runtime_error("excess collateral data");
       }
 
       uint16_t major_version;
@@ -1277,10 +1278,10 @@ namespace ravl
         auto pck_leaf = pck_cert_chain.front();
         auto pck_ext = get_pck_certificate_extensions(pck_leaf);
 
-        auto ca_type = pck_ext.platform_instance_id ||
+        auto ca_type = !pck_ext.platform_instance_id ||
             is_all_zero(*pck_ext.platform_instance_id) ?
-          "platform" :
-          "processor";
+          "processor" :
+          "platform";
         auto fmspc_hex = fmt::format("{:02x}", fmt::join(pck_ext.fmspc, ""));
         col = get_collateral(ca_type, fmspc_hex);
       }

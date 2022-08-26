@@ -43,6 +43,8 @@ namespace ravl
     std::vector<uint8_t> endorsements;
 
     virtual bool verify(const Options& opt);
+
+    operator std::string() const;
   };
 
 } // namespace ravl

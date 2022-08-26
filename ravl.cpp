@@ -74,6 +74,15 @@ namespace ravl
     endorsements(endorsements)
   {}
 
+  Attestation::operator std::string() const
+  {
+    nlohmann::json j;
+    j["source"] = source;
+    j["evidence"] = to_base64(evidence);
+    j["endorsements"] = to_base64(endorsements);
+    return j.dump();
+  }
+
   bool Attestation::verify(const Options& options)
   {
     switch (source)

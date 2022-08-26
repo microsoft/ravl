@@ -317,6 +317,8 @@ namespace ravl
         }
 
         Attestation sgx_attestation(Source::SGX, squote, scollateral);
+        std::string sat = sgx_attestation;
+        printf("%s\n", sat.c_str());
         return sgx_attestation.verify(options);
       }
 #endif
