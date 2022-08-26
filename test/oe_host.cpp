@@ -10,7 +10,6 @@
 #include <openssl/evp.h>
 #include <string>
 
-static oe_uuid_t sgx_local_uuid = {OE_FORMAT_UUID_SGX_LOCAL_ATTESTATION};
 static oe_uuid_t sgx_remote_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
 
 std::string base64(uint8_t* data, size_t size)
@@ -28,10 +27,7 @@ oe_enclave_t* create_enclave(const char* enclave_path, uint32_t flags)
     enclave_path, OE_ENCLAVE_TYPE_AUTO, flags, NULL, 0, &enclave);
 
   if (result != OE_OK)
-    printf(
-      "Host: oe_create_oe_enclave_enclave failed: %s\n", oe_result_str(result));
-  else
-    printf("Host: Enclave successfully created.\n");
+    printf("oe_create_oe_enclave_enclave failed: %s\n", oe_result_str(result));
 
   return enclave;
 }
@@ -55,7 +51,7 @@ int attest(const oe_uuid_t* format_id, oe_enclave_t* enclave)
 
   if ((result != OE_OK) || (ret != 0))
   {
-    printf("Host: get_optional_parameters failed. %s\n", oe_result_str(result));
+    printf("get_optional_parameters failed. %s\n", oe_result_str(result));
     if (ret == 0)
       ret = 1;
     goto exit;
@@ -72,14 +68,17 @@ int attest(const oe_uuid_t* format_id, oe_enclave_t* enclave)
 
   if ((result != OE_OK) || (ret != 0))
   {
-    printf("Host: get_evidence_with_data failed. %s\n", oe_result_str(result));
+    printf(
+      "get_evidence_with_data failed. %s (%d)\n", oe_result_str(result), ret);
     if (ret == 0)
       ret = 1;
     goto exit;
   }
 
   printf("{\n");
-  printf("  \"source\": \"openenclave\",\n");
+  printf(
+    "  \"source\": \"%s\",\n",
+    format_id == &sgx_remote_uuid ? "openenclave" : "sgx");
   printf(
     "  \"evidence\": \"%s\",\n",
     base64(evidence.buffer, evidence.size).c_str());
@@ -88,8 +87,6 @@ int attest(const oe_uuid_t* format_id, oe_enclave_t* enclave)
     endorsements.buffer && endorsements.size > 0 ?
       base64(endorsements.buffer, endorsements.size).c_str() :
       "");
-  // printf("  \"ext\": { \"format_id\": \"%s\" } },\n",
-  // (char*)&format_id->b[0]);
   printf("}\n");
 
   ret = 0;
@@ -106,20 +103,13 @@ int main(int argc, const char* argv[])
   oe_enclave_t* enclave = NULL;
   oe_result_t result = OE_OK;
   int ret = 1;
-  oe_uuid_t* format_id = nullptr;
+  uint8_t* quote = (uint8_t*)malloc(sizeof(sgx_quote_t));
 
   if (argc != 2)
   {
     printf("Usage: %s ENCLAVE_PATH\n", argv[0]);
     return 1;
   }
-
-  // if (strcmp(argv[1], "sgxlocal") == 0)
-  // {
-  //   format_id = &sgx_local_uuid;
-  // }
-  // if (strcmp(argv[1], "sgxremote") == 0)
-  format_id = &sgx_remote_uuid;
 
   enclave = create_enclave(argv[1], OE_ENCLAVE_FLAG_DEBUG);
   if (enclave == NULL)
@@ -138,7 +128,10 @@ int main(int argc, const char* argv[])
   }
 #endif
 
-  ret = attest(format_id, enclave);
+  ret = attest(&sgx_remote_uuid, enclave);
+
+  if (ret != 0)
+    goto exit;
 
 exit:
 

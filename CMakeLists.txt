@@ -13,13 +13,15 @@ endif ()
 
 project(ravl LANGUAGES CXX C ASM)
 
-cmake_minimum_required(VERSION 3.11)
-set(CMAKE_CXX_STANDARD 17)
+cmake_minimum_required(VERSION 3.14)
+set(CMAKE_CXX_STANDARD 20)
 
 set(RAVL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 # option(OPENSSL "enable OpenSSL" ON)
 option(OE "enable Open Enclave" ON)
+option(SGX "enable SGX" ON)
+option(SEV_SNP "enable SEV/SNP" ON)
 option(TESTS "enable testing" ON)
 option(PROFILE "enable profiling" OFF)
 
@@ -39,16 +41,31 @@ find_package(OpenSSL REQUIRED)
 set(RAVL_DEFS HAVE_OPENSSL)
 set(RAVL_LIB_DEPS crypto)
 
+if(SGX)
+  find_path(SGXSDK sgx_quote.h REQUIRED HINTS /opt/sgxsdk /opt/intel/sgxsdk)
+  list(APPEND RAVL_DEFS HAVE_SGX_SDK)
+  target_sources(ravl PRIVATE ravl_sgx.cpp)
+  target_include_directories(ravl PRIVATE ${SGXSDK}/include)
+endif()
 
-if(OE)  
-  find_package(OpenEnclave REQUIRED)    
-  find_library(hostverify oehostverify PATHS ${OpenEnclave_DIR}/../host REQUIRED)  
+if(OE)
+  find_package(OpenEnclave REQUIRED)
+  find_library(hostverify oehostverify PATHS ${OpenEnclave_DIR}/../host REQUIRED)
   target_sources(ravl PRIVATE ravl_oe.cpp)
   list(APPEND RAVL_DEFS HAVE_OPEN_ENCLAVE)
   target_link_directories(ravl PRIVATE ${hostverify_DIR})
   target_include_directories(ravl PRIVATE ${OE_INCLUDEDIR})
   list(APPEND RAVL_LIB_DEPS ${hostverify})
 endif()
+
+if(SEV_SNP)
+  list(APPEND RAVL_DEFS HAVE_SEV_SNP)
+  target_sources(ravl PRIVATE ravl_sev_snp.cpp)
+endif()
+
+find_package(CURL REQUIRED)
+list(APPEND RAVL_LIB_DEPS curl)
+target_sources(ravl PRIVATE ravl_requests.cpp)
 
 target_link_libraries(ravl INTERFACE ${RAVL_LIB_DEPS})
 target_compile_definitions(ravl PRIVATE ${RAVL_DEFS})

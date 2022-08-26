@@ -6,13 +6,13 @@ enclave {
     from "openenclave/edl/syscall.edl" import *;
     from "openenclave/edl/sgx/platform.edl" import *;
     from "openenclave/edl/time.edl" import *;
-    from "openenclave/edl/logging.edl" import *;    
+    from "openenclave/edl/logging.edl" import *;
 
     struct buffer_t
     {
         [size=size] uint8_t* buffer;
         size_t size;
-    };  
+    };
 
 
     struct optional_parameters_t
@@ -49,7 +49,7 @@ enclave {
             [in] optional_parameters_t* optional_parameters,
             [in] data_t *data,
             [out] evidence_t *evidence_buffer,
-            [out] endorsements_t *endorsements_buffer,);
+            [out] endorsements_t *endorsements_buffer);
     };
 
     //untrusted {};

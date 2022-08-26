@@ -5,12 +5,25 @@
 
 #include <nlohmann/json.hpp>
 
+#ifdef HAVE_SGX_SDK
+#  include "ravl_sgx.h"
+#endif
+
 #ifdef HAVE_OPEN_ENCLAVE
 #  include "ravl_oe.h"
+#  ifndef HAVE_SGX_SDK
+#    define USE_OE_VERIFIER
+#  endif
+#endif
+
+#ifdef HAVE_SEV_SNP
+#  include "ravl_sev_snp.h"
 #endif
 
 #ifdef HAVE_OPENSSL
 #  include <openssl/evp.h>
+#else
+#  error "TODO: base64 encoding, etc, without OpenSSL"
 #endif
 
 using namespace nlohmann;
@@ -49,24 +62,44 @@ namespace ravl
     json j = json::parse(json_string);
     source = j.at("source").get<Source>();
     evidence = from_base64(j.at("evidence").get<std::string>());
+    endorsements = from_base64(j.at("endorsements").get<std::string>());
   }
 
-  bool Attestation::verify()
+  Attestation::Attestation(
+    Source source,
+    const std::vector<uint8_t>& evidence,
+    const std::vector<uint8_t>& endorsements) :
+    source(source),
+    evidence(evidence),
+    endorsements(endorsements)
+  {}
+
+  bool Attestation::verify(const Options& options)
   {
     switch (source)
     {
       case Source::SGX:
-        throw std::runtime_error("not implemented yet");
+#ifdef HAVE_SGX_SDK
+        return ravl::sgx::verify(*this, options);
+#else
+        throw std::runtime_error(
+          "ravl was compiled without support for SGX support");
+#endif
         break;
       case Source::SEV_SNP:
-        throw std::runtime_error("not implemented yet");
+#ifdef HAVE_SEV_SNP
+        return ravl::sev_snp::verify(*this, options);
+#else
+        throw std::runtime_error(
+          "ravl was compiled without support for SEV/SNP support");
+#endif
         break;
       case Source::OPEN_ENCLAVE:
 #ifdef HAVE_OPEN_ENCLAVE
-        return ravl::oe::verify(*this);
+        return ravl::oe::verify(*this, options);
 #else
         throw std::runtime_error(
-          "ravl was compiled without support for Open Enclave attestation");
+          "ravl was compiled without support for Open Enclave support");
 #endif
         break;
       default:

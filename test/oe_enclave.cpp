@@ -6,17 +6,15 @@
 #include "oe_enclave_args.h"
 #include "oe_enclave_t.h"
 
+#include <cstdint>
 #include <openenclave/attestation/attester.h>
 #include <openenclave/attestation/custom_claims.h>
 #include <openenclave/attestation/verifier.h>
 #include <openenclave/bits/report.h>
+#include <openenclave/bits/result.h>
 #include <openenclave/enclave.h>
 #include <string>
-
-#define ENCLAVE_SECRET_DATA_SIZE 16
-
-uint8_t g_enclave_secret_data[ENCLAVE_SECRET_DATA_SIZE] = {
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+#include <vector>
 
 const char* enclave_name = "ravl-test-enclave";
 
@@ -130,7 +128,7 @@ int get_evidence_with_data(
   {
     if (!generate_attestation_evidence(
           format_id,
-          !optional_parameters ? NULL : optional_parameters->buffer,
+          !optional_parameters->size ? NULL : optional_parameters->buffer,
           !optional_parameters ? 0 : optional_parameters->size,
           !data ? NULL : data->buffer,
           !data ? 0 : data->size,

@@ -1,0 +1,1 @@
+The files in this directory are from Open Enclave https://github.com/openenclave/openenclave version 0.18.0. They contain structure definitions for evidence and endorsement data.

@@ -9,6 +9,6 @@ namespace ravl
 {
   namespace oe
   {
-    bool verify(const Attestation& a);
+    bool verify(const Attestation& a, const Options& opt);
   }
 }
