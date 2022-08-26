@@ -7,11 +7,14 @@ RAVL is a library of remote attestation verification procedures.
 Add Intel APT repo as described in the [SGX Installation Guide](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf)
 
 ```
-sudo apt install libstdc++-10-dev
+sudo apt install libstdc++-10-dev libssl-dev
 sudo apt-get install libsgx-epid libsgx-quote-ex libsgx-dcap-ql
 sudo apt-get install open-enclave
 sudo apt install libcurl4-openssl-dev
 ```
+
+Also https://github.com/openenclave/openenclave/blob/master/docs/GettingStartedDocs/install_oe_sdk-Ubuntu_20.04.md
+
 
 ## Contributing
 
