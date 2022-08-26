@@ -78,11 +78,11 @@ namespace ravl
     static std::string sgx_ext_platform_instance_oid = sgx_ext_oid + ".6";
     static std::string sgx_ext_configuration_oid = sgx_ext_oid + ".7";
     static std::string sgx_ext_configuration_dynamic_platform_oid =
-      sgx_ext_configuration_oid + +".1";
+      sgx_ext_configuration_oid + ".1";
     static std::string sgx_ext_configuration_cached_keys_oid =
-      sgx_ext_configuration_oid + +".2";
+      sgx_ext_configuration_oid + ".2";
     static std::string sgx_ext_configuration_smt_enabled_oid =
-      sgx_ext_configuration_oid + +".3";
+      sgx_ext_configuration_oid + ".3";
 
     void printf_certificate(X509* certificate)
     {
@@ -636,9 +636,15 @@ namespace ravl
       uint8_t sgx_type;
 
       std::optional<std::vector<uint8_t>> platform_instance_id;
-      std::optional<bool> dynamic_platform;
-      std::optional<bool> cached_keys;
-      std::optional<bool> smt_enabled;
+
+      struct Configuration
+      {
+        bool dynamic_platform;
+        bool cached_keys;
+        bool smt_enabled;
+      };
+
+      std::optional<Configuration> configuration;
     };
 
     PCKCertificateExtensions get_pck_certificate_extensions(
@@ -659,7 +665,7 @@ namespace ravl
       Unique_ASN1_SEQUENCE seq(X509_EXTENSION_get_data(sgx_ext));
 
       int seq_sz = sk_ASN1_TYPE_num(seq);
-      if (seq_sz != 5 && seq_sz != 9)
+      if (seq_sz != 5 && seq_sz != 7)
         throw std::runtime_error("incorrectly formatted SGX extension");
 
       PCKCertificateExtensions r;
@@ -670,18 +676,29 @@ namespace ravl
       r.fmspc = get_octet_string_ext(seq, 3, sgx_ext_fmspc_oid);
       r.sgx_type = get_enum_ext(seq, 4, sgx_ext_type_oid) != 0;
 
-      if (seq_sz == 9)
+      if (seq_sz > 5)
       {
-        // Some certificates come with these extensions, but only existence and
-        // order is verified here.
         r.platform_instance_id =
           get_octet_string_ext(seq, 5, sgx_ext_platform_instance_oid);
-        r.dynamic_platform =
-          get_bool_ext(seq, 6, sgx_ext_configuration_dynamic_platform_oid);
-        r.cached_keys =
-          get_bool_ext(seq, 7, sgx_ext_configuration_cached_keys_oid);
-        r.smt_enabled =
-          get_bool_ext(seq, 8, sgx_ext_configuration_smt_enabled_oid);
+
+        // Platform-CA certificates come with these extensions, but only
+        // existence and order is verified here.
+        auto config_seq = get_seq_ext(seq, 6, sgx_ext_configuration_oid);
+        int seq_sz = sk_ASN1_TYPE_num(config_seq);
+        if (seq_sz != 3)
+          throw std::runtime_error("incorrectly formatted SGX extension");
+
+        auto dyn_platform = get_bool_ext(
+          config_seq, 0, sgx_ext_configuration_dynamic_platform_oid);
+        auto cached_keys =
+          get_bool_ext(config_seq, 1, sgx_ext_configuration_cached_keys_oid);
+        auto smt_enabled =
+          get_bool_ext(config_seq, 2, sgx_ext_configuration_smt_enabled_oid);
+
+        r.configuration = PCKCertificateExtensions::Configuration{
+          .dynamic_platform = dyn_platform,
+          .cached_keys = cached_keys,
+          .smt_enabled = smt_enabled};
       }
 
       return r;
