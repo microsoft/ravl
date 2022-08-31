@@ -86,10 +86,7 @@ namespace crypto
      * wrappers around the same template interface Unique_SSL_OBJECT.
      */
 
-    /// Generic template interface for different types of objects below
-    /// If there are no c-tors in the derived class that matches this one,
-    /// pass `nullptr` to the CTOR/DTOR parameters and make sure to implement
-    /// and delete the appropriate c-tors in the derived class.
+    /// Generic template interface for different types of objects below.
     template <class T, T* (*CTOR)(), void (*DTOR)(T*)>
     class Unique_SSL_OBJECT
     {
@@ -110,6 +107,7 @@ namespace crypto
         if (check_null)
           CHECKNULL(p.get());
       }
+      /// No copy constructors
       Unique_SSL_OBJECT(const Unique_SSL_OBJECT&) = delete;
 
       /// Type cast to underlying pointer
@@ -119,6 +117,11 @@ namespace crypto
       }
       /// Type cast to underlying pointer
       operator T*() const
+      {
+        return p.get();
+      }
+      /// Enable field/member lookups
+      const T* operator->() const
       {
         return p.get();
       }
@@ -155,22 +158,6 @@ namespace crypto
         Unique_SSL_OBJECT(
           BIO_new_mem_buf(d.data(), d.size()), [](auto x) { BIO_free(x); })
       {}
-      Unique_BIO(SSL_CTX* ctx) :
-        Unique_SSL_OBJECT(
-          BIO_new_ssl_connect(ctx), [](auto x) { BIO_free_all(x); })
-      {}
-    };
-
-    struct Unique_SSL_CTX : public Unique_SSL_OBJECT<SSL_CTX, nullptr, nullptr>
-    {
-      Unique_SSL_CTX(const SSL_METHOD* m) :
-        Unique_SSL_OBJECT(SSL_CTX_new(m), SSL_CTX_free)
-      {}
-    };
-
-    struct Unique_SSL : public Unique_SSL_OBJECT<SSL, nullptr, nullptr>
-    {
-      Unique_SSL(SSL_CTX* ctx) : Unique_SSL_OBJECT(SSL_new(ctx), SSL_free) {}
     };
 
     struct Unique_EC_KEY : public Unique_SSL_OBJECT<EC_KEY, nullptr, nullptr>
@@ -179,60 +166,40 @@ namespace crypto
         Unique_SSL_OBJECT(
           EC_KEY_new_by_curve_name(nid), EC_KEY_free, /*check_null=*/true)
       {}
-      Unique_EC_KEY(EC_KEY* key) :
-        Unique_SSL_OBJECT(key, EC_KEY_free, /*check_null=*/true)
-      {}
       Unique_EC_KEY(const Unique_EC_KEY& other) :
-        Unique_SSL_OBJECT(EC_KEY_dup(other), EC_KEY_free, /*check_null=*/true)
-      {}
-    };
-
-    struct Unique_EVP_PKEY
-      : public Unique_SSL_OBJECT<EVP_PKEY, EVP_PKEY_new, EVP_PKEY_free>
-    {
-      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_EVP_PKEY(BIO* mem, bool pem = true) :
-        Unique_SSL_OBJECT(
-          pem ? PEM_read_bio_PUBKEY(mem, NULL, NULL, NULL) :
-                d2i_PUBKEY_bio(mem, NULL),
-          EVP_PKEY_free)
-      {}
-      Unique_EVP_PKEY(const Unique_EC_KEY& ec_key) :
-        Unique_SSL_OBJECT(EVP_PKEY_new(), EVP_PKEY_free)
+        Unique_SSL_OBJECT(other, EC_KEY_free, /*check_null=*/true)
       {
-        EVP_PKEY_set1_EC_KEY(p.get(), ec_key);
+        EC_KEY_up_ref(p.get());
       }
-      Unique_EVP_PKEY(EVP_PKEY* pkey) : Unique_SSL_OBJECT(pkey, EVP_PKEY_free)
-      {}
     };
 
-    struct Unique_EVP_PKEY_CTX
-      : public Unique_SSL_OBJECT<EVP_PKEY_CTX, nullptr, nullptr>
-    {
-      Unique_EVP_PKEY_CTX(EVP_PKEY* key) :
-        Unique_SSL_OBJECT(EVP_PKEY_CTX_new(key, NULL), EVP_PKEY_CTX_free)
-      {}
-      Unique_EVP_PKEY_CTX() :
-        Unique_SSL_OBJECT(
-          EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL), EVP_PKEY_CTX_free)
-      {}
-    };
-
-    struct Unique_X509_REQ
-      : public Unique_SSL_OBJECT<X509_REQ, X509_REQ_new, X509_REQ_free>
+    struct Unique_BIGNUM : public Unique_SSL_OBJECT<BIGNUM, BN_new, BN_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_X509_REQ(BIO* mem) :
+      Unique_BIGNUM(const unsigned char* buf, int sz) :
         Unique_SSL_OBJECT(
-          PEM_read_bio_X509_REQ(mem, NULL, NULL, NULL), X509_REQ_free)
+          BN_bin2bn(buf, sz, NULL), BN_free, /*check_null=*/false)
       {}
+    };
+
+    struct Unique_EC_KEY_P256 : public Unique_EC_KEY
+    {
+      Unique_EC_KEY_P256(const std::span<const uint8_t>& coordinates) :
+        Unique_EC_KEY(NID_X9_62_prime256v1)
+      {
+        EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+        Unique_BIGNUM x(&coordinates[0], 32);
+        Unique_BIGNUM y(&coordinates[32], 32);
+        CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
+        p.reset(ec_key);
+      }
     };
 
     struct Unique_X509_CRL
       : public Unique_SSL_OBJECT<X509_CRL, X509_CRL_new, X509_CRL_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_X509_CRL(BIO* mem) :
+      Unique_X509_CRL(const Unique_BIO& mem) :
         Unique_SSL_OBJECT(
           PEM_read_bio_X509_CRL(mem, NULL, NULL, NULL), X509_CRL_free)
       {}
@@ -249,12 +216,17 @@ namespace crypto
           X509_free,
           check_null)
       {}
-      Unique_X509(X509* cert) :
-        Unique_SSL_OBJECT(X509_dup(cert), X509_free, true)
-      {}
-      Unique_X509(const Unique_X509& other) :
-        Unique_SSL_OBJECT(X509_dup(other), X509_free, true)
-      {}
+      Unique_X509(Unique_X509&& other) :
+        Unique_SSL_OBJECT(NULL, X509_free, false)
+      {
+        X509* ptr = other;
+        other.release();
+        p.reset(ptr);
+      }
+      Unique_X509(X509* x509) : Unique_SSL_OBJECT(x509, X509_free, true)
+      {
+        X509_up_ref(x509);
+      }
     };
 
     struct Unique_X509_STORE
@@ -271,12 +243,47 @@ namespace crypto
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
     };
 
-    struct Unique_EVP_CIPHER_CTX : public Unique_SSL_OBJECT<
-                                     EVP_CIPHER_CTX,
-                                     EVP_CIPHER_CTX_new,
-                                     EVP_CIPHER_CTX_free>
+    struct Unique_EVP_PKEY
+      : public Unique_SSL_OBJECT<EVP_PKEY, EVP_PKEY_new, EVP_PKEY_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+      Unique_EVP_PKEY(const Unique_BIO& mem, bool pem = true) :
+        Unique_SSL_OBJECT(
+          pem ? PEM_read_bio_PUBKEY(mem, NULL, NULL, NULL) :
+                d2i_PUBKEY_bio(mem, NULL),
+          EVP_PKEY_free)
+      {}
+      Unique_EVP_PKEY(const Unique_EC_KEY& ec_key) :
+        Unique_SSL_OBJECT(EVP_PKEY_new(), EVP_PKEY_free)
+      {
+        EVP_PKEY_set1_EC_KEY(p.get(), ec_key);
+      }
+      Unique_EVP_PKEY(const Unique_X509& x509) :
+        Unique_SSL_OBJECT(X509_get_pubkey(x509), EVP_PKEY_free)
+      {}
+
+      bool operator==(const Unique_EVP_PKEY& other) const
+      {
+        return EVP_PKEY_cmp_parameters((*this), other) == 1 &&
+          EVP_PKEY_cmp((*this), other) == 1;
+      }
+
+      bool operator!=(const Unique_EVP_PKEY& other) const
+      {
+        return !(*this == other);
+      }
+    };
+
+    struct Unique_EVP_PKEY_CTX
+      : public Unique_SSL_OBJECT<EVP_PKEY_CTX, nullptr, nullptr>
+    {
+      Unique_EVP_PKEY_CTX(const Unique_EVP_PKEY& key) :
+        Unique_SSL_OBJECT(EVP_PKEY_CTX_new(key, NULL), EVP_PKEY_CTX_free)
+      {}
+      Unique_EVP_PKEY_CTX() :
+        Unique_SSL_OBJECT(
+          EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL), EVP_PKEY_CTX_free)
+      {}
     };
 
     struct Unique_STACK_OF_X509
@@ -286,15 +293,16 @@ namespace crypto
         Unique_SSL_OBJECT(
           sk_X509_new_null(), [](auto x) { sk_X509_pop_free(x, X509_free); })
       {}
-      Unique_STACK_OF_X509(X509_STORE_CTX* ctx) :
+      Unique_STACK_OF_X509(const Unique_X509_STORE_CTX& ctx) :
         Unique_SSL_OBJECT(X509_STORE_CTX_get1_chain(ctx), [](auto x) {
           sk_X509_pop_free(x, X509_free);
         })
       {}
-      Unique_STACK_OF_X509(const Unique_STACK_OF_X509& other) :
-        Unique_SSL_OBJECT(
-          sk_X509_dup(other), [](auto x) { sk_X509_pop_free(x, X509_free); })
-      {}
+      Unique_STACK_OF_X509(Unique_STACK_OF_X509&& other) :
+        Unique_SSL_OBJECT(other, [](auto x) { sk_X509_pop_free(x, X509_free); })
+      {
+        other.release();
+      }
 
       size_t size() const
       {
@@ -315,12 +323,12 @@ namespace crypto
         sk_X509_push(p.get(), ptr);
       }
 
-      X509* front() const
+      Unique_X509 front() const
       {
         return (*this).at(0);
       }
 
-      X509* back() const
+      Unique_X509 back() const
       {
         return (*this).at(size() - 1);
       }
@@ -357,75 +365,34 @@ namespace crypto
       {}
     };
 
-    struct Unique_BIGNUM : public Unique_SSL_OBJECT<BIGNUM, BN_new, BN_free>
-    {
-      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_BIGNUM(BIGNUM* t) :
-        Unique_SSL_OBJECT(t, BN_free, /*check_null=*/false)
-      {}
-    };
-
-    struct Unique_X509_TIME
-      : public Unique_SSL_OBJECT<ASN1_TIME, ASN1_TIME_new, ASN1_TIME_free>
-    {
-      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_X509_TIME(ASN1_TIME* t) :
-        Unique_SSL_OBJECT(t, ASN1_TIME_free, /*check_null=*/false)
-      {}
-    };
-
-    struct Unique_BN_CTX
-      : public Unique_SSL_OBJECT<BN_CTX, BN_CTX_new, BN_CTX_free>
-    {
-      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-    };
-
-    struct Unique_EC_GROUP
-      : public Unique_SSL_OBJECT<EC_GROUP, nullptr, nullptr>
-    {
-      Unique_EC_GROUP(int nid) :
-        Unique_SSL_OBJECT(
-          EC_GROUP_new_by_curve_name(nid), EC_GROUP_free, /*check_null=*/true)
-      {}
-    };
-
-    struct Unique_EC_POINT
-      : public Unique_SSL_OBJECT<EC_POINT, nullptr, nullptr>
-    {
-      Unique_EC_POINT(const EC_GROUP* group) :
-        Unique_SSL_OBJECT(
-          EC_POINT_new(group), EC_POINT_free, /*check_null=*/true)
-      {}
-      Unique_EC_POINT(EC_POINT* point) :
-        Unique_SSL_OBJECT(point, EC_POINT_free, /*check_null=*/true)
-      {}
-    };
-
-    struct Unique_EVP_ENCODE_CTX : public Unique_SSL_OBJECT<
-                                     EVP_ENCODE_CTX,
-                                     EVP_ENCODE_CTX_new,
-                                     EVP_ENCODE_CTX_free>
-    {
-      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-    };
-
     struct Unique_ASN1_OBJECT
       : public Unique_SSL_OBJECT<ASN1_OBJECT, ASN1_OBJECT_new, ASN1_OBJECT_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_ASN1_OBJECT(ASN1_OBJECT* t) :
-        Unique_SSL_OBJECT(t, ASN1_OBJECT_free, /*check_null=*/false)
-      {}
       Unique_ASN1_OBJECT(const std::string& oid) :
         Unique_SSL_OBJECT(OBJ_txt2obj(oid.c_str(), 0), ASN1_OBJECT_free)
       {}
+      Unique_ASN1_OBJECT(ASN1_OBJECT* o) :
+        Unique_SSL_OBJECT(OBJ_dup(o), ASN1_OBJECT_free, true)
+      {}
+
+      bool operator==(const Unique_ASN1_OBJECT& other) const
+      {
+        return OBJ_cmp(*this, other) == 0;
+      }
+
+      bool operator!=(const Unique_ASN1_OBJECT& other) const
+      {
+        return !(*this == other);
+      }
     };
 
     struct Unique_ASN1_TYPE
       : public Unique_SSL_OBJECT<ASN1_TYPE, ASN1_TYPE_new, ASN1_TYPE_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_ASN1_TYPE(const ASN1_TYPE* t) :
+
+      Unique_ASN1_TYPE(ASN1_TYPE* t) :
         Unique_SSL_OBJECT(
           [&t]() {
             ASN1_TYPE* n = ASN1_TYPE_new();
@@ -434,6 +401,39 @@ namespace crypto
           }(),
           ASN1_TYPE_free)
       {}
+
+      Unique_ASN1_TYPE(int type, void* value) :
+        Unique_SSL_OBJECT(
+          [&type, &value]() {
+            ASN1_TYPE* n = ASN1_TYPE_new();
+            CHECK1(ASN1_TYPE_set1(n, type, value));
+            return n;
+          }(),
+          ASN1_TYPE_free,
+          true)
+      {}
+    };
+
+    struct Unique_ASN1_OCTET_STRING : public Unique_SSL_OBJECT<
+                                        ASN1_OCTET_STRING,
+                                        ASN1_OCTET_STRING_new,
+                                        ASN1_OCTET_STRING_free>
+    {
+      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+
+      Unique_ASN1_OCTET_STRING(const ASN1_OCTET_STRING* t) :
+        Unique_SSL_OBJECT(ASN1_OCTET_STRING_dup(t), ASN1_OCTET_STRING_free)
+      {}
+
+      bool operator==(const Unique_ASN1_OCTET_STRING& other) const
+      {
+        return ASN1_OCTET_STRING_cmp(*this, other) == 0;
+      }
+
+      bool operator!=(const Unique_ASN1_OCTET_STRING& other) const
+      {
+        return !(*this == other);
+      }
     };
 
     struct Unique_ASN1_SEQUENCE : public Unique_SSL_OBJECT<
@@ -442,7 +442,7 @@ namespace crypto
                                     sk_ASN1_TYPE_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_ASN1_SEQUENCE(const ASN1_OCTET_STRING* os) :
+      Unique_ASN1_SEQUENCE(ASN1_OCTET_STRING* os) :
         Unique_SSL_OBJECT(
           [&os]() {
             ASN1_SEQUENCE_ANY* seq = NULL;
@@ -456,6 +456,16 @@ namespace crypto
             sk_ASN1_TYPE_free(p);
           })
       {}
+
+      Unique_ASN1_TYPE at(int index) const
+      {
+        return Unique_ASN1_TYPE(sk_ASN1_TYPE_value(p.get(), index));
+      }
+
+      int size() const
+      {
+        return sk_ASN1_TYPE_num(p.get());
+      }
     };
   }
 }

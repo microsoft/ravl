@@ -220,22 +220,6 @@ namespace ravl
       std::vector<uint8_t> root_ca;
     };
 
-    Unique_EC_KEY key_from_coordinates(
-      const std::span<const uint8_t>& public_key)
-    {
-      Unique_EC_KEY ec_key(NID_X9_62_prime256v1);
-      Unique_BIGNUM x(BN_bin2bn(&public_key[0], 32, NULL));
-      Unique_BIGNUM y(BN_bin2bn(&public_key[32], 32, NULL));
-      CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
-      return ec_key;
-    }
-
-    static std::vector<uint8_t> convert_signature_to_der(
-      const std::vector<uint8_t>& signature)
-    {
-      return convert_signature_to_der({signature.begin(), signature.end()});
-    }
-
     static std::vector<uint8_t> convert_signature_to_der(
       const std::span<const uint8_t>& signature)
     {
@@ -257,21 +241,6 @@ namespace ravl
       auto der_sig_buf = res.data();
       CHECK0(i2d_ECDSA_SIG(sig, &der_sig_buf));
       return res;
-    }
-
-    static void convert_signature_to_ieee_p1363(
-      std::vector<uint8_t>& sig, size_t coordinate_size)
-    {
-      // Convert signature from ASN.1 format to IEEE P1363
-      Unique_ECDSA_SIG sig_r_s(sig);
-      const BIGNUM* r = ECDSA_SIG_get0_r(sig_r_s);
-      const BIGNUM* s = ECDSA_SIG_get0_s(sig_r_s);
-      int r_n = BN_num_bytes(r);
-      int s_n = BN_num_bytes(s);
-      size_t sz = coordinate_size;
-      sig = std::vector<uint8_t>(2 * sz, 0);
-      BN_bn2binpad(r, sig.data(), sz);
-      BN_bn2binpad(s, sig.data() + sz, sz);
     }
 
     static bool verify_signature(
@@ -302,13 +271,20 @@ namespace ravl
     }
 
     static bool verify_signature(
+      const Unique_EC_KEY& eckey,
+      const std::span<const uint8_t>& message,
+      const std::span<const uint8_t>& signature)
+    {
+      return verify_signature(Unique_EVP_PKEY(eckey), message, signature);
+    }
+
+    static bool verify_signature(
       const std::span<const uint8_t>& public_key,
       const std::span<const uint8_t>& message,
       const std::span<const uint8_t>& signature)
     {
-      auto eckey = key_from_coordinates(public_key);
-      Unique_EVP_PKEY pkey(eckey);
-      return verify_signature(pkey, message, signature);
+      auto eckey = Unique_EC_KEY_P256(public_key);
+      return verify_signature(eckey, message, signature);
     }
 
     static bool check_hash_match(
@@ -397,79 +373,80 @@ namespace ravl
     }
 
     Unique_ASN1_TYPE get_obj_value(
-      ASN1_SEQUENCE_ANY* seq,
+      const Unique_ASN1_SEQUENCE& seq,
       int index,
       const std::string& expected_oid,
       int expected_value_type)
     {
-      ASN1_TYPE* type = sk_ASN1_TYPE_value(seq, index);
+      Unique_ASN1_TYPE type = seq.at(index);
+
       if (type->type != V_ASN1_SEQUENCE)
         throw std::runtime_error("incorrectly formatted SGX extension");
 
       Unique_ASN1_SEQUENCE ss(type->value.sequence);
 
-      if (sk_ASN1_TYPE_num(ss) != 2)
+      if (ss.size() != 2)
         throw std::runtime_error("incorrectly formatted SGX extension");
 
       // OID
-      ASN1_TYPE* tt = sk_ASN1_TYPE_value(ss, 0);
+      Unique_ASN1_TYPE tt = ss.at(0);
+
       if (tt->type != V_ASN1_OBJECT)
         throw std::runtime_error("incorrectly formatted SGX extension");
 
-      ASN1_OBJECT* obj = tt->value.object;
-
-      if (OBJ_cmp(obj, Unique_ASN1_OBJECT(expected_oid)) != 0)
+      if (
+        Unique_ASN1_OBJECT(tt->value.object) !=
+        Unique_ASN1_OBJECT(expected_oid))
         throw std::runtime_error("incorrectly formatted SGX extension");
 
       // VALUE
-      ASN1_TYPE* tv = sk_ASN1_TYPE_value(ss, 1);
+      Unique_ASN1_TYPE tv = ss.at(1);
       if (tv->type != expected_value_type)
         throw std::runtime_error("incorrectly formatted SGX extension");
 
-      return Unique_ASN1_TYPE(tv);
+      return Unique_ASN1_TYPE(tv->type, tv->value.ptr);
     }
 
     std::vector<uint8_t> get_octet_string_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
+      const Unique_ASN1_SEQUENCE& seq,
+      int index,
+      const std::string& expected_oid)
     {
       Unique_ASN1_TYPE v =
         get_obj_value(seq, index, expected_oid, V_ASN1_OCTET_STRING);
 
-      ASN1_TYPE* vp = v;
-
       return std::vector<uint8_t>(
-        vp->value.octet_string->data,
-        vp->value.octet_string->data + vp->value.octet_string->length);
+        v->value.octet_string->data,
+        v->value.octet_string->data + v->value.octet_string->length);
     }
 
     Unique_ASN1_SEQUENCE get_seq_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
+      const Unique_ASN1_SEQUENCE& seq,
+      int index,
+      const std::string& expected_oid)
     {
       auto v = get_obj_value(seq, index, expected_oid, V_ASN1_SEQUENCE);
-      return Unique_ASN1_SEQUENCE(((ASN1_TYPE*)v)->value.sequence);
-    }
-
-    Unique_ASN1_OBJECT get_obj_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
-    {
-      auto v = get_obj_value(seq, index, expected_oid, V_ASN1_OBJECT);
-      return Unique_ASN1_OBJECT(((ASN1_TYPE*)v)->value.object);
+      return Unique_ASN1_SEQUENCE(v->value.sequence);
     }
 
     bool get_bool_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
+      const Unique_ASN1_SEQUENCE& seq,
+      int index,
+      const std::string& expected_oid)
     {
       auto v = get_obj_value(seq, index, expected_oid, V_ASN1_BOOLEAN);
-      return ((ASN1_TYPE*)v)->value.boolean;
+      return v->value.boolean;
     }
 
     uint8_t get_uint8_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
+      const Unique_ASN1_SEQUENCE& seq,
+      int index,
+      const std::string& expected_oid)
     {
       auto v = get_obj_value(seq, index, expected_oid, V_ASN1_INTEGER);
 
       Unique_BIGNUM bn;
-      ASN1_INTEGER_to_BN(((ASN1_TYPE*)v)->value.integer, bn);
+      ASN1_INTEGER_to_BN(v->value.integer, bn);
       auto num_bytes BN_num_bytes(bn);
       int is_zero = BN_is_zero(bn);
       if (num_bytes != 1 && !is_zero)
@@ -480,12 +457,14 @@ namespace ravl
     }
 
     uint16_t get_uint16_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
+      const Unique_ASN1_SEQUENCE& seq,
+      int index,
+      const std::string& expected_oid)
     {
       auto v = get_obj_value(seq, index, expected_oid, V_ASN1_INTEGER);
 
       Unique_BIGNUM bn;
-      ASN1_INTEGER_to_BN(((ASN1_TYPE*)v)->value.integer, bn);
+      ASN1_INTEGER_to_BN(v->value.integer, bn);
       auto num_bytes BN_num_bytes(bn);
       if (num_bytes > 2)
         throw std::runtime_error("incorrectly formatted SGX extension");
@@ -495,12 +474,13 @@ namespace ravl
     }
 
     int64_t get_enum_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
+      const Unique_ASN1_SEQUENCE& seq,
+      int index,
+      const std::string& expected_oid)
     {
       auto v = get_obj_value(seq, index, expected_oid, V_ASN1_ENUMERATED);
-      auto vp = ((ASN1_TYPE*)v);
       int64_t r = 0;
-      CHECK1(ASN1_ENUMERATED_get_int64(&r, vp->value.enumerated));
+      CHECK1(ASN1_ENUMERATED_get_int64(&r, v->value.enumerated));
       return r;
     }
 
@@ -512,13 +492,15 @@ namespace ravl
     };
 
     TCB get_tcb_ext(
-      ASN1_SEQUENCE_ANY* seq, int index, const std::string& expected_oid)
+      const Unique_ASN1_SEQUENCE& seq,
+      int index,
+      const std::string& expected_oid)
     {
       TCB r;
 
       auto sss = get_seq_ext(seq, index, expected_oid);
 
-      int n = sk_ASN1_TYPE_num(sss);
+      int n = sss.size();
       if (n != 18)
         throw std::runtime_error("incorrectly formatted SGX extension");
 
@@ -663,7 +645,7 @@ namespace ravl
 
       Unique_ASN1_SEQUENCE seq(X509_EXTENSION_get_data(sgx_ext));
 
-      int seq_sz = sk_ASN1_TYPE_num(seq);
+      int seq_sz = seq.size();
       if (seq_sz != 5 && seq_sz != 7)
         throw std::runtime_error("incorrectly formatted SGX extension");
 
@@ -683,8 +665,7 @@ namespace ravl
         // Platform-CA certificates come with these extensions, but only
         // existence and order is verified here.
         auto config_seq = get_seq_ext(seq, 6, sgx_ext_configuration_oid);
-        int seq_sz = sk_ASN1_TYPE_num(config_seq);
-        if (seq_sz != 3)
+        if (config_seq.size() != 3)
           throw std::runtime_error("incorrectly formatted SGX extension");
 
         auto dyn_platform = get_bool_ext(
@@ -804,7 +785,7 @@ namespace ravl
         for (size_t ii = 0; ii < r.size(); ii++)
         {
           const auto& i = r.at(ii);
-          const ASN1_OCTET_STRING* subj_key_id = X509_get0_subject_key_id(i);
+          Unique_ASN1_OCTET_STRING subj_key_id(X509_get0_subject_key_id(i));
 
           bool i_appears_as_ca = false;
           for (size_t ji = 0; ji < r.size(); ji++)
@@ -814,10 +795,9 @@ namespace ravl
 
             const auto& j = r.at(ji);
 
-            const ASN1_OCTET_STRING* auth_key_id =
-              X509_get0_authority_key_id(j);
+            Unique_ASN1_OCTET_STRING auth_key_id(X509_get0_authority_key_id(j));
 
-            if (ASN1_OCTET_STRING_cmp(subj_key_id, auth_key_id) == 0)
+            if (subj_key_id == auth_key_id)
             {
               i_appears_as_ca = true;
               break;
@@ -863,13 +843,12 @@ namespace ravl
       return chain;
     }
 
-    bool has_intel_public_key(X509* certificate)
+    bool has_intel_public_key(const Unique_X509& certificate)
     {
-      Unique_EVP_PKEY pubkey(X509_get_pubkey(certificate));
+      Unique_EVP_PKEY pubkey(certificate);
       Unique_BIO bio(intel_root_public_key_pem);
-      Unique_EVP_PKEY intel_pkey(bio, true);
-      bool pk_params_eq = EVP_PKEY_cmp_parameters(pubkey, intel_pkey) != 0;
-      return pk_params_eq && EVP_PKEY_cmp(pubkey, intel_pkey) == 1;
+      Unique_EVP_PKEY intel_pubkey(bio, true);
+      return pubkey == intel_pubkey;
     }
 
     bool json_vector_eq(
@@ -1053,7 +1032,7 @@ namespace ravl
       auto tcb_issuer_leaf = tcb_issuer_chain.front();
       auto tcb_issuer_root = tcb_issuer_chain.back();
 
-      Unique_EVP_PKEY tcb_issuer_leaf_pubkey(X509_get_pubkey(tcb_issuer_leaf));
+      Unique_EVP_PKEY tcb_issuer_leaf_pubkey(tcb_issuer_leaf);
 
       if (!has_intel_public_key(tcb_issuer_root))
         throw std::runtime_error(
@@ -1079,8 +1058,7 @@ namespace ravl
       auto qe_id_issuer_root =
         qe_id_issuer_chain.at(qe_id_issuer_chain.size() - 1);
 
-      Unique_EVP_PKEY qe_id_issuer_leaf_pubkey(
-        X509_get_pubkey(qe_id_issuer_leaf));
+      Unique_EVP_PKEY qe_id_issuer_leaf_pubkey(qe_id_issuer_leaf);
 
       if (!has_intel_public_key(qe_id_issuer_root))
         throw std::runtime_error(
@@ -1337,7 +1315,7 @@ namespace ravl
 
       auto pck_ext = get_pck_certificate_extensions(pck_leaf);
 
-      Unique_EVP_PKEY qe_leaf_pubkey(X509_get_pubkey(pck_leaf));
+      Unique_EVP_PKEY qe_leaf_pubkey(pck_leaf);
 
       std::span qe_report_span = {
         (uint8_t*)&sig_data->qe_report, sizeof(sig_data->qe_report)};
