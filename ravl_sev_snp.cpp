@@ -5,6 +5,8 @@
 
 #include "ravl.h"
 
+#include <stdexcept>
+
 namespace ravl
 {
   namespace sev_snp

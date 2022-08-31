@@ -3,8 +3,6 @@
 
 #include "ravl_oe.h"
 
-#include "openenclave/bits/attestation.h"
-#include "openenclave/bits/sgx/sgxtypes.h"
 #include "ravl.h"
 
 #ifdef USE_OE_VERIFIER

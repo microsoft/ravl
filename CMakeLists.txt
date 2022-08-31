@@ -25,7 +25,8 @@ option(SEV_SNP "enable SEV/SNP" ON)
 option(TESTS "enable testing" ON)
 option(PROFILE "enable profiling" OFF)
 
-add_library(ravl ravl.cpp)
+
+add_library(ravl)
 target_include_directories(ravl INTERFACE .)
 target_include_directories(ravl PRIVATE 3rdparty)
 
@@ -38,20 +39,21 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
 find_package(OpenSSL REQUIRED)
+set(RAVL_SRC ravl.cpp)
 set(RAVL_DEFS HAVE_OPENSSL)
 set(RAVL_LIB_DEPS crypto)
 
 if(SGX)
   find_path(SGXSDK sgx_quote.h REQUIRED HINTS /opt/sgxsdk /opt/intel/sgxsdk)
-  list(APPEND RAVL_DEFS HAVE_SGX_SDK)
-  target_sources(ravl PRIVATE ravl_sgx.cpp)
+  list(APPEND RAVL_DEFS HAVE_SGX_SDK)  
+  list(APPEND RAVL_SRC ravl_sgx.cpp)
   target_include_directories(ravl PRIVATE ${SGXSDK}/include)
 endif()
 
 if(OE)
   find_package(OpenEnclave REQUIRED)
   find_library(hostverify oehostverify PATHS ${OpenEnclave_DIR}/../host REQUIRED)
-  target_sources(ravl PRIVATE ravl_oe.cpp)
+  list(APPEND RAVL_SRC ravl_oe.cpp)
   list(APPEND RAVL_DEFS HAVE_OPEN_ENCLAVE)
   target_link_directories(ravl PRIVATE ${hostverify_DIR})
   target_include_directories(ravl PRIVATE ${OE_INCLUDEDIR})
@@ -60,13 +62,14 @@ endif()
 
 if(SEV_SNP)
   list(APPEND RAVL_DEFS HAVE_SEV_SNP)
-  target_sources(ravl PRIVATE ravl_sev_snp.cpp)
+  list(APPEND RAVL_SRC ravl_sev_snp.cpp)
 endif()
 
 find_package(CURL REQUIRED)
 list(APPEND RAVL_LIB_DEPS curl)
-target_sources(ravl PRIVATE ravl_requests.cpp)
+list(APPEND RAVL_SRC ravl_requests_curl.cpp)
 
+target_sources(ravl PRIVATE ${RAVL_SRC})
 target_link_libraries(ravl INTERFACE ${RAVL_LIB_DEPS})
 target_compile_definitions(ravl PRIVATE ${RAVL_DEFS})
 
