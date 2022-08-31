@@ -6,7 +6,6 @@
 #include "openssl_wrappers.h"
 #include "ravl_requests.h"
 
-#include <curl/curl.h>
 #include <dlfcn.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -368,14 +367,14 @@ namespace ravl
         throw std::runtime_error(
           "no certificate change to compute validity ranges for");
 
-      ASN1_TIME *latest_from = nullptr, *earliest_to = nullptr;
+      const ASN1_TIME *latest_from = nullptr, *earliest_to = nullptr;
       for (size_t i = 0; i < chain.size(); i++)
       {
         const X509* c = chain.at(i);
-        ASN1_TIME* not_before = X509_get_notBefore(c);
+        const ASN1_TIME* not_before = X509_get0_notBefore(c);
         if (!latest_from || ASN1_TIME_compare(latest_from, not_before) == -1)
           latest_from = not_before;
-        ASN1_TIME* not_after = X509_get_notAfter(c);
+        const ASN1_TIME* not_after = X509_get0_notAfter(c);
         if (!earliest_to || ASN1_TIME_compare(earliest_to, not_after) == 1)
           earliest_to = not_after;
       }
