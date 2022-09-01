@@ -15,10 +15,12 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace crypto
@@ -28,6 +30,15 @@ namespace crypto
     /*
      * Generic OpenSSL error handling
      */
+
+    class asn1_format_exception : public std::runtime_error
+    {
+    public:
+      asn1_format_exception(std::string detail) :
+        std::runtime_error("incorrectly formatted ASN.1 structure: " + detail)
+      {}
+      virtual ~asn1_format_exception() = default;
+    };
 
     /// Returns the error string from an error code
     inline std::string error_string(int ec)
@@ -150,6 +161,10 @@ namespace crypto
         Unique_SSL_OBJECT(
           BIO_new_mem_buf(s.data(), s.size()), [](auto x) { BIO_free(x); })
       {}
+      Unique_BIO(const std::string_view& s) :
+        Unique_SSL_OBJECT(
+          BIO_new_mem_buf(s.data(), s.size()), [](auto x) { BIO_free(x); })
+      {}
       Unique_BIO(const std::vector<uint8_t>& d) :
         Unique_SSL_OBJECT(
           BIO_new_mem_buf(d.data(), d.size()), [](auto x) { BIO_free(x); })
@@ -158,6 +173,13 @@ namespace crypto
         Unique_SSL_OBJECT(
           BIO_new_mem_buf(d.data(), d.size()), [](auto x) { BIO_free(x); })
       {}
+
+      std::string to_string() const
+      {
+        BUF_MEM* bptr;
+        BIO_get_mem_ptr(p.get(), &bptr);
+        return std::string(bptr->data, bptr->length);
+      }
     };
 
     struct Unique_EC_KEY : public Unique_SSL_OBJECT<EC_KEY, nullptr, nullptr>
@@ -227,12 +249,39 @@ namespace crypto
       {
         X509_up_ref(x509);
       }
+
+      bool is_ca() const
+      {
+        return X509_check_ca(p.get()) != 0;
+      }
     };
 
     struct Unique_X509_STORE
       : public Unique_SSL_OBJECT<X509_STORE, X509_STORE_new, X509_STORE_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+
+      void set_flags(int flags)
+      {
+        X509_STORE_set_flags(p.get(), flags);
+      }
+
+      void add(const std::vector<uint8_t>& pem)
+      {
+        Unique_X509 x509(pem, true);
+        X509_STORE_add_cert(p.get(), x509);
+      }
+
+      void add_crl(const std::span<uint8_t>& data)
+      {
+        if (!data.empty())
+        {
+          Unique_BIO bio(data.data(), data.size());
+          Unique_X509_CRL crl(
+            bio); // TODO: PEM only; some CRLs may be in DER format?
+          X509_STORE_add_crl(p.get(), crl);
+        }
+      }
     };
 
     struct Unique_X509_STORE_CTX : public Unique_SSL_OBJECT<
@@ -466,6 +515,124 @@ namespace crypto
       {
         return sk_ASN1_TYPE_num(p.get());
       }
+
+      Unique_ASN1_TYPE get_obj_value(
+        int index,
+        const std::string& expected_oid,
+        int expected_value_type) const
+      {
+        Unique_ASN1_TYPE type = at(index);
+
+        if (type->type != V_ASN1_SEQUENCE)
+          throw asn1_format_exception("ASN.1 object not a sequence");
+
+        Unique_ASN1_SEQUENCE ss(type->value.sequence);
+
+        if (ss.size() != 2)
+          throw asn1_format_exception("ASN.1 sequence of invalid size");
+
+        // OID
+        Unique_ASN1_TYPE tt = ss.at(0);
+
+        if (tt->type != V_ASN1_OBJECT)
+          throw asn1_format_exception("ASN.1 object value of invalid type");
+
+        if (
+          Unique_ASN1_OBJECT(tt->value.object) !=
+          Unique_ASN1_OBJECT(expected_oid))
+          throw asn1_format_exception("ASN.1 object with unexpected id");
+
+        // VALUE
+        Unique_ASN1_TYPE tv = ss.at(1);
+        if (tv->type != expected_value_type)
+          throw asn1_format_exception("ASN.1 value of unexpected type");
+
+        return Unique_ASN1_TYPE(tv->type, tv->value.ptr);
+      }
+
+      uint8_t get_uint8(int index, const std::string& expected_oid) const
+      {
+        auto v = get_obj_value(index, expected_oid, V_ASN1_INTEGER);
+
+        Unique_BIGNUM bn;
+        ASN1_INTEGER_to_BN(v->value.integer, bn);
+        auto num_bytes BN_num_bytes(bn);
+        int is_zero = BN_is_zero(bn);
+        if (num_bytes != 1 && !is_zero)
+          throw asn1_format_exception("ASN.1 integer value not a uint8_t");
+        uint8_t r = 0;
+        BN_bn2bin(bn, &r);
+        return r;
+      }
+
+      uint16_t get_uint16(int index, const std::string& expected_oid) const
+      {
+        auto v = get_obj_value(index, expected_oid, V_ASN1_INTEGER);
+
+        Unique_BIGNUM bn;
+        ASN1_INTEGER_to_BN(v->value.integer, bn);
+        auto num_bytes BN_num_bytes(bn);
+        if (num_bytes > 2)
+          throw asn1_format_exception("ASN.1 integer value not a uint16_t");
+        std::vector<uint8_t> r(num_bytes);
+        BN_bn2bin(bn, r.data());
+        return num_bytes == 0 ? 0 : num_bytes == 1 ? r[0] : (r[0] | r[1] << 8);
+      }
+
+      int64_t get_enum(int index, const std::string& expected_oid) const
+      {
+        auto v = get_obj_value(index, expected_oid, V_ASN1_ENUMERATED);
+        int64_t r = 0;
+        CHECK1(ASN1_ENUMERATED_get_int64(&r, v->value.enumerated));
+        return r;
+      }
+
+      std::vector<uint8_t> get_octet_string(
+        int index, const std::string& expected_oid) const
+      {
+        Unique_ASN1_TYPE v =
+          get_obj_value(index, expected_oid, V_ASN1_OCTET_STRING);
+
+        return std::vector<uint8_t>(
+          v->value.octet_string->data,
+          v->value.octet_string->data + v->value.octet_string->length);
+      }
+
+      Unique_ASN1_SEQUENCE get_seq(
+        int index, const std::string& expected_oid) const
+      {
+        auto v = get_obj_value(index, expected_oid, V_ASN1_SEQUENCE);
+        return Unique_ASN1_SEQUENCE(v->value.sequence);
+      }
+
+      bool get_bool(int index, const std::string& expected_oid)
+      {
+        auto v = get_obj_value(index, expected_oid, V_ASN1_BOOLEAN);
+        return v->value.boolean;
+      }
     };
+
+    inline std::vector<uint8_t> convert_signature_to_der(
+      const std::span<const uint8_t>& signature)
+    {
+      auto signature_size = signature.size();
+      auto half_size = signature_size / 2;
+      Unique_ECDSA_SIG sig;
+      {
+        Unique_BIGNUM r;
+        Unique_BIGNUM s;
+        CHECKNULL(BN_bin2bn(signature.data(), half_size, r));
+        CHECKNULL(BN_bin2bn(signature.data() + half_size, half_size, s));
+        CHECK1(ECDSA_SIG_set0(sig, r, s));
+        r.release(); // r, s now owned by the signature object
+        s.release();
+      }
+      auto der_size = i2d_ECDSA_SIG(sig, NULL);
+      CHECK0(der_size);
+      std::vector<uint8_t> res(der_size);
+      auto der_sig_buf = res.data();
+      CHECK0(i2d_ECDSA_SIG(sig, &der_sig_buf));
+      return res;
+    }
   }
 }

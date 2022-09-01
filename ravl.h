@@ -22,7 +22,9 @@ namespace ravl
   {
     bool ignore_time = false;
     std::optional<time_t> verification_time = std::nullopt;
-    bool fresh_endorsements = false;
+    bool fresh_endorsements = false;    
+    bool fresh_root_ca_certificate = false;
+    std::optional<std::vector<uint8_t>> root_ca_certificate_pem = std::nullopt;
   };
 
   class Attestation
