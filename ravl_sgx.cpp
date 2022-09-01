@@ -3,25 +3,13 @@
 
 #include "ravl_sgx.h"
 
-#include "openssl_wrappers.h"
+#include "crypto_wrappers.h"
 #include "ravl_requests.h"
+#include "ravl_util.h"
 
 #include <dlfcn.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <openssl/asn1.h>
-#include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/objects.h>
-#include <openssl/ossl_typ.h>
-#include <openssl/pem.h>
-#include <openssl/sha.h>
-#include <openssl/x509.h>
-#include <openssl/x509_vfy.h>
-#include <openssl/x509v3.h>
 #include <sgx_quote_3.h>
 #include <span>
 #include <stdexcept>
@@ -64,109 +52,6 @@ namespace ravl
 
     static const char* datetime_format = "%Y-%m-%dT%H:%M:%SZ";
     static const char* sgx_earliest_tcb_crl_date = "2017-03-17T00:00:00Z";
-
-    static std::string sgx_ext_oid = "1.2.840.113741.1.13.1";
-    static std::string sgx_ext_ppid_oid = sgx_ext_oid + ".1";
-    static std::string sgx_ext_tcb_oid = sgx_ext_oid + ".2";
-    static std::string sgx_ext_pceid_oid = sgx_ext_oid + ".3";
-    static std::string sgx_ext_fmspc_oid = sgx_ext_oid + ".4";
-    static std::string sgx_ext_type_oid = sgx_ext_oid + ".5";
-    static std::string sgx_ext_platform_instance_oid = sgx_ext_oid + ".6";
-    static std::string sgx_ext_configuration_oid = sgx_ext_oid + ".7";
-    static std::string sgx_ext_configuration_dynamic_platform_oid =
-      sgx_ext_configuration_oid + ".1";
-    static std::string sgx_ext_configuration_cached_keys_oid =
-      sgx_ext_configuration_oid + ".2";
-    static std::string sgx_ext_configuration_smt_enabled_oid =
-      sgx_ext_configuration_oid + ".3";
-
-    void printf_certificate(X509* certificate)
-    {
-      Unique_BIO bio;
-      X509_print(bio, certificate);
-      std::string certificate_s = bio.to_string();
-      printf("%s\n", certificate_s.c_str());
-    }
-
-    template <typename T>
-    T get(const std::vector<uint8_t>& data, size_t& pos)
-    {
-      if (pos + sizeof(T) > data.size())
-        throw std::runtime_error("not enough data");
-
-      T r = 0;
-      for (size_t i = 0; i < sizeof(T); i++)
-        r = r << 8 | data.at(pos + i);
-      pos += sizeof(T);
-      return r;
-    }
-
-    std::vector<uint8_t> get_n(
-      const std::vector<uint8_t>& data, size_t n, size_t& pos)
-    {
-      if (pos + n > data.size())
-        throw std::runtime_error("not enough data");
-
-      std::vector<uint8_t> r(n, 0);
-      for (size_t i = 0; i < n; i++)
-        r[i] = data.at(pos + i);
-      pos += n;
-
-      return r;
-    }
-
-    std::vector<uint8_t> from_hex(const std::string& s)
-    {
-      if (s.size() % 2)
-        throw std::runtime_error("odd number of hex digits");
-
-      std::vector<uint8_t> r;
-      for (size_t i = 0; i < s.size(); i += 2)
-      {
-        uint8_t t;
-        if (sscanf(s.c_str() + i, "%02hhx", &t) != 1)
-          return {};
-        r.push_back(t);
-      }
-      return r;
-    }
-
-    template <typename T>
-    T from_hex_t(const std::string& s, bool little_endian = true)
-    {
-      if (s.size() % 2)
-        throw std::runtime_error("odd number of hex digits");
-
-      if (2 * sizeof(T) != s.size())
-        throw std::runtime_error("hex string incomplete");
-
-      T r = 0;
-      for (size_t i = 0; i < sizeof(T); i++)
-      {
-        uint8_t t;
-        if (sscanf(s.c_str() + 2 * i, "%02hhx", &t) != 1)
-          return {};
-        if (little_endian)
-          r |= ((uint64_t)t) << (8 * i);
-        else
-          r = (r << 8) | t;
-      }
-      return r;
-    }
-
-    static inline void check_within(
-      const void* ptr, const std::span<const uint8_t>& vec)
-    {
-      if (!(vec.data() <= ptr && ptr < (vec.data() + vec.size())))
-        throw std::runtime_error("invalid pointer");
-    }
-
-    static inline void check_within(
-      const std::span<const uint8_t>& span, const std::span<const uint8_t>& vec)
-    {
-      check_within(span.data(), vec);
-      check_within(span.data() + span.size() - 1, vec);
-    }
 
     class QL_QVE_Collateral // ~ sgx_ql_qve_collateral_t
     {
@@ -260,8 +145,8 @@ namespace ravl
       const std::span<const uint8_t>& message,
       const std::span<const uint8_t>& signature)
     {
-      auto eckey = Unique_EC_KEY_P256(public_key);
-      return verify_signature(eckey, message, signature);
+      return verify_signature(
+        Unique_EC_KEY_P256(public_key), message, signature);
     }
 
     static bool verify_hash_match(
@@ -282,130 +167,21 @@ namespace ravl
       return true;
     }
 
-    static std::string_view extract_pem(std::string_view& certstrs)
-    {
-      static std::string begin = "-----BEGIN CERTIFICATE-----";
-      static std::string end = "-----END CERTIFICATE-----";
-
-      size_t from = certstrs.find(begin);
-      if (from == std::string::npos)
-        return "";
-      size_t to = certstrs.find(end, from);
-      if (to == std::string::npos)
-        return "";
-      to += end.size();
-      auto pem = certstrs.substr(from, to - from);
-      from = certstrs.find(begin, to);
-      certstrs.remove_prefix(
-        from == std::string::npos ? certstrs.size() : from);
-      return pem;
-    }
-
-    static std::string_view extract_pem(
-      const std::span<const uint8_t>& certstrs)
-    {
-      std::string_view sv((char*)certstrs.data(), certstrs.size());
-      return extract_pem(sv);
-    }
-
-    static std::vector<std::string> extract_pems(
-      const std::span<const uint8_t>& data)
-    {
-      std::vector<std::string> r;
-      std::string_view sv((char*)data.data(), data.size());
-
-      while (!sv.empty())
-      {
-        auto pem = extract_pem(sv);
-        if (!pem.empty())
-          r.push_back(std::string(pem));
-      }
-
-      return r;
-    }
-
-    std::pair<struct tm, struct tm> get_validity_range(
-      const Unique_STACK_OF_X509& chain)
-    {
-      if (!chain || chain.size() == 0)
-        throw std::runtime_error(
-          "no certificate change to compute validity ranges for");
-
-      const ASN1_TIME *latest_from = nullptr, *earliest_to = nullptr;
-      for (size_t i = 0; i < chain.size(); i++)
-      {
-        const auto& c = chain.at(i);
-        const ASN1_TIME* not_before = X509_get0_notBefore(c);
-        if (!latest_from || ASN1_TIME_compare(latest_from, not_before) == -1)
-          latest_from = not_before;
-        const ASN1_TIME* not_after = X509_get0_notAfter(c);
-        if (!earliest_to || ASN1_TIME_compare(earliest_to, not_after) == 1)
-          earliest_to = not_after;
-      }
-
-      std::pair<struct tm, struct tm> r;
-      ASN1_TIME_to_tm(latest_from, &r.first);
-      ASN1_TIME_to_tm(earliest_to, &r.second);
-      return r;
-    }
-
-    struct TCB
-    {
-      std::array<uint8_t, 16> comp_svn;
-      uint16_t pce_svn;
-      std::array<uint8_t, 16> cpu_svn;
-    };
-
-    TCB get_tcb_ext(
-      const Unique_ASN1_SEQUENCE& seq,
-      int index,
-      const std::string& expected_oid)
-    {
-      TCB r;
-
-      auto sss = seq.get_seq(index, expected_oid);
-
-      int n = sss.size();
-      if (n != 18)
-        throw asn1_format_exception(
-          "X509 extension TCB sequence of invalid length");
-
-      for (int i = 0; i < n; i++)
-      {
-        std::string expected_oid_i =
-          std::string(sgx_ext_tcb_oid) + "." + std::to_string(i + 1);
-
-        if (i < 16)
-          r.comp_svn[i] = sss.get_uint8(i, expected_oid_i);
-        else if (i == 16)
-          r.pce_svn = sss.get_uint16(i, expected_oid_i);
-        else if (i == 17)
-        {
-          auto t = sss.get_octet_string(i, expected_oid_i);
-          if (t.size() != 16)
-            throw asn1_format_exception("ASN.1 octet string of invalid size");
-          for (size_t i = 0; i < 16; i++)
-            r.cpu_svn.at(i) = t.at(i);
-        }
-        else
-          throw std::runtime_error("unreachable");
-      }
-
-      return r;
-    }
-
-    std::vector<uint8_t> str2vec(const std::string& s)
-    {
-      return {s.data(), s.data() + s.size()};
-    }
+    static const std::string root_ca_url =
+      "https://certificates.trustedservices.intel.com/"
+      "Intel_SGX_Provisioning_Certification_RootCA.pem";
+    static const std::string root_crl_url =
+      "https://certificates.trustedservices.intel.com/IntelSGXRootCA.crl";
+    static const std::string api_base_url =
+      "https://api.trustedservices.intel.com/sgx/certification/v3";
+    static const std::string tcb_url = api_base_url + "/tcb";
+    static const std::string pck_crl_url = api_base_url + "/pckcrl";
+    static const std::string qe_identity_url = api_base_url + "/qe/identity";
+    static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
     std::vector<uint8_t> download_root_ca_pem()
     {
-      auto response = Request{
-        .url =
-          "https://certificates.trustedservices.intel.com/"
-          "Intel_SGX_Provisioning_Certification_RootCA.pem"}();
-
+      auto response = Request{.url = root_ca_url}();
       return str2vec(response.body);
     }
 
@@ -419,31 +195,20 @@ namespace ravl
       r->tee_type = 0;
 
       // Root CRL
-      auto response = Request{
-        .url =
-          "https://certificates.trustedservices.intel.com/"
-          "IntelSGXRootCA.crl"}();
+      auto response = Request{.url = root_crl_url}();
 
       r->root_ca_crl = str2vec(response.body);
 
       // TCB info
       // https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v3
-      response = Request{
-        .url =
-          "https://api.trustedservices.intel.com/sgx/certification/v3/"
-          "tcb?fmspc=" +
-          fmspc}();
+      response = Request{.url = tcb_url + "?fmspc=" + fmspc}();
       r->tcb_info = str2vec(response.body);
       r->tcb_info_issuer_chain =
         response.get_header_data("SGX-TCB-Info-Issuer-Chain", true);
 
       // PCK CRL
       // https://api.portal.trustedservices.intel.com/documentation#pcs-revocation-v3
-      response = Request{
-        .url =
-          "https://api.trustedservices.intel.com/sgx/certification/v3/"
-          "pckcrl?ca=" +
-          ca + "&encoding=pem"}();
+      response = Request{.url = pck_crl_url + "?ca=" + ca + "&encoding=pem"}();
       r->pck_crl = str2vec(response.body);
       r->pck_crl_issuer_chain =
         response.get_header_data("SGX-PCK-CRL-Issuer-Chain", true);
@@ -452,10 +217,7 @@ namespace ravl
       {
         // QE Identity
         // https://api.portal.trustedservices.intel.com/documentation#pcs-qe-identity-v3
-        response = Request{
-          .url =
-            "https://api.trustedservices.intel.com/sgx/certification/v3/qe/"
-            "identity"}();
+        response = Request{.url = qe_identity_url}();
         r->qe_identity = str2vec(response.body);
         r->qe_identity_issuer_chain =
           response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
@@ -464,10 +226,7 @@ namespace ravl
       {
         // QVE Identity
         // https://api.portal.trustedservices.intel.com/documentation#pcs-qve-identity-v3
-        response = Request{
-          .url =
-            "https://api.trustedservices.intel.com/sgx/certification/v3/"
-            "qve/identity"}();
+        response = Request{.url = qve_identity_url}();
         r->qe_identity = str2vec(response.body);
         r->qe_identity_issuer_chain =
           response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
@@ -476,15 +235,90 @@ namespace ravl
       return r;
     }
 
-    struct PCKCertificateExtensions
+    class CertificateExtension
     {
-      std::vector<uint8_t> ppid;
-      TCB tcb;
-      std::vector<uint8_t> pceid;
-      std::vector<uint8_t> fmspc;
-      uint8_t sgx_type;
+    public:
+      const std::string sgx_ext_oid = "1.2.840.113741.1.13.1";
+      const std::string sgx_ext_ppid_oid = sgx_ext_oid + ".1";
+      const std::string sgx_ext_tcb_oid = sgx_ext_oid + ".2";
+      const std::string sgx_ext_pceid_oid = sgx_ext_oid + ".3";
+      const std::string sgx_ext_fmspc_oid = sgx_ext_oid + ".4";
+      const std::string sgx_ext_type_oid = sgx_ext_oid + ".5";
+      const std::string sgx_ext_platform_instance_oid = sgx_ext_oid + ".6";
+      const std::string sgx_ext_configuration_oid = sgx_ext_oid + ".7";
+      const std::string sgx_ext_configuration_dynamic_platform_oid =
+        sgx_ext_configuration_oid + ".1";
+      const std::string sgx_ext_configuration_cached_keys_oid =
+        sgx_ext_configuration_oid + ".2";
+      const std::string sgx_ext_configuration_smt_enabled_oid =
+        sgx_ext_configuration_oid + ".3";
 
-      std::optional<std::vector<uint8_t>> platform_instance_id = std::nullopt;
+      CertificateExtension(const Unique_X509& certificate)
+      {
+        // See
+        // https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.4.pdf
+
+        static constexpr size_t processor_num_extensions = 5;
+        static constexpr size_t platform_num_extensions = 7;
+        static constexpr size_t platform_num_config_extensions = 3;
+
+        auto sgx_ext = certificate.extension(sgx_ext_oid);
+
+        if (!sgx_ext)
+          throw std::runtime_error(
+            "PCK certificate does not contain the SGX extension");
+
+        Unique_ASN1_SEQUENCE seq(X509_EXTENSION_get_data(sgx_ext));
+
+        int seq_sz = seq.size();
+        if (
+          seq_sz != processor_num_extensions &&
+          seq_sz != platform_num_extensions)
+          throw std::runtime_error(
+            "SGX X509 extension sequence has invalid size");
+
+        size_t i = 0;
+        ppid = seq.get_octet_string(i++, sgx_ext_ppid_oid);
+        tcb = get_tcb_ext(seq, i++, sgx_ext_tcb_oid);
+        pceid = seq.get_octet_string(i++, sgx_ext_pceid_oid);
+        fmspc = seq.get_octet_string(i++, sgx_ext_fmspc_oid);
+        sgx_type = seq.get_enum(i++, sgx_ext_type_oid) != 0;
+
+        if (seq_sz > processor_num_extensions)
+        {
+          platform_instance_id =
+            seq.get_octet_string(i++, sgx_ext_platform_instance_oid);
+
+          // Platform-CA certificates come with these extensions, but only
+          // existence and order is verified here.
+          auto config_seq = seq.get_seq(i++, sgx_ext_configuration_oid);
+          if (config_seq.size() != platform_num_config_extensions)
+            throw std::runtime_error(
+              "SGX X509 extension configuration sequence has invalid size");
+
+          size_t j = 0;
+          auto dyn_platform = config_seq.get_bool(
+            j++, sgx_ext_configuration_dynamic_platform_oid);
+          auto cached_keys =
+            config_seq.get_bool(j++, sgx_ext_configuration_cached_keys_oid);
+          auto smt_enabled =
+            config_seq.get_bool(j++, sgx_ext_configuration_smt_enabled_oid);
+
+          configuration = CertificateExtension::Configuration{
+            .dynamic_platform = dyn_platform,
+            .cached_keys = cached_keys,
+            .smt_enabled = smt_enabled};
+        }
+      }
+
+      virtual ~CertificateExtension() = default;
+
+      struct TCB
+      {
+        std::array<uint8_t, 16> comp_svn;
+        uint16_t pce_svn;
+        std::array<uint8_t, 16> cpu_svn;
+      };
 
       struct Configuration
       {
@@ -493,237 +327,61 @@ namespace ravl
         bool smt_enabled;
       };
 
+      std::vector<uint8_t> ppid;
+      TCB tcb;
+      std::vector<uint8_t> pceid;
+      std::vector<uint8_t> fmspc;
+      uint8_t sgx_type;
+
+      std::optional<std::vector<uint8_t>> platform_instance_id = std::nullopt;
       std::optional<Configuration> configuration = std::nullopt;
+
+    protected:
+      TCB get_tcb_ext(
+        const Unique_ASN1_SEQUENCE& seq,
+        int index,
+        const std::string& expected_oid)
+      {
+        static constexpr size_t x509_tcb_seq_size = 18;
+
+        TCB r;
+
+        auto sss = seq.get_seq(index, expected_oid);
+
+        int n = sss.size();
+        if (n != x509_tcb_seq_size)
+          throw std::runtime_error(
+            "SGX X509 TCB extension: sequence of invalid length");
+
+        size_t num_comp_svns = r.comp_svn.size();
+
+        for (int i = 0; i < n; i++)
+        {
+          std::string expected_oid_i =
+            std::string(sgx_ext_tcb_oid) + "." + std::to_string(i + 1);
+
+          if (i < num_comp_svns)
+            r.comp_svn[i] = sss.get_uint8(i, expected_oid_i);
+          else if (i == num_comp_svns)
+            r.pce_svn = sss.get_uint16(i, expected_oid_i);
+          else if (i == x509_tcb_seq_size - 1)
+          {
+            auto t = sss.get_octet_string(i, expected_oid_i);
+            if (t.size() != r.cpu_svn.size())
+              throw std::runtime_error(
+                "SGX X509 TCB extension: ASN.1 octet string of invalid size");
+            for (size_t i = 0; i < r.cpu_svn.size(); i++)
+              r.cpu_svn.at(i) = t.at(i);
+          }
+          else
+            throw std::runtime_error("unreachable");
+        }
+
+        return r;
+      }
     };
 
-    PCKCertificateExtensions get_pck_certificate_extensions(
-      const Unique_X509& pck_certificate)
-    {
-      // See
-      // https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.4.pdf
-
-      int sgx_ext_idx = X509_get_ext_by_OBJ(
-        pck_certificate, Unique_ASN1_OBJECT(sgx_ext_oid.c_str()), -1);
-
-      X509_EXTENSION* sgx_ext = X509_get_ext(pck_certificate, sgx_ext_idx);
-
-      if (!sgx_ext)
-        throw std::runtime_error(
-          "PCK certificate does not contain the SGX extension");
-
-      Unique_ASN1_SEQUENCE seq(X509_EXTENSION_get_data(sgx_ext));
-
-      int seq_sz = seq.size();
-      if (seq_sz != 5 && seq_sz != 7)
-        throw std::runtime_error(
-          "SGX X509 extension sequence has invalid size");
-
-      PCKCertificateExtensions r;
-
-      r.ppid = seq.get_octet_string(0, sgx_ext_ppid_oid);
-      r.tcb = get_tcb_ext(seq, 1, sgx_ext_tcb_oid);
-      r.pceid = seq.get_octet_string(2, sgx_ext_pceid_oid);
-      r.fmspc = seq.get_octet_string(3, sgx_ext_fmspc_oid);
-      r.sgx_type = seq.get_enum(4, sgx_ext_type_oid) != 0;
-
-      if (seq_sz > 5)
-      {
-        r.platform_instance_id =
-          seq.get_octet_string(5, sgx_ext_platform_instance_oid);
-
-        // Platform-CA certificates come with these extensions, but only
-        // existence and order is verified here.
-        auto config_seq = seq.get_seq(6, sgx_ext_configuration_oid);
-        if (config_seq.size() != 3)
-          throw std::runtime_error(
-            "SGX X509 extension configuration sequence has invalid size");
-
-        auto dyn_platform =
-          config_seq.get_bool(0, sgx_ext_configuration_dynamic_platform_oid);
-        auto cached_keys =
-          config_seq.get_bool(1, sgx_ext_configuration_cached_keys_oid);
-        auto smt_enabled =
-          config_seq.get_bool(2, sgx_ext_configuration_smt_enabled_oid);
-
-        r.configuration = PCKCertificateExtensions::Configuration{
-          .dynamic_platform = dyn_platform,
-          .cached_keys = cached_keys,
-          .smt_enabled = smt_enabled};
-      }
-
-      return r;
-    }
-
-    bool is_all_zero(const std::vector<uint8_t>& v)
-    {
-      for (const auto& b : v)
-        if (b != 0)
-          return false;
-      return true;
-    }
-
-    bool has_pck_common_name(const X509* x509)
-    {
-      auto subject_name = X509_get_subject_name(x509);
-      int cn_i = X509_NAME_get_index_by_NID(subject_name, NID_commonName, -1);
-      while (cn_i != -1)
-      {
-        X509_NAME_ENTRY* entry = X509_NAME_get_entry(subject_name, cn_i);
-        ASN1_STRING* entry_string = X509_NAME_ENTRY_get_data(entry);
-        std::string common_name = (char*)ASN1_STRING_get0_data(entry_string);
-        if (common_name == pck_cert_common_name)
-          return true;
-        cn_i = X509_NAME_get_index_by_NID(subject_name, NID_commonName, cn_i);
-      }
-      return false;
-    }
-
-    Unique_STACK_OF_X509 verify_certificate_chain(
-      const Unique_X509_STORE& store,
-      const Unique_STACK_OF_X509& stack,
-      const Options& options,
-      bool trusted_root)
-    {
-      if (stack.size() <= 1)
-        throw std::runtime_error("certificate stack too small");
-
-      if (trusted_root)
-        X509_STORE_add_cert(store, stack.back());
-
-      auto target = stack.at(0);
-
-      Unique_X509_STORE_CTX store_ctx;
-      X509_STORE_CTX_init(store_ctx, store, target, stack);
-
-      if (options.ignore_time)
-      {
-        // TODO: double free of param?
-        X509_VERIFY_PARAM* param = X509_STORE_CTX_get0_param(store_ctx);
-        if (!param)
-          param = X509_VERIFY_PARAM_new();
-        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME);
-        X509_STORE_CTX_set0_param(store_ctx, param);
-      }
-
-      if (options.verification_time)
-        X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
-
-      int rc = X509_verify_cert(store_ctx);
-
-      if (rc == 1)
-        return Unique_STACK_OF_X509(store_ctx);
-      else
-      {
-        int a = errno;
-        unsigned long openssl_err = ERR_get_error();
-        char buf[4096];
-        ERR_error_string(openssl_err, buf);
-        throw std::runtime_error("certificate verification failed");
-      }
-    }
-
-    Unique_STACK_OF_X509 load_certificates(
-      const Unique_X509_STORE& store,
-      const std::vector<std::string>& certificates)
-    {
-      // Leaf tracking/searching may be unnecessary as the chains should be in
-      // order anyways.
-
-      Unique_STACK_OF_X509 r;
-      X509* leaf = NULL;
-
-      for (const auto& cert : certificates)
-      {
-        Unique_BIO cert_bio(cert.data(), cert.size());
-        Unique_X509 x509(cert_bio, true);
-
-        if (!X509_check_ca(x509))
-        {
-          if (leaf)
-            throw std::runtime_error("multiple leaves in certificate set");
-
-          leaf = x509;
-        }
-
-        r.push(std::move(x509));
-      }
-
-      if (!leaf)
-      {
-        // Some chains, e.g. pck_crl_issuer_chain, contain only CAs, so the leaf
-        // isn't easy to detect, so we look for the certificate that isn't used
-        // as an authority.
-        for (size_t ii = 0; ii < r.size(); ii++)
-        {
-          const auto& i = r.at(ii);
-          Unique_ASN1_OCTET_STRING subj_key_id(X509_get0_subject_key_id(i));
-
-          bool i_appears_as_ca = false;
-          for (size_t ji = 0; ji < r.size(); ji++)
-          {
-            if (ii == ji)
-              continue;
-
-            const auto& j = r.at(ji);
-
-            Unique_ASN1_OCTET_STRING auth_key_id(X509_get0_authority_key_id(j));
-
-            if (subj_key_id == auth_key_id)
-            {
-              i_appears_as_ca = true;
-              break;
-            }
-          }
-
-          if (!i_appears_as_ca)
-          {
-            if (leaf)
-              throw std::runtime_error("multiple leaves in certificate set");
-
-            leaf = i;
-          }
-        }
-      }
-
-      if (!leaf)
-        throw std::runtime_error("no leaf certificate found");
-
-      if (r.at(0) != leaf)
-        throw std::runtime_error(
-          "leaf certificate not at the front of the certificate chain");
-
-      return r;
-    }
-
-    Unique_STACK_OF_X509 get_verified_certificate_chain(
-      const std::span<const uint8_t> data,
-      const Unique_X509_STORE& store,
-      const Options& options,
-      bool trusted_root = false)
-    {
-      std::vector<std::string> certificates = extract_pems(data);
-
-      auto stack = load_certificates(store, certificates);
-      auto chain =
-        verify_certificate_chain(store, stack, options, trusted_root);
-
-      if (chain.size() < 2)
-        throw std::runtime_error("certificate chain is too short");
-
-      return chain;
-    }
-
-    Unique_STACK_OF_X509 get_verified_certificate_chain(
-      const std::string& data,
-      Unique_X509_STORE& store,
-      const Options& options,
-      bool trusted_root = false)
-    {
-      std::span<const uint8_t> span((uint8_t*)data.data(), data.size());
-      return get_verified_certificate_chain(span, store, options, trusted_root);
-    }
-
-    bool has_intel_public_key(const Unique_X509& certificate)
+    static bool has_intel_public_key(const Unique_X509& certificate)
     {
       Unique_EVP_PKEY pubkey(certificate);
       Unique_BIO bio(intel_root_public_key_pem);
@@ -731,7 +389,7 @@ namespace ravl
       return pubkey == intel_pubkey;
     }
 
-    bool json_vector_eq(
+    static bool json_vector_eq(
       const nlohmann::json& tcbinfo_j,
       const std::string& key,
       const std::vector<uint8_t>& ref,
@@ -759,28 +417,19 @@ namespace ravl
       std::vector<std::string> advisory_ids = {};
     };
 
-    std::chrono::system_clock::time_point parse_time_point(const std::string& s)
+    static void check_datetime(
+      const std::string& date_s, const std::string& name)
     {
-      struct tm stm = {};
-      auto sres = strptime(s.c_str(), datetime_format, &stm);
-      if (sres == NULL || *sres != '\0')
-        throw std::runtime_error("time point parsing failure");
-      auto idr = std::chrono::system_clock::from_time_t(timegm(&stm));
-      idr -= std::chrono::seconds(stm.tm_gmtoff);
-      return idr;
-    }
-
-    void check_datetime(const std::string& date_s, const std::string& name)
-    {
-      auto earliest_permitted = parse_time_point(sgx_earliest_tcb_crl_date);
-      auto issue_timepoint = parse_time_point(date_s);
+      auto earliest_permitted =
+        parse_time_point(sgx_earliest_tcb_crl_date, datetime_format);
+      auto issue_timepoint = parse_time_point(date_s, datetime_format);
       if (issue_timepoint < earliest_permitted)
         throw std::runtime_error(name + " earlier than permitted");
     }
 
     TCBLevel verify_tcb_json(
       const std::span<uint8_t>& tcb_info,
-      const PCKCertificateExtensions& pck_ext,
+      const CertificateExtension& pck_ext,
       const Unique_EVP_PKEY& signer_pubkey)
     {
       TCBLevel platform_tcb_level = {0};
@@ -903,12 +552,12 @@ namespace ravl
     TCBLevel verify_tcb(
       const std::span<uint8_t>& tcb_info_issuer_chain,
       const std::span<uint8_t>& tcb_info,
-      const PCKCertificateExtensions& pck_ext,
-      Unique_X509_STORE& store,
+      const CertificateExtension& pck_ext,
+      const Unique_X509_STORE& store,
       const Options& options)
     {
-      auto tcb_issuer_chain =
-        get_verified_certificate_chain(tcb_info_issuer_chain, store, options);
+      auto tcb_issuer_chain = verify_certificate_chain(
+        tcb_info_issuer_chain, store, options.certificate_validation);
 
       auto tcb_issuer_leaf = tcb_issuer_chain.front();
       auto tcb_issuer_root = tcb_issuer_chain.back();
@@ -928,14 +577,14 @@ namespace ravl
       const std::span<const uint8_t>& qe_identity,
       const std::span<const uint8_t>& qe_report_body_s,
       const TCBLevel& platform_tcb_level,
-      const PCKCertificateExtensions& pck_ext,
+      const CertificateExtension& pck_ext,
       const Unique_X509_STORE& store,
       const Options& options)
     {
       const sgx_report_body_t& qe_report_body =
         *(sgx_report_body_t*)qe_report_body_s.data();
-      auto qe_id_issuer_chain = get_verified_certificate_chain(
-        qe_identity_issuer_chain, store, options);
+      auto qe_id_issuer_chain = verify_certificate_chain(
+        qe_identity_issuer_chain, store, options.certificate_validation);
 
       auto qe_id_issuer_leaf = qe_id_issuer_chain.at(0);
       auto qe_id_issuer_root =
@@ -1101,7 +750,7 @@ namespace ravl
           "Unknown evidence format: too small to contain an sgx_quote_t");
 
       std::span r = {(uint8_t*)quote, sgx_quote_t_signed_size};
-      check_within(r, a.evidence);
+      verify_within(r, a.evidence);
 
       if (quote->version != SGX_QUOTE_VERSION)
         throw std::runtime_error(
@@ -1118,8 +767,64 @@ namespace ravl
       return r;
     }
 
-    struct SignatureData // ~ _sgx_ql_ecdsa_sig_data_t
+    class SignatureData // ~ _sgx_ql_ecdsa_sig_data_t
     {
+    public:
+      SignatureData(const std::span<const uint8_t>& quote, const Attestation& a)
+      {
+        const sgx_ql_ecdsa_sig_data_t* sig_data =
+          (sgx_ql_ecdsa_sig_data_t*)((const sgx_quote_t*)quote.data())
+            ->signature;
+
+        if (sig_data == NULL)
+          throw std::runtime_error("missing signature data");
+
+        std::span sig_data_span = {(uint8_t*)sig_data, sizeof(*sig_data)};
+        verify_within(sig_data_span, a.evidence);
+
+        report = {(uint8_t*)&sig_data->qe_report, sizeof(sig_data->qe_report)};
+        verify_within(report, a.evidence);
+
+        report_signature = {
+          sig_data->qe_report_sig, sizeof(sig_data->qe_report_sig)};
+        verify_within(report_signature, a.evidence);
+
+        quote_signature = {sig_data->sig, sizeof(sig_data->sig)};
+        verify_within(quote_signature, a.evidence);
+
+        public_key = {
+          sig_data->attest_pub_key, sizeof(sig_data->attest_pub_key)};
+        verify_within(public_key, a.evidence);
+
+        report_hash = {
+          sig_data->qe_report.report_data.d,
+          32}; // SGX_REPORT_DATA_SIZE is 64?!
+        verify_within(report_hash, a.evidence);
+
+        const sgx_ql_auth_data_t* ad_raw =
+          (sgx_ql_auth_data_t*)sig_data->auth_certification_data;
+
+        auth_data = {ad_raw->auth_data, ad_raw->size};
+        verify_within(auth_data, a.evidence);
+
+        if (ad_raw == NULL || ad_raw->size == 0)
+          throw std::runtime_error("missing authentication data");
+
+        const sgx_ql_certification_data_t* cd_raw =
+        (sgx_ql_certification_data_t*)(sig_data->auth_certification_data + sizeof(sgx_ql_auth_data_t) + ad_raw->size);
+
+        certification_data = {cd_raw->certification_data, cd_raw->size};
+        verify_within(certification_data, a.evidence);
+
+        if (cd_raw == NULL || cd_raw->size == 0)
+          throw std::runtime_error("missing certification data");
+
+        if (cd_raw->cert_key_type != PCK_CERT_CHAIN)
+          throw std::runtime_error("unsupported certification data key type");
+      }
+
+      ~SignatureData() = default;
+
       std::span<const uint8_t> report;
       std::span<const uint8_t> report_signature;
       std::span<const uint8_t> quote_signature;
@@ -1129,68 +834,10 @@ namespace ravl
       std::span<const uint8_t> certification_data;
     };
 
-    SignatureData parse_signature_data(
-      const std::span<const uint8_t>& quote, const Attestation& a)
-    {
-      SignatureData r;
-
-      // TODO: Endianness, e.g. for sizes?
-
-      const sgx_ql_ecdsa_sig_data_t* sig_data =
-        (sgx_ql_ecdsa_sig_data_t*)((const sgx_quote_t*)quote.data())->signature;
-
-      if (sig_data == NULL)
-        throw std::runtime_error("missing signature data");
-
-      std::span sig_data_span = {(uint8_t*)sig_data, sizeof(*sig_data)};
-      check_within(sig_data_span, a.evidence);
-
-      r.report = {(uint8_t*)&sig_data->qe_report, sizeof(sig_data->qe_report)};
-      check_within(r.report, a.evidence);
-
-      r.report_signature = {
-        sig_data->qe_report_sig, sizeof(sig_data->qe_report_sig)};
-      check_within(r.report_signature, a.evidence);
-
-      r.quote_signature = {sig_data->sig, sizeof(sig_data->sig)};
-      check_within(r.quote_signature, a.evidence);
-
-      r.public_key = {
-        sig_data->attest_pub_key, sizeof(sig_data->attest_pub_key)};
-      check_within(r.public_key, a.evidence);
-
-      r.report_hash = {
-        sig_data->qe_report.report_data.d, 32}; // SGX_REPORT_DATA_SIZE is 64?!
-      check_within(r.report_hash, a.evidence);
-
-      const sgx_ql_auth_data_t* ad_raw =
-        (sgx_ql_auth_data_t*)sig_data->auth_certification_data;
-
-      r.auth_data = {ad_raw->auth_data, ad_raw->size};
-      check_within(r.auth_data, a.evidence);
-
-      if (ad_raw == NULL || ad_raw->size == 0)
-        throw std::runtime_error("missing authentication data");
-
-      const sgx_ql_certification_data_t* cd_raw =
-        (sgx_ql_certification_data_t*)(sig_data->auth_certification_data + sizeof(sgx_ql_auth_data_t) + ad_raw->size);
-
-      r.certification_data = {cd_raw->certification_data, cd_raw->size};
-      check_within(r.certification_data, a.evidence);
-
-      if (cd_raw == NULL || cd_raw->size == 0)
-        throw std::runtime_error("missing certification data");
-
-      if (cd_raw->cert_key_type != PCK_CERT_CHAIN)
-        throw std::runtime_error("unsupported certification data key type");
-
-      return r;
-    }
-
     bool verify(const Attestation& a, const Options& options)
     {
       std::span quote = parse_quote(a);
-      SignatureData signature_data = parse_signature_data(quote, a);
+      SignatureData signature_data(quote, a);
 
       Unique_X509_STORE store;
       std::shared_ptr<QL_QVE_Collateral> collateral = nullptr;
@@ -1211,7 +858,7 @@ namespace ravl
         // cert chain is still unverified at this point.
         auto pck_pem = extract_pem(signature_data.certification_data);
         Unique_X509 pck_leaf(Unique_BIO(pck_pem), true);
-        auto pck_ext = get_pck_certificate_extensions(pck_leaf);
+        CertificateExtension pck_ext(pck_leaf);
 
         bool have_pid = pck_ext.platform_instance_id &&
           !is_all_zero(*pck_ext.platform_instance_id);
@@ -1240,16 +887,22 @@ namespace ravl
       // Validate PCK certificate and it's issuer chain. We trust the root CA
       // certificate in the endorsements if no other one is provided, but check
       // that it has Intel's public key afterwards.
-      auto pck_crl_issuer_chain = get_verified_certificate_chain(
-        collateral->pck_crl_issuer_chain, store, options, trusted_root);
+      auto pck_crl_issuer_chain = verify_certificate_chain(
+        collateral->pck_crl_issuer_chain,
+        store,
+        options.certificate_validation,
+        trusted_root);
 
-      auto pck_cert_chain = get_verified_certificate_chain(
-        signature_data.certification_data, store, options, trusted_root);
+      auto pck_cert_chain = verify_certificate_chain(
+        signature_data.certification_data,
+        store,
+        options.certificate_validation,
+        trusted_root);
 
       auto pck_leaf = pck_cert_chain.front();
       auto pck_root = pck_cert_chain.back();
 
-      if (!has_pck_common_name(pck_leaf))
+      if (!pck_leaf.has_common_name(pck_cert_common_name))
         throw std::runtime_error(
           "PCK certificate does not have expected common name");
 
@@ -1280,7 +933,7 @@ namespace ravl
         throw std::runtime_error("QE authentication message hash mismatch");
 
       // Verify TCB information
-      auto pck_x509_ext = get_pck_certificate_extensions(pck_leaf);
+      CertificateExtension pck_x509_ext(pck_leaf);
       auto platform_tcb_level = verify_tcb(
         collateral->tcb_info_issuer_chain,
         collateral->tcb_info,

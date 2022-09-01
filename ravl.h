@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ravl_options.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -10,21 +12,11 @@
 
 namespace ravl
 {
-
   enum class Source : uint8_t
   {
     SGX = 0,
     SEV_SNP = 1,
     OPEN_ENCLAVE = 2
-  };
-
-  struct Options
-  {
-    bool ignore_time = false;
-    std::optional<time_t> verification_time = std::nullopt;
-    bool fresh_endorsements = false;    
-    bool fresh_root_ca_certificate = false;
-    std::optional<std::vector<uint8_t>> root_ca_certificate_pem = std::nullopt;
   };
 
   class Attestation

@@ -1,6 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the Apache 2.0 License.
+
 #pragma once
+
+#include "crypto_options.h"
 
 #include <chrono>
 #include <cstring>
@@ -227,6 +230,39 @@ namespace crypto
       {}
     };
 
+    struct Unique_ASN1_OBJECT
+      : public Unique_SSL_OBJECT<ASN1_OBJECT, ASN1_OBJECT_new, ASN1_OBJECT_free>
+    {
+      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+      Unique_ASN1_OBJECT(const std::string& oid) :
+        Unique_SSL_OBJECT(OBJ_txt2obj(oid.c_str(), 0), ASN1_OBJECT_free)
+      {}
+      Unique_ASN1_OBJECT(ASN1_OBJECT* o) :
+        Unique_SSL_OBJECT(OBJ_dup(o), ASN1_OBJECT_free, true)
+      {}
+
+      bool operator==(const Unique_ASN1_OBJECT& other) const
+      {
+        return OBJ_cmp(*this, other) == 0;
+      }
+
+      bool operator!=(const Unique_ASN1_OBJECT& other) const
+      {
+        return !(*this == other);
+      }
+    };
+
+    struct Unique_X509_EXTENSION : public Unique_SSL_OBJECT<
+                                     X509_EXTENSION,
+                                     X509_EXTENSION_new,
+                                     X509_EXTENSION_free>
+    {
+      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+      Unique_X509_EXTENSION(X509_EXTENSION* ext) :
+        Unique_SSL_OBJECT(X509_EXTENSION_dup(ext), X509_EXTENSION_free, true)
+      {}
+    };
+
     struct Unique_X509 : public Unique_SSL_OBJECT<X509, X509_new, X509_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
@@ -253,6 +289,32 @@ namespace crypto
       bool is_ca() const
       {
         return X509_check_ca(p.get()) != 0;
+      }
+
+      int extension_index(const std::string& oid) const
+      {
+        return X509_get_ext_by_OBJ(*this, Unique_ASN1_OBJECT(oid.c_str()), -1);
+      }
+
+      Unique_X509_EXTENSION extension(const std::string& oid) const
+      {
+        return X509_get_ext(*this, extension_index(oid));
+      }
+
+      bool has_common_name(const std::string& expected_name) const
+      {
+        auto subject_name = X509_get_subject_name(*this);
+        int cn_i = X509_NAME_get_index_by_NID(subject_name, NID_commonName, -1);
+        while (cn_i != -1)
+        {
+          X509_NAME_ENTRY* entry = X509_NAME_get_entry(subject_name, cn_i);
+          ASN1_STRING* entry_string = X509_NAME_ENTRY_get_data(entry);
+          std::string common_name = (char*)ASN1_STRING_get0_data(entry_string);
+          if (common_name == expected_name)
+            return true;
+          cn_i = X509_NAME_get_index_by_NID(subject_name, NID_commonName, cn_i);
+        }
+        return false;
       }
     };
 
@@ -381,6 +443,30 @@ namespace crypto
       {
         return (*this).at(size() - 1);
       }
+
+      std::pair<struct tm, struct tm> get_validity_range()
+      {
+        if (size() == 0)
+          throw std::runtime_error(
+            "no certificate change to compute validity ranges for");
+
+        const ASN1_TIME *latest_from = nullptr, *earliest_to = nullptr;
+        for (size_t i = 0; i < size(); i++)
+        {
+          const auto& c = at(i);
+          const ASN1_TIME* not_before = X509_get0_notBefore(c);
+          if (!latest_from || ASN1_TIME_compare(latest_from, not_before) == -1)
+            latest_from = not_before;
+          const ASN1_TIME* not_after = X509_get0_notAfter(c);
+          if (!earliest_to || ASN1_TIME_compare(earliest_to, not_after) == 1)
+            earliest_to = not_after;
+        }
+
+        std::pair<struct tm, struct tm> r;
+        ASN1_TIME_to_tm(latest_from, &r.first);
+        ASN1_TIME_to_tm(earliest_to, &r.second);
+        return r;
+      }
     };
 
     struct Unique_STACK_OF_X509_EXTENSIONS
@@ -413,28 +499,7 @@ namespace crypto
           false)
       {}
     };
-
-    struct Unique_ASN1_OBJECT
-      : public Unique_SSL_OBJECT<ASN1_OBJECT, ASN1_OBJECT_new, ASN1_OBJECT_free>
-    {
-      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_ASN1_OBJECT(const std::string& oid) :
-        Unique_SSL_OBJECT(OBJ_txt2obj(oid.c_str(), 0), ASN1_OBJECT_free)
-      {}
-      Unique_ASN1_OBJECT(ASN1_OBJECT* o) :
-        Unique_SSL_OBJECT(OBJ_dup(o), ASN1_OBJECT_free, true)
-      {}
-
-      bool operator==(const Unique_ASN1_OBJECT& other) const
-      {
-        return OBJ_cmp(*this, other) == 0;
-      }
-
-      bool operator!=(const Unique_ASN1_OBJECT& other) const
-      {
-        return !(*this == other);
-      }
-    };
+    ;
 
     struct Unique_ASN1_TYPE
       : public Unique_SSL_OBJECT<ASN1_TYPE, ASN1_TYPE_new, ASN1_TYPE_free>
@@ -491,7 +556,7 @@ namespace crypto
                                     sk_ASN1_TYPE_free>
     {
       using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-      Unique_ASN1_SEQUENCE(ASN1_OCTET_STRING* os) :
+      Unique_ASN1_SEQUENCE(const ASN1_OCTET_STRING* os) :
         Unique_SSL_OBJECT(
           [&os]() {
             ASN1_SEQUENCE_ANY* seq = NULL;
@@ -633,6 +698,199 @@ namespace crypto
       auto der_sig_buf = res.data();
       CHECK0(i2d_ECDSA_SIG(sig, &der_sig_buf));
       return res;
+    }
+
+    inline void printf_certificate(const Unique_X509& certificate)
+    {
+      Unique_BIO bio;
+      X509_print(bio, certificate);
+      std::string certificate_s = bio.to_string();
+      printf("%s\n", certificate_s.c_str());
+    }
+
+    inline std::string_view extract_pem(std::string_view& data)
+    {
+      static std::string begin = "-----BEGIN CERTIFICATE-----";
+      static std::string end = "-----END CERTIFICATE-----";
+
+      size_t from = data.find(begin);
+      if (from == std::string::npos)
+        return "";
+      size_t to = data.find(end, from);
+      if (to == std::string::npos)
+        return "";
+      to += end.size();
+      auto pem = data.substr(from, to - from);
+      from = data.find(begin, to);
+      data.remove_prefix(from == std::string::npos ? data.size() : from);
+      return pem;
+    }
+
+    inline std::string_view extract_pem(const std::span<const uint8_t>& data)
+    {
+      std::string_view sv((char*)data.data(), data.size());
+      return extract_pem(sv);
+    }
+
+    inline std::vector<std::string> extract_pems(
+      const std::span<const uint8_t>& data)
+    {
+      std::vector<std::string> r;
+      std::string_view sv((char*)data.data(), data.size());
+
+      while (!sv.empty())
+      {
+        auto pem = extract_pem(sv);
+        if (!pem.empty())
+          r.push_back(std::string(pem));
+      }
+
+      return r;
+    }
+
+    inline Unique_STACK_OF_X509 verify_certificate_chain(
+      const Unique_X509_STORE& store,
+      const Unique_STACK_OF_X509& stack,
+      const CertificateValidationOptions& options,
+      bool trusted_root = false)
+    {
+      if (stack.size() <= 1)
+        throw std::runtime_error("certificate stack too small");
+
+      if (trusted_root)
+        X509_STORE_add_cert(store, stack.back());
+
+      auto target = stack.at(0);
+
+      Unique_X509_STORE_CTX store_ctx;
+      X509_STORE_CTX_init(store_ctx, store, target, stack);
+
+      if (options.ignore_time)
+      {
+        // TODO: double free of param?
+        X509_VERIFY_PARAM* param = X509_STORE_CTX_get0_param(store_ctx);
+        if (!param)
+          param = X509_VERIFY_PARAM_new();
+        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME);
+        X509_STORE_CTX_set0_param(store_ctx, param);
+      }
+
+      if (options.verification_time)
+        X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
+
+      int rc = X509_verify_cert(store_ctx);
+
+      if (rc == 1)
+        return Unique_STACK_OF_X509(store_ctx);
+      else
+      {
+        int a = errno;
+        unsigned long openssl_err = ERR_get_error();
+        char buf[4096];
+        ERR_error_string(openssl_err, buf);
+        throw std::runtime_error("certificate verification failed");
+      }
+    }
+
+    inline Unique_STACK_OF_X509 load_certificates(
+      const Unique_X509_STORE& store,
+      const std::vector<std::string>& certificates)
+    {
+      // Leaf tracking/searching may be unnecessary as the chains should be in
+      // order anyways.
+
+      Unique_STACK_OF_X509 r;
+      X509* leaf = NULL;
+
+      for (const auto& cert : certificates)
+      {
+        Unique_BIO cert_bio(cert.data(), cert.size());
+        Unique_X509 x509(cert_bio, true);
+
+        if (!X509_check_ca(x509))
+        {
+          if (leaf)
+            throw std::runtime_error("multiple leaves in certificate set");
+
+          leaf = x509;
+        }
+
+        r.push(std::move(x509));
+      }
+
+      if (!leaf)
+      {
+        // Some chains, e.g. pck_crl_issuer_chain, contain only CAs, so the leaf
+        // isn't easy to detect, so we look for the certificate that isn't used
+        // as an authority.
+        for (size_t ii = 0; ii < r.size(); ii++)
+        {
+          const auto& i = r.at(ii);
+          Unique_ASN1_OCTET_STRING subj_key_id(X509_get0_subject_key_id(i));
+
+          bool i_appears_as_ca = false;
+          for (size_t ji = 0; ji < r.size(); ji++)
+          {
+            if (ii == ji)
+              continue;
+
+            const auto& j = r.at(ji);
+
+            Unique_ASN1_OCTET_STRING auth_key_id(X509_get0_authority_key_id(j));
+
+            if (subj_key_id == auth_key_id)
+            {
+              i_appears_as_ca = true;
+              break;
+            }
+          }
+
+          if (!i_appears_as_ca)
+          {
+            if (leaf)
+              throw std::runtime_error("multiple leaves in certificate set");
+
+            leaf = i;
+          }
+        }
+      }
+
+      if (!leaf)
+        throw std::runtime_error("no leaf certificate found");
+
+      if (r.at(0) != leaf)
+        throw std::runtime_error(
+          "leaf certificate not at the front of the certificate chain");
+
+      return r;
+    }
+
+    inline Unique_STACK_OF_X509 verify_certificate_chain(
+      const std::span<const uint8_t> data,
+      const Unique_X509_STORE& store,
+      const CertificateValidationOptions& options,
+      bool trusted_root = false)
+    {
+      std::vector<std::string> certificates = extract_pems(data);
+
+      auto stack = load_certificates(store, certificates);
+      auto chain =
+        verify_certificate_chain(store, stack, options, trusted_root);
+
+      if (chain.size() < 2)
+        throw std::runtime_error("certificate chain is too short");
+
+      return chain;
+    }
+
+    inline Unique_STACK_OF_X509 verify_certificate_chain(
+      const std::string& data,
+      const Unique_X509_STORE& store,
+      const CertificateValidationOptions& options,
+      bool trusted_root = false)
+    {
+      std::span<const uint8_t> span((uint8_t*)data.data(), data.size());
+      return verify_certificate_chain(span, store, options, trusted_root);
     }
   }
 }
