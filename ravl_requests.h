@@ -1,9 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#pragma once
+
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
+#include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace ravl
@@ -22,10 +28,45 @@ namespace ravl
 
   struct Request
   {
+    Request() {}
+    Request(const std::string& url) : url(url) {}
+
     std::string url = "";
     std::unordered_map<std::string, std::string> headers = {};
     std::string body = "";
 
     Response operator()() const;
+  };
+
+  class RequestTracker
+  {
+  public:
+    typedef size_t RequestSetId;
+
+    RequestTracker() {}
+    virtual ~RequestTracker() = default;
+
+    virtual bool when_completed(
+      std::vector<Request>&& rs,
+      std::function<bool(std::vector<Response>&&)>&& f) = 0;
+
+    virtual void wait(const RequestSetId& id) = 0;
+  };
+
+  class SynchronousRequestTracker : public RequestTracker
+  {
+  public:
+    SynchronousRequestTracker();
+    virtual ~SynchronousRequestTracker() = default;
+
+    virtual bool when_completed(
+      std::vector<Request>&& rs,
+      std::function<bool(std::vector<Response>&&)>&& f) override;
+
+    virtual void wait(const RequestSetId& id) override;
+
+  protected:
+    std::unordered_map<RequestSetId, std::vector<Request>> request_sets;
+    std::unordered_map<RequestSetId, std::vector<Response>> response_sets;
   };
 }

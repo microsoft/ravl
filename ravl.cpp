@@ -83,13 +83,14 @@ namespace ravl
     return j.dump();
   }
 
-  bool Attestation::verify(const Options& options)
+  bool Attestation::verify(
+    const Options& options, std::shared_ptr<RequestTracker> request_tracker)
   {
     switch (source)
     {
       case Source::SGX:
 #ifdef HAVE_SGX_SDK
-        return ravl::sgx::verify(*this, options);
+        return ravl::sgx::verify(*this, options, request_tracker);
 #else
         throw std::runtime_error(
           "ravl was compiled without support for SGX support");
@@ -97,7 +98,7 @@ namespace ravl
         break;
       case Source::SEV_SNP:
 #ifdef HAVE_SEV_SNP
-        return ravl::sev_snp::verify(*this, options);
+        return ravl::sev_snp::verify(*this, options, request_tracker);
 #else
         throw std::runtime_error(
           "ravl was compiled without support for SEV/SNP support");
@@ -105,7 +106,7 @@ namespace ravl
         break;
       case Source::OPEN_ENCLAVE:
 #ifdef HAVE_OPEN_ENCLAVE
-        return ravl::oe::verify(*this, options);
+        return ravl::oe::verify(*this, options, request_tracker);
 #else
         throw std::runtime_error(
           "ravl was compiled without support for Open Enclave support");

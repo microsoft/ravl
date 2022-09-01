@@ -39,7 +39,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
 find_package(OpenSSL REQUIRED)
-set(RAVL_SRC ravl.cpp)
+set(RAVL_SRC ravl.cpp ravl_requests.cpp ravl_requests_threaded.cpp)
 set(RAVL_DEFS HAVE_OPENSSL)
 set(RAVL_LIB_DEPS crypto)
 

@@ -5,10 +5,17 @@
 
 #include "ravl.h"
 
+#include <memory>
+
 namespace ravl
 {
+  class RequestTracker;
+
   namespace sev_snp
   {
-    bool verify(const Attestation& a, const Options& opt);
+    bool verify(
+      const Attestation& a,
+      const Options& opt,
+      std::shared_ptr<RequestTracker> = nullptr);
   }
 }

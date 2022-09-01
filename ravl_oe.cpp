@@ -80,7 +80,10 @@ namespace ravl
         data.push_back((t >> (8 * (sizeof(T) - i - 1))) & 0xFF);
     }
 
-    bool verify(const Attestation& a, const Options& options)
+    bool verify(
+      const Attestation& a,
+      const Options& options,
+      std::shared_ptr<RequestTracker> tracker)
     {
 #ifdef USE_OE_VERIFIER
       if (oe_verifier_initialize() != OE_OK)
@@ -317,7 +320,7 @@ namespace ravl
         Attestation sgx_attestation(Source::SGX, squote, scollateral);
         // std::string sat = sgx_attestation;
         // printf("%s\n", sat.c_str());
-        return sgx_attestation.verify(options);
+        return sgx_attestation.verify(options, tracker);
       }
 #endif
     }

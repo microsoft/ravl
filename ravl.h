@@ -6,12 +6,15 @@
 #include "ravl_options.h"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace ravl
 {
+  class RequestTracker;
+
   enum class Source : uint8_t
   {
     SGX = 0,
@@ -35,7 +38,9 @@ namespace ravl
     std::vector<uint8_t> evidence;
     std::vector<uint8_t> endorsements;
 
-    virtual bool verify(const Options& opt);
+    virtual bool verify(
+      const Options& options,
+      std::shared_ptr<RequestTracker> request_tracker = nullptr);
 
     operator std::string() const;
   };

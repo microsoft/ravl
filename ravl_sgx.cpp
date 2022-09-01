@@ -179,14 +179,28 @@ namespace ravl
     static const std::string qe_identity_url = api_base_url + "/qe/identity";
     static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
-    std::vector<uint8_t> download_root_ca_pem()
+    std::vector<uint8_t> download_root_ca_pem(
+      std::shared_ptr<RequestTracker> tracker = nullptr)
     {
-      auto response = Request{.url = root_ca_url}();
-      return str2vec(response.body);
+      if (!tracker)
+        tracker = std::make_shared<SynchronousRequestTracker>();
+
+      std::vector<uint8_t> r;
+      auto response = tracker->when_completed(
+        {Request(root_ca_url)}, [&r](std::vector<Response>&& response_set) {
+          if (response_set.size() != 1)
+            return false;
+          r = str2vec(response_set.at(0).body);
+          return true;
+        });
+      return r;
     }
 
     std::shared_ptr<QL_QVE_Collateral> download_collateral(
-      const std::string& ca, const std::string& fmspc, bool qve = false)
+      const std::string& ca,
+      const std::string& fmspc,
+      bool qve = false,
+      std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       auto r = std::make_shared<QL_QVE_Collateral>();
 
@@ -194,43 +208,71 @@ namespace ravl
       r->minor_version = 1;
       r->tee_type = 0;
 
-      // Root CRL
-      auto response = Request{.url = root_crl_url}();
+      std::vector<Request> request_set;
 
-      r->root_ca_crl = str2vec(response.body);
+      // Root CRL
+      request_set.emplace_back(root_crl_url);
 
       // TCB info
       // https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v3
-      response = Request{.url = tcb_url + "?fmspc=" + fmspc}();
-      r->tcb_info = str2vec(response.body);
-      r->tcb_info_issuer_chain =
-        response.get_header_data("SGX-TCB-Info-Issuer-Chain", true);
+      request_set.emplace_back(tcb_url + "?fmspc=" + fmspc);
 
       // PCK CRL
       // https://api.portal.trustedservices.intel.com/documentation#pcs-revocation-v3
-      response = Request{.url = pck_crl_url + "?ca=" + ca + "&encoding=pem"}();
-      r->pck_crl = str2vec(response.body);
-      r->pck_crl_issuer_chain =
-        response.get_header_data("SGX-PCK-CRL-Issuer-Chain", true);
+      request_set.emplace_back(pck_crl_url + "?ca=" + ca + "&encoding=pem");
 
       if (!qve)
       {
         // QE Identity
         // https://api.portal.trustedservices.intel.com/documentation#pcs-qe-identity-v3
-        response = Request{.url = qe_identity_url}();
-        r->qe_identity = str2vec(response.body);
-        r->qe_identity_issuer_chain =
-          response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
+        request_set.emplace_back(qe_identity_url);
       }
       else
       {
         // QVE Identity
         // https://api.portal.trustedservices.intel.com/documentation#pcs-qve-identity-v3
-        response = Request{.url = qve_identity_url}();
-        r->qe_identity = str2vec(response.body);
-        r->qe_identity_issuer_chain =
-          response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
+        request_set.emplace_back(qve_identity_url);
       }
+
+      if (!tracker)
+        tracker = std::make_shared<SynchronousRequestTracker>();
+
+      bool tr = tracker->when_completed(
+        std::move(request_set),
+        [&r, qve](std::vector<Response>&& response_set) {
+          if (response_set.size() != 4)
+            return false;
+
+          r->root_ca_crl = str2vec(response_set[0].body);
+
+          r->tcb_info = str2vec(response_set[1].body);
+          r->tcb_info_issuer_chain =
+            response_set[1].get_header_data("SGX-TCB-Info-Issuer-Chain", true);
+
+          r->pck_crl = str2vec(response_set[2].body);
+          r->pck_crl_issuer_chain =
+            response_set[2].get_header_data("SGX-PCK-CRL-Issuer-Chain", true);
+
+          if (!qve)
+          {
+            auto response = response_set[3];
+            r->qe_identity = str2vec(response.body);
+            r->qe_identity_issuer_chain = response.get_header_data(
+              "SGX-Enclave-Identity-Issuer-Chain", true);
+          }
+          else
+          {
+            auto response = response_set[3];
+            r->qe_identity = str2vec(response.body);
+            r->qe_identity_issuer_chain = response.get_header_data(
+              "SGX-Enclave-Identity-Issuer-Chain", true);
+          }
+
+          return true;
+        });
+
+      if (!tr)
+        throw std::runtime_error("request set failed");
 
       return r;
     }
@@ -834,7 +876,10 @@ namespace ravl
       std::span<const uint8_t> certification_data;
     };
 
-    bool verify(const Attestation& a, const Options& options)
+    bool verify(
+      const Attestation& a,
+      const Options& options,
+      std::shared_ptr<RequestTracker> tracker)
     {
       std::span quote = parse_quote(a);
       SignatureData signature_data(quote, a);
@@ -850,7 +895,7 @@ namespace ravl
         if (options.root_ca_certificate_pem)
           root_ca_pem = *options.root_ca_certificate_pem;
         else if (options.fresh_root_ca_certificate)
-          root_ca_pem = download_root_ca_pem();
+          root_ca_pem = download_root_ca_pem(tracker);
       }
       else
       {
@@ -864,12 +909,12 @@ namespace ravl
           !is_all_zero(*pck_ext.platform_instance_id);
         auto ca_type = have_pid ? "platform" : "processor";
         auto fmspc_hex = fmt::format("{:02x}", fmt::join(pck_ext.fmspc, ""));
-        collateral = download_collateral(ca_type, fmspc_hex);
+        collateral = download_collateral(ca_type, fmspc_hex, false, tracker);
 
         if (options.root_ca_certificate_pem)
           root_ca_pem = *options.root_ca_certificate_pem;
         else
-          root_ca_pem = download_root_ca_pem();
+          root_ca_pem = download_root_ca_pem(tracker);
       }
 
       // These flags also check that we have a CRL for each CA.
