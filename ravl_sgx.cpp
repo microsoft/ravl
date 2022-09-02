@@ -156,7 +156,8 @@ namespace ravl
       SHA256_CTX sha256_ctx;
       CHECK1(SHA256_Init(&sha256_ctx));
       for (const auto& input : inputs)
-        CHECK1(SHA256_Update(&sha256_ctx, input.data(), input.size()));
+        if (input.size() > 0)
+          CHECK1(SHA256_Update(&sha256_ctx, input.data(), input.size()));
       std::vector<uint8_t> hash(sha256_ctx.md_len, 0);
       CHECK1(SHA256_Final(hash.data(), &sha256_ctx));
       if (hash.size() != expected.size())
@@ -838,10 +839,10 @@ namespace ravl
           sig_data->attest_pub_key, sizeof(sig_data->attest_pub_key)};
         verify_within(public_key, a.evidence);
 
-        report_hash = {
-          sig_data->qe_report.report_data.d,
-          32}; // SGX_REPORT_DATA_SIZE is 64?!
-        verify_within(report_hash, a.evidence);
+        report_data = {
+          (uint8_t*)&sig_data->qe_report.report_data,
+          sizeof(sig_data->qe_report.report_data)};
+        verify_within(report_data, a.evidence);
 
         const sgx_ql_auth_data_t* ad_raw =
           (sgx_ql_auth_data_t*)sig_data->auth_certification_data;
@@ -867,11 +868,11 @@ namespace ravl
 
       ~SignatureData() = default;
 
-      std::span<const uint8_t> report;
-      std::span<const uint8_t> report_signature;
       std::span<const uint8_t> quote_signature;
       std::span<const uint8_t> public_key;
-      std::span<const uint8_t> report_hash;
+      std::span<const uint8_t> report;
+      std::span<const uint8_t> report_signature;
+      std::span<const uint8_t> report_data;
       std::span<const uint8_t> auth_data;
       std::span<const uint8_t> certification_data;
     };
@@ -971,9 +972,10 @@ namespace ravl
       if (!quote_sig_ok)
         throw std::runtime_error("quote signature verification failed");
 
+      // TODO: This hash check seems open-enclave specific?
       bool pk_auth_hash_matches = verify_hash_match(
         {signature_data.public_key, signature_data.auth_data},
-        signature_data.report_hash);
+        signature_data.report_data.subspan(0, 32));
       if (!pk_auth_hash_matches)
         throw std::runtime_error("QE authentication message hash mismatch");
 

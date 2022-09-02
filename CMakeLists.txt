@@ -44,10 +44,10 @@ set(RAVL_DEFS HAVE_OPENSSL)
 set(RAVL_LIB_DEPS crypto)
 
 if(SGX)
-  find_path(SGXSDK sgx_quote.h REQUIRED HINTS /opt/sgxsdk /opt/intel/sgxsdk)
-  list(APPEND RAVL_DEFS HAVE_SGX_SDK)  
+  find_path(SGXSDK sgx_edger8r.h HINTS /opt/sgxsdk/include /opt/intel/sgxsdk/include REQUIRED)
+  list(APPEND RAVL_DEFS HAVE_SGX_SDK)
   list(APPEND RAVL_SRC ravl_sgx.cpp)
-  target_include_directories(ravl PRIVATE ${SGXSDK}/include)
+  target_include_directories(ravl PRIVATE ${SGXSDK})
 endif()
 
 if(OE)

@@ -1,7 +1,7 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include "oe_enclave_u.h"
+#include "enclave_u.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -23,7 +23,7 @@ oe_enclave_t* create_enclave(const char* enclave_path, uint32_t flags)
 {
   oe_enclave_t* enclave = NULL;
 
-  oe_result_t result = oe_create_oe_enclave_enclave(
+  oe_result_t result = oe_create_enclave_enclave(
     enclave_path, OE_ENCLAVE_TYPE_AUTO, flags, NULL, 0, &enclave);
 
   if (result != OE_OK)

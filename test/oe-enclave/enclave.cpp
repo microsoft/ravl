@@ -3,8 +3,8 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include "oe_enclave_args.h"
-#include "oe_enclave_t.h"
+#include "enclave_args.h"
+#include "enclave_t.h"
 
 #include <cstdint>
 #include <openenclave/attestation/attester.h>
