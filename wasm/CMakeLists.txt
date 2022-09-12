@@ -36,7 +36,7 @@ list(APPEND RAVL_DEFS HAVE_SGX_SDK)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
-list(APPEND RAVL_SRC ${RAVL_DIR}/ravl_sgx.cpp ${RAVL_DIR}/ravl_sev_snp.cpp)
+list(APPEND RAVL_SRC ${RAVL_DIR}/ravl_sgx.cpp ${RAVL_DIR}/ravl_sev_snp.cpp ${RAVL_DIR}/ravl_requests.cpp)
 
 set(CMAKE_EXECUTABLE_SUFFIX_CXX .html)
 add_executable(ravl ${RAVL_SRC} test_main.cpp)
