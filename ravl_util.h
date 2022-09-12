@@ -5,9 +5,20 @@
 #include <chrono>
 #include <cstdint>
 #include <ctime>
+#include <iostream>
 #include <span>
 #include <stdexcept>
 #include <vector>
+
+inline std::string vec2str(const std::vector<uint8_t>& vec)
+{
+  return std::string((char*)vec.data(), vec.size());
+}
+
+inline void log(const std::string& msg)
+{
+  std::cout << msg << std::endl;
+}
 
 template <typename T>
 T get(const std::vector<uint8_t>& data, size_t& pos)
@@ -22,7 +33,7 @@ T get(const std::vector<uint8_t>& data, size_t& pos)
   return r;
 }
 
-std::vector<uint8_t> get_n(
+inline std::vector<uint8_t> get_n(
   const std::vector<uint8_t>& data, size_t n, size_t& pos)
 {
   if (pos + n > data.size())
@@ -36,7 +47,7 @@ std::vector<uint8_t> get_n(
   return r;
 }
 
-std::vector<uint8_t> from_hex(const std::string& s)
+inline std::vector<uint8_t> from_hex(const std::string& s)
 {
   if (s.size() % 2)
     throw std::runtime_error("odd number of hex digits");

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "crypto_options.h"
+#include "ravl_util.h"
 
 #include <chrono>
 #include <cstring>
@@ -26,8 +27,12 @@
 #include <string_view>
 #include <vector>
 
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
+
 namespace crypto
 {
+
   namespace OpenSSL
   {
     /*
@@ -86,11 +91,13 @@ namespace crypto
     }
 
     /// Throws if ptr is null
-    inline void CHECKNULL(void* ptr)
+    static void __attribute__((noinline)) CHECKNULL(void* ptr)
     {
       if (ptr == NULL)
       {
-        throw std::runtime_error("OpenSSL error: missing object");
+        unsigned long ec = ERR_get_error();
+        throw std::runtime_error(
+          fmt::format("OpenSSL error: missing object ({})", error_string(ec)));
       }
     }
 
@@ -274,6 +281,7 @@ namespace crypto
           X509_free,
           check_null)
       {}
+
       Unique_X509(Unique_X509&& other) :
         Unique_SSL_OBJECT(NULL, X509_free, false)
       {
@@ -281,6 +289,7 @@ namespace crypto
         other.release();
         p.reset(ptr);
       }
+
       Unique_X509(X509* x509) : Unique_SSL_OBJECT(x509, X509_free, true)
       {
         X509_up_ref(x509);
@@ -316,6 +325,13 @@ namespace crypto
         }
         return false;
       }
+
+      std::string to_string() const
+      {
+        Unique_BIO mem;
+        CHECK1(PEM_write_bio_X509(mem, *this));
+        return mem.to_string();
+      }
     };
 
     struct Unique_X509_STORE
@@ -341,7 +357,7 @@ namespace crypto
           Unique_BIO bio(data.data(), data.size());
           Unique_X509_CRL crl(
             bio); // TODO: PEM only; some CRLs may be in DER format?
-          X509_STORE_add_crl(p.get(), crl);
+          CHECK1(X509_STORE_add_crl(p.get(), crl));
         }
       }
     };
@@ -758,12 +774,12 @@ namespace crypto
         throw std::runtime_error("certificate stack too small");
 
       if (trusted_root)
-        X509_STORE_add_cert(store, stack.back());
+        CHECK1(X509_STORE_add_cert(store, stack.back()));
 
       auto target = stack.at(0);
 
       Unique_X509_STORE_CTX store_ctx;
-      X509_STORE_CTX_init(store_ctx, store, target, stack);
+      CHECK1(X509_STORE_CTX_init(store_ctx, store, target, stack));
 
       if (options.ignore_time)
       {
@@ -771,7 +787,7 @@ namespace crypto
         X509_VERIFY_PARAM* param = X509_STORE_CTX_get0_param(store_ctx);
         if (!param)
           param = X509_VERIFY_PARAM_new();
-        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME);
+        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
         X509_STORE_CTX_set0_param(store_ctx, param);
       }
 

@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 #include <sgx_quote_3.h>
 #include <span>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -60,31 +61,31 @@ namespace ravl
 
       QL_QVE_Collateral(const std::vector<uint8_t>& data)
       {
-        size_t pos = 0, n = 0;
+        std::vector<uint8_t>::size_type pos = 0, n = 0;
 
         major_version = get<uint16_t>(data, pos);
         minor_version = get<uint16_t>(data, pos);
         tee_type = get<uint32_t>(data, pos);
 
-        n = get<size_t>(data, pos);
+        n = get<uint64_t>(data, pos);
         pck_crl_issuer_chain = get_n(data, n, pos);
 
-        n = get<size_t>(data, pos);
+        n = get<uint64_t>(data, pos);
         root_ca_crl = get_n(data, n, pos);
 
-        n = get<size_t>(data, pos);
+        n = get<uint64_t>(data, pos);
         pck_crl = get_n(data, n, pos);
 
-        n = get<size_t>(data, pos);
+        n = get<uint64_t>(data, pos);
         tcb_info_issuer_chain = get_n(data, n, pos);
 
-        n = get<size_t>(data, pos);
+        n = get<uint64_t>(data, pos);
         tcb_info = get_n(data, n, pos);
 
-        n = get<size_t>(data, pos);
+        n = get<uint64_t>(data, pos);
         qe_identity_issuer_chain = get_n(data, n, pos);
 
-        n = get<size_t>(data, pos);
+        n = get<uint64_t>(data, pos);
         qe_identity = get_n(data, n, pos);
 
         // TODO: Investigate why there are sometimes extra null bytes
@@ -103,6 +104,20 @@ namespace ravl
       std::vector<uint8_t> tcb_info;
       std::vector<uint8_t> qe_identity_issuer_chain;
       std::vector<uint8_t> qe_identity;
+
+      std::string to_string() const
+      {
+        std::stringstream ss;
+        ss << fmt::format(
+                "Collateral version: {}.{}", major_version, minor_version)
+           << std::endl;
+        ss << fmt::format("TEE type: {:08x}", tee_type) << std::endl;
+        ss << fmt::format("Root CA CRL: {}", vec2str(root_ca_crl)) << std::endl;
+        ss << fmt::format(
+                "PCK CRL issuer chain: {}", vec2str(pck_crl_issuer_chain))
+           << std::endl;
+        return ss.str();
+      }
     };
 
     static bool verify_signature(
@@ -194,6 +209,10 @@ namespace ravl
           r = str2vec(response_set.at(0).body);
           return true;
         });
+
+      if (r.empty())
+        throw std::runtime_error("download of root CA certificate failed");
+
       return r;
     }
 
@@ -273,7 +292,7 @@ namespace ravl
         });
 
       if (!tr)
-        throw std::runtime_error("request set failed");
+        throw std::runtime_error("collateral download request set failed");
 
       return r;
     }
@@ -918,6 +937,8 @@ namespace ravl
           root_ca_pem = download_root_ca_pem(tracker);
       }
 
+      log(collateral->to_string());
+
       // These flags also check that we have a CRL for each CA.
       store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
       store.add_crl(collateral->root_ca_crl);
@@ -938,6 +959,12 @@ namespace ravl
         store,
         options.certificate_validation,
         trusted_root);
+
+      log(fmt::format(
+        "Root CA Certificate{}: {}",
+        trusted_root ? " (auto-trusted)" : "",
+        trusted_root ? pck_crl_issuer_chain.back().to_string() :
+                       vec2str(root_ca_pem)));
 
       auto pck_cert_chain = verify_certificate_chain(
         signature_data.certification_data,
