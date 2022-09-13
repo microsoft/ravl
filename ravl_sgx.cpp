@@ -105,70 +105,74 @@ namespace ravl
       std::vector<uint8_t> qe_identity_issuer_chain;
       std::vector<uint8_t> qe_identity;
 
-      std::string to_string(uint32_t verbosity) const
+      std::string to_string(uint32_t verbosity, size_t indent = 0) const
       {
+        std::string ins(indent + 2, ' ');
         std::stringstream ss;
-        ss << "- SGX Collateral" << std::endl;
-        ss << fmt::format("  - Version: {}.{}", major_version, minor_version)
+
+        ss << std::string(indent, ' ') << "- SGX Collateral" << std::endl;
+
+        ss << ins
+           << fmt::format("- Version: {}.{}", major_version, minor_version)
            << std::endl;
-        ss << fmt::format("  - TEE type: 0x{:08x}", tee_type) << std::endl;
+        ss << ins << fmt::format("- TEE type: 0x{:08x}", tee_type) << std::endl;
 
         if (verbosity > 0)
         {
           Unique_X509_CRL crl(root_ca_crl);
-          ss << "  - Root CA CRL:" << std::endl;
-          ss << crl.to_string(4) << std::endl;
+          ss << ins << "- Root CA CRL:" << std::endl;
+          ss << crl.to_string(indent + 4) << std::endl;
         }
         if (verbosity > 1)
-          ss << fmt::format("    - PEM:\n{}", vec2str(root_ca_crl))
+          ss << ins << fmt::format("  - PEM:\n{}", vec2str(root_ca_crl, 8))
              << std::endl;
 
         if (verbosity > 0)
         {
           Unique_STACK_OF_X509 st(pck_crl_issuer_chain);
-          ss << "  - PCK CRL issuer chain:" << std::endl;
-          ss << st.to_string_short(4) << std::endl;
+          ss << ins << "- PCK CRL issuer chain:" << std::endl;
+          ss << st.to_string_short(indent + 4) << std::endl;
         }
         if (verbosity > 1)
-          ss << "    - PEM:" << std::endl
-             << vec2str(pck_crl_issuer_chain) << std::endl;
+          ss << ins << "  - PEM:" << std::endl
+             << vec2str(pck_crl_issuer_chain, 8) << std::endl;
 
         if (verbosity > 0)
         {
           Unique_X509_CRL crl(pck_crl);
-          ss << "  - PCK CRL:" << std::endl;
-          ss << crl.to_string(4) << std::endl;
+          ss << ins << "- PCK CRL:" << std::endl;
+          ss << crl.to_string(indent + 4) << std::endl;
         }
         if (verbosity > 1)
-          ss << "    - PEM:" << std::endl << vec2str(pck_crl) << std::endl;
+          ss << ins << "  - PEM:" << std::endl
+             << vec2str(pck_crl, 8) << std::endl;
 
         if (verbosity > 0)
         {
           Unique_STACK_OF_X509 st(tcb_info_issuer_chain);
-          ss << "  - TCB info issuer chain:" << std::endl;
-          ss << st.to_string_short(4) << std::endl;
+          ss << ins << "- TCB info issuer chain:" << std::endl;
+          ss << st.to_string_short(indent + 4) << std::endl;
         }
         if (verbosity > 1)
-          ss << "    - PEM:" << std::endl
-             << vec2str(tcb_info_issuer_chain) << std::endl;
+          ss << ins << "  - PEM:" << std::endl
+             << vec2str(tcb_info_issuer_chain, 8) << std::endl;
 
         if (verbosity > 1)
-          ss << fmt::format("  - TCB info:\n{}", vec2str(tcb_info))
+          ss << ins << fmt::format("- TCB info: {}", vec2str(tcb_info))
              << std::endl;
 
         if (verbosity > 0)
         {
           Unique_STACK_OF_X509 st(qe_identity_issuer_chain);
-          ss << "  - QE ID issuer chain:" << std::endl;
-          ss << st.to_string_short(4) << std::endl;
+          ss << ins << "- QE identity issuer chain:" << std::endl;
+          ss << st.to_string_short(indent + 4) << std::endl;
         }
         if (verbosity > 1)
-          ss << "    - PEM:" << std::endl
-             << vec2str(qe_identity_issuer_chain) << std::endl;
+          ss << ins << "  - PEM:" << std::endl
+             << vec2str(qe_identity_issuer_chain, 8) << std::endl;
 
-        if (verbosity > 1)
-          ss << fmt::format("  - QE ID:\n{}", vec2str(qe_identity))
-             << std::endl;
+        if (verbosity > 0)
+          ss << ins << fmt::format("- QE identity: {}", vec2str(qe_identity));
         return ss.str();
       }
     };
@@ -669,10 +673,22 @@ namespace ravl
       const std::span<uint8_t>& tcb_info,
       const CertificateExtension& pck_ext,
       const Unique_X509_STORE& store,
-      const Options& options)
+      const Options& options,
+      size_t indent = 0)
     {
+      if (options.verbosity > 0)
+      {
+        std::string ins(indent, ' ');
+        log(ins + "- TCB info verification");
+        log(ins + "  - TCB info issuer certificate chain verification");
+      }
       auto tcb_issuer_chain = verify_certificate_chain(
-        tcb_info_issuer_chain, store, options.certificate_validation);
+        tcb_info_issuer_chain,
+        store,
+        options.certificate_validation,
+        false,
+        options.verbosity > 0,
+        indent + 4);
 
       auto tcb_issuer_leaf = tcb_issuer_chain.front();
       auto tcb_issuer_root = tcb_issuer_chain.back();
@@ -694,12 +710,25 @@ namespace ravl
       const TCBLevel& platform_tcb_level,
       const CertificateExtension& pck_ext,
       const Unique_X509_STORE& store,
-      const Options& options)
+      const Options& options,
+      size_t indent = 0)
     {
       const sgx_report_body_t& qe_report_body =
         *(sgx_report_body_t*)qe_report_body_s.data();
+
+      if (options.verbosity > 0)
+      {
+        std::string ins(indent, ' ');
+        log(ins + "- QE identity verification");
+        log(ins + "  - QE identity issuer certificate chain verification");
+      }
       auto qe_id_issuer_chain = verify_certificate_chain(
-        qe_identity_issuer_chain, store, options.certificate_validation);
+        qe_identity_issuer_chain,
+        store,
+        options.certificate_validation,
+        false,
+        options.verbosity > 0,
+        indent + 4);
 
       auto qe_id_issuer_leaf = qe_id_issuer_chain.at(0);
       auto qe_id_issuer_root =
@@ -991,7 +1020,7 @@ namespace ravl
       }
 
       if (options.verbosity > 0)
-        log(collateral->to_string(options.verbosity));
+        log(collateral->to_string(options.verbosity, 2));
 
       // These flags also check that we have a CRL for each CA.
       store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
@@ -1008,40 +1037,52 @@ namespace ravl
       // Validate PCK certificate and it's issuer chain. We trust the root CA
       // certificate in the endorsements if no other one is provided, but check
       // that it has Intel's public key afterwards.
+      if (options.verbosity > 0)
+        log("  - PCK CRL issuer certificate chain verification");
       auto pck_crl_issuer_chain = verify_certificate_chain(
         collateral->pck_crl_issuer_chain,
         store,
         options.certificate_validation,
-        trusted_root);
+        trusted_root,
+        options.verbosity > 0,
+        4);
 
       if (options.verbosity > 0)
       {
         if (trusted_root)
         {
-          log("- Root CA Certificate (auto-trusted):");
-          log(pck_crl_issuer_chain.back().to_string_short(2));
+          log("  - Root CA Certificate (auto-trusted):");
+          log(pck_crl_issuer_chain.back().to_string_short(4));
         }
         else
         {
           Unique_X509 root(root_ca_pem, true);
-          log("- Root CA Certificate:");
-          log(root.to_string_short(2));
+          log("  - Root CA Certificate:");
+          log(root.to_string_short(4));
         }
       }
       if (options.verbosity > 1)
       {
-        log("  - PEM:\n");
+        log("    - PEM:");
         if (trusted_root)
-          log(pck_crl_issuer_chain.back().to_string());
+        {
+          std::string rs = pck_crl_issuer_chain.back().to_string();
+          indentate(rs, 6);
+          log(rs);
+        }
         else
-          log(vec2str(root_ca_pem));
+          log(vec2str(root_ca_pem, 6));
       }
 
+      if (options.verbosity > 0)
+        log("  - PCK certificate chain verification");
       auto pck_cert_chain = verify_certificate_chain(
         signature_data.certification_data,
         store,
         options.certificate_validation,
-        trusted_root);
+        trusted_root,
+        options.verbosity > 0,
+        4);
 
       auto pck_leaf = pck_cert_chain.front();
       auto pck_root = pck_cert_chain.back();
@@ -1077,14 +1118,15 @@ namespace ravl
       if (!pk_auth_hash_matches)
         throw std::runtime_error("QE authentication message hash mismatch");
 
-      // Verify TCB information
+      // Verify TCB info
       CertificateExtension pck_x509_ext(pck_leaf);
       auto platform_tcb_level = verify_tcb(
         collateral->tcb_info_issuer_chain,
         collateral->tcb_info,
         pck_x509_ext,
         store,
-        options);
+        options,
+        2);
 
       // Verify the QE identity
       bool qe_id_ok = verify_qe_id(
@@ -1094,7 +1136,8 @@ namespace ravl
         platform_tcb_level,
         pck_x509_ext,
         store,
-        options);
+        options,
+        2);
 
       return pck_cert_chain && qe_sig_ok && pk_auth_hash_matches &&
         quote_sig_ok && qe_id_ok;

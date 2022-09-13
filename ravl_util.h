@@ -10,9 +10,34 @@
 #include <stdexcept>
 #include <vector>
 
-inline std::string vec2str(const std::vector<uint8_t>& vec)
+inline std::size_t replace_all(
+  std::string& inout, std::string_view what, std::string_view with)
 {
-  return std::string((char*)vec.data(), vec.size());
+  std::size_t count{};
+  for (std::string::size_type pos{};
+       inout.npos != (pos = inout.find(what.data(), pos, what.length()));
+       pos += with.length(), ++count)
+  {
+    inout.replace(pos, what.length(), with.data(), with.length());
+  }
+  return count;
+}
+
+inline void indentate(std::string& inout, size_t indent)
+{
+  std::string ins(indent, ' ');
+  replace_all(inout, "\n", "\n" + ins);
+  inout = ins + inout;
+}
+
+inline std::string vec2str(const std::vector<uint8_t>& vec, size_t indent = 0)
+{
+  auto r = std::string((char*)vec.data(), vec.size());
+  if (indent > 0)
+  {
+    indentate(r, indent);
+  }
+  return r;
 }
 
 inline void log(const std::string& msg, bool verbose = false)

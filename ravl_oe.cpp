@@ -3,7 +3,7 @@
 
 #include "ravl_oe.h"
 
-#include "ravl.h"
+#include "ravl_sgx.h"
 
 #ifdef USE_OE_VERIFIER
 #  include <openenclave/attestation/sgx/evidence.h>
@@ -320,7 +320,7 @@ namespace ravl
         Attestation sgx_attestation(Source::SGX, squote, scollateral);
         // std::string sat = sgx_attestation;
         // printf("%s\n", sat.c_str());
-        return sgx_attestation.verify(options, tracker);
+        return sgx::verify(sgx_attestation, options, tracker);
       }
 #endif
     }

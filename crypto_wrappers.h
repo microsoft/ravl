@@ -967,13 +967,6 @@ namespace crypto
       if (stack.size() <= 1)
         throw std::runtime_error("certificate stack too small");
 
-      log("- Certificate chain to verify:");
-      for (size_t i = 0; i < stack.size(); i++)
-      {
-        auto c = stack.at(i);
-        log(c.to_string_short(2));
-      }
-
       if (trusted_root)
         CHECK1(X509_STORE_add_cert(store, stack.back()));
 
@@ -1002,19 +995,15 @@ namespace crypto
       int rc = X509_verify_cert(store_ctx);
 
       if (rc == 1)
-      {
-        log(fmt::format("  - certificate verification succeeded"));
         return Unique_STACK_OF_X509(store_ctx);
-      }
+      else if (rc == 0)
+        throw std::runtime_error("no chain or signature invalid");
       else
       {
-        int a = errno;
         unsigned long openssl_err = ERR_get_error();
         char buf[4096];
         ERR_error_string(openssl_err, buf);
-        log(fmt::format("certificate verification failed: {}", buf));
-        throw std::runtime_error(
-          fmt::format("certificate verification failed: {}", buf));
+        throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
       }
     }
 
@@ -1095,18 +1084,48 @@ namespace crypto
       const std::span<const uint8_t> data,
       const Unique_X509_STORE& store,
       const CertificateValidationOptions& options,
-      bool trusted_root = false)
+      bool trusted_root = false,
+      bool verbose = false,
+      size_t indent = 0)
     {
       std::vector<std::string> certificates = extract_pems(data);
 
       auto stack = load_certificates(store, certificates);
-      auto chain =
-        verify_certificate_chain(store, stack, options, trusted_root);
 
-      if (chain.size() < 2)
-        throw std::runtime_error("certificate chain is too short");
+      if (verbose)
+      {
+        for (size_t i = 0; i < stack.size(); i++)
+        {
+          auto c = stack.at(i);
+          log(c.to_string_short(indent));
+        }
+      }
 
-      return chain;
+      try
+      {
+        auto chain =
+          verify_certificate_chain(store, stack, options, trusted_root);
+
+        if (chain.size() < 2)
+          throw std::runtime_error("certificate chain is too short");
+
+        log(std::string(indent, ' ') + "- verification successful");
+
+        return chain;
+      }
+      catch (std::exception& ex)
+      {
+        log(fmt::format(
+          "{}- verification failed: {}", std::string(indent, ' '), ex.what()));
+        throw std::runtime_error("certificate chain verification failed");
+      }
+      catch (...)
+      {
+        log(fmt::format(
+          "{}- verification failed with unknown exception",
+          std::string(indent, ' ')));
+        throw std::runtime_error("certificate chain verification failed");
+      }
     }
 
     inline Unique_STACK_OF_X509 verify_certificate_chain(
