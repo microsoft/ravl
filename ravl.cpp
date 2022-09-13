@@ -97,6 +97,24 @@ namespace ravl
     to_json(j, source);
     log(fmt::format("* Verifying attestation from {}", j.dump()));
 
+    log("- Options", 2);
+    if (options.fresh_endorsements)
+      log("- Fresh endorsements", 4);
+    if (options.fresh_root_ca_certificate)
+      log("- Fresh root CA certificate", 4);
+    if (options.root_ca_certificate_pem)
+      log("- Custom root CA certificate", 4);
+    if (
+      options.certificate_verification.ignore_time ||
+      options.certificate_verification.verification_time)
+    {
+      log("- Certificate verification", 4);
+      if (options.certificate_verification.ignore_time)
+        log("- Ignore certificate times", 6);
+      if (options.certificate_verification.verification_time)
+        log("- Use custom certificate verification time", 6);
+    }
+
     bool r = false;
 
     try

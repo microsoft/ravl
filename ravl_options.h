@@ -17,7 +17,7 @@ namespace ravl
     uint8_t verbosity = 0;
 
     /// Certificate validation options
-    crypto::CertificateValidationOptions certificate_validation;
+    crypto::CertificateValidationOptions certificate_verification;
 
     /// Downloads new endorsements
     bool fresh_endorsements = false;

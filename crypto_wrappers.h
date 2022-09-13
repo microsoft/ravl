@@ -954,7 +954,8 @@ namespace crypto
       const Unique_X509_STORE& store,
       const Unique_STACK_OF_X509& stack,
       const CertificateValidationOptions& options,
-      bool trusted_root = false)
+      bool trusted_root = false,
+      size_t indent = 0)
     {
       if (stack.size() <= 1)
         throw std::runtime_error("certificate stack too small");
@@ -977,13 +978,11 @@ namespace crypto
 
       if (options.ignore_time)
       {
-        log(fmt::format("  - ignoring certificate times"));
         CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
       }
 
       if (options.verification_time)
       {
-        log(fmt::format("  - using custom certificate verification time"));
         X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
       }
 
@@ -1107,26 +1106,23 @@ namespace crypto
       try
       {
         auto chain =
-          verify_certificate_chain(store, stack, options, trusted_root);
+          verify_certificate_chain(store, stack, options, trusted_root, indent);
 
         if (chain.size() < 2)
           throw std::runtime_error("certificate chain is too short");
 
-        log(std::string(indent, ' ') + "- verification successful");
+        log("- verification successful", indent);
 
         return chain;
       }
       catch (std::exception& ex)
       {
-        log(fmt::format(
-          "{}- verification failed: {}", std::string(indent, ' '), ex.what()));
+        log(fmt::format("- verification failed: {}", ex.what()), indent);
         throw std::runtime_error("certificate chain verification failed");
       }
       catch (...)
       {
-        log(fmt::format(
-          "{}- verification failed with unknown exception",
-          std::string(indent, ' ')));
+        log("- verification failed with unknown exception", indent);
         throw std::runtime_error("certificate chain verification failed");
       }
     }
@@ -1135,10 +1131,12 @@ namespace crypto
       const std::string& data,
       const Unique_X509_STORE& store,
       const CertificateValidationOptions& options,
-      bool trusted_root = false)
+      bool trusted_root = false,
+      size_t indent = 0)
     {
       std::span<const uint8_t> span((uint8_t*)data.data(), data.size());
-      return verify_certificate_chain(span, store, options, trusted_root);
+      return verify_certificate_chain(
+        span, store, options, trusted_root, indent);
     }
   }
 }

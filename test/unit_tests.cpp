@@ -50,7 +50,7 @@ std::string sgx_sdk_qe_quote3 = R"({
 /* clang-format on */
 
 Options default_options = {
-  .verbosity = 1, .certificate_validation = {.ignore_time = true}};
+  .verbosity = 1, .certificate_verification = {.ignore_time = true}};
 
 std::shared_ptr<RequestTracker> request_tracker =
   std::make_shared<ThreadedRequestTracker>();

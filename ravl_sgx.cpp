@@ -684,7 +684,7 @@ namespace ravl
       auto tcb_issuer_chain = verify_certificate_chain(
         tcb_info_issuer_chain,
         store,
-        options.certificate_validation,
+        options.certificate_verification,
         false,
         options.verbosity,
         indent + 4);
@@ -723,7 +723,7 @@ namespace ravl
       auto qe_id_issuer_chain = verify_certificate_chain(
         qe_identity_issuer_chain,
         store,
-        options.certificate_validation,
+        options.certificate_verification,
         false,
         options.verbosity,
         indent + 4);
@@ -1041,7 +1041,7 @@ namespace ravl
       auto pck_crl_issuer_chain = verify_certificate_chain(
         collateral->pck_crl_issuer_chain,
         store,
-        options.certificate_validation,
+        options.certificate_verification,
         trusted_root,
         options.verbosity,
         indent + 4);
@@ -1078,7 +1078,7 @@ namespace ravl
       auto pck_cert_chain = verify_certificate_chain(
         signature_data.certification_data,
         store,
-        options.certificate_validation,
+        options.certificate_verification,
         trusted_root,
         options.verbosity,
         indent + 4);
