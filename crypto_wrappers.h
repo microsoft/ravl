@@ -326,7 +326,18 @@ namespace crypto
       Unique_STACK_OF_X509_REVOKED revoked() const
       {
         auto sk = X509_CRL_get_REVOKED(*this);
-        return Unique_STACK_OF_X509_REVOKED(sk);
+        if (!sk)
+          return Unique_STACK_OF_X509_REVOKED();
+        else
+        {
+          auto copy = sk_X509_REVOKED_deep_copy(
+            sk,
+            [](const X509_REVOKED* x) {
+              return X509_REVOKED_dup(const_cast<X509_REVOKED*>(x));
+            },
+            X509_REVOKED_free);
+          return Unique_STACK_OF_X509_REVOKED(copy);
+        }
       }
 
       std::string to_string(size_t indent = 0) const
@@ -595,8 +606,10 @@ namespace crypto
           auto sk_i = sk_X509_INFO_value(sk_info, i);
           if (!sk_i->x509)
             throw std::runtime_error("invalid PEM element");
+          X509_up_ref(sk_i->x509);
           sk_X509_push(*this, sk_i->x509);
         }
+        sk_X509_INFO_pop_free(sk_info, X509_INFO_free);
       }
 
       size_t size() const

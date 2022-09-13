@@ -130,8 +130,8 @@ namespace ravl
           ss << st.to_string_short(4) << std::endl;
         }
         if (verbosity > 1)
-          ss << fmt::format("    - PEM:\n{}", vec2str(pck_crl_issuer_chain))
-             << std::endl;
+          ss << "    - PEM:" << std::endl
+             << vec2str(pck_crl_issuer_chain) << std::endl;
 
         if (verbosity > 0)
         {
@@ -140,7 +140,7 @@ namespace ravl
           ss << crl.to_string(4) << std::endl;
         }
         if (verbosity > 1)
-          ss << fmt::format("    - PEM:\n{}", vec2str(pck_crl)) << std::endl;
+          ss << "    - PEM:" << std::endl << vec2str(pck_crl) << std::endl;
 
         if (verbosity > 0)
         {
@@ -149,8 +149,8 @@ namespace ravl
           ss << st.to_string_short(4) << std::endl;
         }
         if (verbosity > 1)
-          ss << fmt::format("    - PEM:\n{}", vec2str(tcb_info_issuer_chain))
-             << std::endl;
+          ss << "    - PEM:" << std::endl
+             << vec2str(tcb_info_issuer_chain) << std::endl;
 
         if (verbosity > 1)
           ss << fmt::format("  - TCB info:\n{}", vec2str(tcb_info))
@@ -163,8 +163,9 @@ namespace ravl
           ss << st.to_string_short(4) << std::endl;
         }
         if (verbosity > 1)
-          ss << fmt::format("    - PEM:\n{}", vec2str(qe_identity_issuer_chain))
-             << std::endl;
+          ss << "    - PEM:" << std::endl
+             << vec2str(qe_identity_issuer_chain) << std::endl;
+
         if (verbosity > 1)
           ss << fmt::format("  - QE ID:\n{}", vec2str(qe_identity))
              << std::endl;
