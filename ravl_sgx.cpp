@@ -678,16 +678,15 @@ namespace ravl
     {
       if (options.verbosity > 0)
       {
-        std::string ins(indent, ' ');
-        log(ins + "- TCB info verification");
-        log(ins + "  - TCB info issuer certificate chain verification");
+        log("- TCB info verification", indent);
+        log("- TCB info issuer certificate chain verification", indent + 2);
       }
       auto tcb_issuer_chain = verify_certificate_chain(
         tcb_info_issuer_chain,
         store,
         options.certificate_validation,
         false,
-        options.verbosity > 0,
+        options.verbosity,
         indent + 4);
 
       auto tcb_issuer_leaf = tcb_issuer_chain.front();
@@ -718,16 +717,15 @@ namespace ravl
 
       if (options.verbosity > 0)
       {
-        std::string ins(indent, ' ');
-        log(ins + "- QE identity verification");
-        log(ins + "  - QE identity issuer certificate chain verification");
+        log("- QE identity verification", indent);
+        log("- QE identity issuer certificate chain verification", indent + 2);
       }
       auto qe_id_issuer_chain = verify_certificate_chain(
         qe_identity_issuer_chain,
         store,
         options.certificate_validation,
         false,
-        options.verbosity > 0,
+        options.verbosity,
         indent + 4);
 
       auto qe_id_issuer_leaf = qe_id_issuer_chain.at(0);
@@ -983,6 +981,7 @@ namespace ravl
       const Options& options,
       std::shared_ptr<RequestTracker> tracker)
     {
+      size_t indent = 0;
       std::span quote = parse_quote(a);
       SignatureData signature_data(quote, a);
 
@@ -1020,7 +1019,7 @@ namespace ravl
       }
 
       if (options.verbosity > 0)
-        log(collateral->to_string(options.verbosity, 2));
+        log(collateral->to_string(options.verbosity, indent + 2), indent);
 
       // These flags also check that we have a CRL for each CA.
       store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
@@ -1038,51 +1037,51 @@ namespace ravl
       // certificate in the endorsements if no other one is provided, but check
       // that it has Intel's public key afterwards.
       if (options.verbosity > 0)
-        log("  - PCK CRL issuer certificate chain verification");
+        log("- PCK CRL issuer certificate chain verification", indent + 2);
       auto pck_crl_issuer_chain = verify_certificate_chain(
         collateral->pck_crl_issuer_chain,
         store,
         options.certificate_validation,
         trusted_root,
-        options.verbosity > 0,
-        4);
+        options.verbosity,
+        indent + 4);
 
       if (options.verbosity > 0)
       {
         if (trusted_root)
         {
-          log("  - Root CA Certificate (auto-trusted):");
-          log(pck_crl_issuer_chain.back().to_string_short(4));
+          log("- Root CA Certificate (auto-trusted):", indent + 2);
+          log(pck_crl_issuer_chain.back().to_string_short(indent + 4));
         }
         else
         {
           Unique_X509 root(root_ca_pem, true);
-          log("  - Root CA Certificate:");
-          log(root.to_string_short(4));
+          log("- Root CA Certificate:", indent + 2);
+          log(root.to_string_short(indent + 4));
         }
       }
       if (options.verbosity > 1)
       {
-        log("    - PEM:");
+        log(" PEM:", indent + 4);
         if (trusted_root)
         {
           std::string rs = pck_crl_issuer_chain.back().to_string();
-          indentate(rs, 6);
+          indentate(rs, indent + 6);
           log(rs);
         }
         else
-          log(vec2str(root_ca_pem, 6));
+          log(vec2str(root_ca_pem, indent + 6));
       }
 
       if (options.verbosity > 0)
-        log("  - PCK certificate chain verification");
+        log("- PCK certificate chain verification", indent + 2);
       auto pck_cert_chain = verify_certificate_chain(
         signature_data.certification_data,
         store,
         options.certificate_validation,
         trusted_root,
-        options.verbosity > 0,
-        4);
+        options.verbosity,
+        indent + 4);
 
       auto pck_leaf = pck_cert_chain.front();
       auto pck_root = pck_cert_chain.back();
@@ -1126,7 +1125,7 @@ namespace ravl
         pck_x509_ext,
         store,
         options,
-        2);
+        indent + 2);
 
       // Verify the QE identity
       bool qe_id_ok = verify_qe_id(
@@ -1137,7 +1136,7 @@ namespace ravl
         pck_x509_ext,
         store,
         options,
-        2);
+        indent + 2);
 
       return pck_cert_chain && qe_sig_ok && pk_auth_hash_matches &&
         quote_sig_ok && qe_id_ok;

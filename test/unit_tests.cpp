@@ -49,7 +49,8 @@ std::string sgx_sdk_qe_quote3 = R"({
 
 /* clang-format on */
 
-Options default_options = {.verbosity = 1};
+Options default_options = {
+  .verbosity = 1, .certificate_validation = {.ignore_time = true}};
 
 std::shared_ptr<RequestTracker> request_tracker =
   std::make_shared<ThreadedRequestTracker>();
@@ -81,8 +82,11 @@ TEST_CASE("SGX CoffeeLake")
 {
   Attestation att(coffeelake_quote);
   REQUIRE(att.verify(default_options, request_tracker));
+}
 
-  Attestation att_without = att;
+TEST_CASE("SGX CoffeeLake w/o endorsements")
+{
+  Attestation att_without(coffeelake_quote);
   att_without.endorsements = {};
   REQUIRE(att_without.verify(default_options, request_tracker));
 }

@@ -23,11 +23,12 @@ inline std::size_t replace_all(
   return count;
 }
 
-inline void indentate(std::string& inout, size_t indent)
+inline std::string& indentate(std::string& inout, size_t indent)
 {
   std::string ins(indent, ' ');
   replace_all(inout, "\n", "\n" + ins);
   inout = ins + inout;
+  return inout;
 }
 
 inline std::string vec2str(const std::vector<uint8_t>& vec, size_t indent = 0)
@@ -40,10 +41,9 @@ inline std::string vec2str(const std::vector<uint8_t>& vec, size_t indent = 0)
   return r;
 }
 
-inline void log(const std::string& msg, bool verbose = false)
+inline void log(const std::string& msg, size_t indent = 0)
 {
-  // if (verbose)
-  std::cout << msg << std::endl;
+  std::cout << std::string(indent, ' ') << msg << std::endl;
 }
 
 template <typename T>

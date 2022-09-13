@@ -299,14 +299,6 @@ namespace crypto
           X509_CRL_free)
       {}
 
-      // std::string subject(size_t indent = 0) const
-      // {
-      //   auto name = X509_get_subject_name(*this);
-      //   Unique_BIO bio;
-      //   CHECK1(X509_NAME_print(bio, name, indent));
-      //   return bio.to_string();
-      // }
-
       std::string issuer(size_t indent = 0) const
       {
         auto name = X509_CRL_get_issuer(*this);
@@ -461,9 +453,9 @@ namespace crypto
 
         ss << ins << "- Subject: " << subject_name() << std::endl;
         ss << ins << "  - Key ID: " << subject_key_id() << std::endl;
-        ss << ins << "  - Authority key ID: " << authority_key_id();
-        if (is_ca())
-          ss << std::endl << ins << "  - is a CA";
+        ss << ins << "  - Authority key ID: " << authority_key_id()
+           << std::endl;
+        ss << ins << "  - CA: " << (is_ca() ? "yes" : "no");
         return ss.str();
       }
 
@@ -975,15 +967,18 @@ namespace crypto
       Unique_X509_STORE_CTX store_ctx;
       CHECK1(X509_STORE_CTX_init(store_ctx, store, target, stack));
 
+      X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
+      X509_VERIFY_PARAM_set_depth(param, INT_MAX);
+      X509_VERIFY_PARAM_set_auth_level(param, 0);
+
+      CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
+      CHECK1(
+        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
+
       if (options.ignore_time)
       {
         log(fmt::format("  - ignoring certificate times"));
-        // TODO: double free of param?
-        X509_VERIFY_PARAM* param = X509_STORE_CTX_get0_param(store_ctx);
-        if (!param)
-          param = X509_VERIFY_PARAM_new();
         CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
-        X509_STORE_CTX_set0_param(store_ctx, param);
       }
 
       if (options.verification_time)
@@ -991,6 +986,8 @@ namespace crypto
         log(fmt::format("  - using custom certificate verification time"));
         X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
       }
+
+      X509_STORE_CTX_set0_param(store_ctx, param);
 
       int rc = X509_verify_cert(store_ctx);
 
@@ -1085,19 +1082,25 @@ namespace crypto
       const Unique_X509_STORE& store,
       const CertificateValidationOptions& options,
       bool trusted_root = false,
-      bool verbose = false,
+      uint8_t verbosity = 0,
       size_t indent = 0)
     {
       std::vector<std::string> certificates = extract_pems(data);
 
       auto stack = load_certificates(store, certificates);
 
-      if (verbose)
+      if (verbosity > 0)
       {
         for (size_t i = 0; i < stack.size(); i++)
         {
           auto c = stack.at(i);
           log(c.to_string_short(indent));
+          if (verbosity > 1)
+          {
+            log(std::string(indent + 2, ' ') + "- PEM:");
+            auto s = c.to_string();
+            log(indentate(s, indent + 4));
+          }
         }
       }
 
