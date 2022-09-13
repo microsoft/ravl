@@ -57,25 +57,34 @@ std::shared_ptr<RequestTracker> request_tracker =
 
 TEST_CASE("Open Enclave CoffeeLake")
 {
-  Attestation att_cl(oe_coffeelake_attestation);
-  REQUIRE(att_cl.verify(default_options, request_tracker));
+  Attestation att(oe_coffeelake_attestation);
+  REQUIRE(att.verify(default_options, request_tracker));
+}
 
-  Attestation att_cl_without = att_cl;
-  att_cl_without.endorsements = {};
-  REQUIRE(att_cl_without.verify(default_options, request_tracker));
+TEST_CASE("Open Enclave CoffeeLake w/o endorsements")
+{
+  Attestation att(oe_coffeelake_attestation);
+  att.endorsements = {};
+  REQUIRE(att.verify(default_options, request_tracker));
+}
 
-  Attestation att_clncc(oe_no_custom_claims);
-  REQUIRE(att_clncc.verify(default_options, request_tracker));
+TEST_CASE("Open Enclave CoffeeLake w/o custom claims")
+{
+  Attestation att(oe_no_custom_claims);
+  REQUIRE(att.verify(default_options, request_tracker));
 }
 
 TEST_CASE("Open Enclave IceLake")
 {
-  Attestation att_il(oe_icelake_attestation);
-  REQUIRE(att_il.verify(default_options, request_tracker));
+  Attestation att(oe_icelake_attestation);
+  REQUIRE(att.verify(default_options, request_tracker));
+}
 
-  Attestation att_il_without = att_il;
-  att_il_without.endorsements = {};
-  REQUIRE(att_il_without.verify(default_options, request_tracker));
+TEST_CASE("Open Enclave IceLake w/o endorsements")
+{
+  Attestation att(oe_icelake_attestation);
+  att.endorsements = {};
+  REQUIRE(att.verify(default_options, request_tracker));
 }
 
 TEST_CASE("SGX CoffeeLake")
@@ -86,23 +95,33 @@ TEST_CASE("SGX CoffeeLake")
 
 TEST_CASE("SGX CoffeeLake w/o endorsements")
 {
-  Attestation att_without(coffeelake_quote);
-  att_without.endorsements = {};
-  REQUIRE(att_without.verify(default_options, request_tracker));
+  Attestation att(coffeelake_quote);
+  att.endorsements = {};
+  REQUIRE(att.verify(default_options, request_tracker));
 }
 
 TEST_CASE("SGX IceLake")
 {
   Attestation att(icelake_quote);
   REQUIRE(att.verify(default_options, request_tracker));
+}
 
-  Attestation att_without = att;
-  att_without.endorsements = {};
-  REQUIRE(att_without.verify(default_options, request_tracker));
+TEST_CASE("SGX IceLake w/o endorsements")
+{
+  Attestation att(icelake_quote);
+  att.endorsements = {};
+  REQUIRE(att.verify(default_options, request_tracker));
 }
 
 TEST_CASE("SGX SDK QE Quote3")
 {
   Attestation att(sgx_sdk_qe_quote3);
+  REQUIRE(att.verify(default_options, request_tracker));
+}
+
+TEST_CASE("SGX SDK QE Quote3 w/o endorsements")
+{
+  Attestation att(sgx_sdk_qe_quote3);
+  att.endorsements = {};
   REQUIRE(att.verify(default_options, request_tracker));
 }
