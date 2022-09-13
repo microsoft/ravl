@@ -13,6 +13,9 @@ namespace ravl
 {
   struct Options
   {
+    /// Verbosity
+    uint8_t verbosity = 0;
+
     /// Certificate validation options
     crypto::CertificateValidationOptions certificate_validation;
 

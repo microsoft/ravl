@@ -22,6 +22,7 @@
 #include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
 #include <span>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -227,6 +228,62 @@ namespace crypto
       }
     };
 
+    struct Unique_X509_REVOKED : public Unique_SSL_OBJECT<
+                                   X509_REVOKED,
+                                   X509_REVOKED_new,
+                                   X509_REVOKED_free>
+    {
+      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+
+      Unique_X509_REVOKED(X509_REVOKED* x) :
+        Unique_SSL_OBJECT(X509_REVOKED_dup(x), X509_REVOKED_free, true)
+      {}
+
+      std::string serial() const
+      {
+        auto sn = X509_REVOKED_get0_serialNumber(*this);
+        char* c = i2s_ASN1_INTEGER(NULL, sn);
+        std::string r = c;
+        free(c);
+        return r;
+      }
+    };
+
+    struct Unique_STACK_OF_X509_REVOKED
+      : public Unique_SSL_OBJECT<STACK_OF(X509_REVOKED), nullptr, nullptr>
+    {
+      Unique_STACK_OF_X509_REVOKED() :
+        Unique_SSL_OBJECT(sk_X509_REVOKED_new_null(), [](auto x) {
+          sk_X509_REVOKED_pop_free(x, X509_REVOKED_free);
+        })
+      {}
+
+      Unique_STACK_OF_X509_REVOKED(STACK_OF(X509_REVOKED) * x) :
+        Unique_SSL_OBJECT(
+          x,
+          [](auto x) { sk_X509_REVOKED_pop_free(x, X509_REVOKED_free); },
+          /*check_null=*/false)
+      {}
+
+      size_t size() const
+      {
+        int r = sk_X509_REVOKED_num(*this);
+        return r == (-1) ? 0 : r;
+      }
+
+      bool empty() const
+      {
+        return size() == 0;
+      }
+
+      Unique_X509_REVOKED at(size_t i) const
+      {
+        if (i >= size())
+          throw std::out_of_range("index into CRL stack too large");
+        return sk_X509_REVOKED_value(p.get(), i);
+      }
+    };
+
     struct Unique_X509_CRL
       : public Unique_SSL_OBJECT<X509_CRL, X509_CRL_new, X509_CRL_free>
     {
@@ -235,6 +292,59 @@ namespace crypto
         Unique_SSL_OBJECT(
           PEM_read_bio_X509_CRL(mem, NULL, NULL, NULL), X509_CRL_free)
       {}
+      Unique_X509_CRL(const std::span<uint8_t>& data) :
+        Unique_SSL_OBJECT(
+          PEM_read_bio_X509_CRL(
+            Unique_BIO(data.data(), data.size()), NULL, NULL, NULL),
+          X509_CRL_free)
+      {}
+
+      // std::string subject(size_t indent = 0) const
+      // {
+      //   auto name = X509_get_subject_name(*this);
+      //   Unique_BIO bio;
+      //   CHECK1(X509_NAME_print(bio, name, indent));
+      //   return bio.to_string();
+      // }
+
+      std::string issuer(size_t indent = 0) const
+      {
+        auto name = X509_CRL_get_issuer(*this);
+        Unique_BIO bio;
+        CHECK1(X509_NAME_print(bio, name, indent));
+        return bio.to_string();
+      }
+
+      std::string last_update() const
+      {
+        auto lu = X509_CRL_get0_lastUpdate(*this);
+        Unique_BIO bio;
+        CHECK1(ASN1_TIME_print(bio, lu));
+        return "";
+      }
+
+      Unique_STACK_OF_X509_REVOKED revoked() const
+      {
+        auto sk = X509_CRL_get_REVOKED(*this);
+        return Unique_STACK_OF_X509_REVOKED(sk);
+      }
+
+      std::string to_string(size_t indent = 0) const
+      {
+        std::stringstream ss;
+        auto rkd = revoked();
+        std::string ins(indent, ' ');
+        ss << ins << "- Issuer: " << issuer() << std::endl;
+        ss << ins << "- Revoked serial numbers: ";
+        if (rkd.size() == 0)
+          ss << "none";
+        for (size_t i = 0; i < rkd.size(); i++)
+        {
+          ss << std::endl;
+          ss << ins << "- " << rkd.at(i).serial();
+        }
+        return ss.str();
+      }
     };
 
     struct Unique_ASN1_OBJECT
@@ -332,6 +442,47 @@ namespace crypto
         CHECK1(PEM_write_bio_X509(mem, *this));
         return mem.to_string();
       }
+
+      std::string to_string_short(size_t indent = 0) const
+      {
+        std::string ins(indent, ' ');
+        std::stringstream ss;
+
+        ss << ins << "- Subject: " << subject_name() << std::endl;
+        ss << ins << "  - Key ID: " << subject_key_id() << std::endl;
+        ss << ins << "  - Authority key ID: " << authority_key_id();
+        if (is_ca())
+          ss << std::endl << ins << "  - is a CA";
+        return ss.str();
+      }
+
+      std::string subject_name(size_t indent = 0) const
+      {
+        Unique_BIO bio;
+        auto subject_name = X509_get_subject_name(*this);
+        CHECK1(X509_NAME_print(bio, subject_name, indent));
+        return bio.to_string();
+      }
+
+      std::string subject_key_id(size_t indent = 0) const
+      {
+        const ASN1_OCTET_STRING* key_id = X509_get0_subject_key_id(*this);
+        std::string r;
+        char* c = i2s_ASN1_OCTET_STRING(NULL, key_id);
+        r = c;
+        free(c);
+        return r;
+      }
+
+      std::string authority_key_id(size_t indent = 0) const
+      {
+        const ASN1_OCTET_STRING* key_id = X509_get0_authority_key_id(*this);
+        std::string r;
+        char* c = i2s_ASN1_OCTET_STRING(NULL, key_id);
+        r = c;
+        free(c);
+        return r;
+      }
     };
 
     struct Unique_X509_STORE
@@ -344,9 +495,9 @@ namespace crypto
         X509_STORE_set_flags(p.get(), flags);
       }
 
-      void add(const std::vector<uint8_t>& pem)
+      void add(const std::span<const uint8_t>& data, bool pem = true)
       {
-        Unique_X509 x509(pem, true);
+        Unique_X509 x509(data, pem);
         X509_STORE_add_cert(p.get(), x509);
       }
 
@@ -354,9 +505,8 @@ namespace crypto
       {
         if (!data.empty())
         {
-          Unique_BIO bio(data.data(), data.size());
           Unique_X509_CRL crl(
-            bio); // TODO: PEM only; some CRLs may be in DER format?
+            data); // TODO: PEM only; some CRLs may be in DER format?
           CHECK1(X509_STORE_add_crl(p.get(), crl));
         }
       }
@@ -431,12 +581,31 @@ namespace crypto
         other.release();
       }
 
-      size_t size() const
+      Unique_STACK_OF_X509(const std::span<const uint8_t>& data) :
+        Unique_SSL_OBJECT(
+          NULL, [](auto x) { sk_X509_pop_free(x, X509_free); }, false)
       {
-        return sk_X509_num(p.get());
+        Unique_BIO mem(data);
+        STACK_OF(X509_INFO)* sk_info =
+          PEM_X509_INFO_read_bio(mem, NULL, NULL, NULL);
+        int sz = sk_X509_INFO_num(sk_info);
+        p.reset(sk_X509_new_null());
+        for (int i = 0; i < sz; i++)
+        {
+          auto sk_i = sk_X509_INFO_value(sk_info, i);
+          if (!sk_i->x509)
+            throw std::runtime_error("invalid PEM element");
+          sk_X509_push(*this, sk_i->x509);
+        }
       }
 
-      X509* at(size_t i) const
+      size_t size() const
+      {
+        int r = sk_X509_num(p.get());
+        return r == (-1) ? 0 : r;
+      }
+
+      Unique_X509 at(size_t i) const
       {
         if (i >= size())
           throw std::out_of_range("index into certificate stack too large");
@@ -482,6 +651,18 @@ namespace crypto
         ASN1_TIME_to_tm(latest_from, &r.first);
         ASN1_TIME_to_tm(earliest_to, &r.second);
         return r;
+      }
+
+      std::string to_string_short(size_t indent = 0) const
+      {
+        std::stringstream ss;
+        for (size_t i = 0; i < size(); i++)
+        {
+          if (i != 0)
+            ss << std::endl;
+          ss << at(i).to_string_short(indent + 2);
+        }
+        return ss.str();
       }
     };
 
@@ -773,6 +954,13 @@ namespace crypto
       if (stack.size() <= 1)
         throw std::runtime_error("certificate stack too small");
 
+      log("- Certificate chain to verify:");
+      for (size_t i = 0; i < stack.size(); i++)
+      {
+        auto c = stack.at(i);
+        log(c.to_string_short(2));
+      }
+
       if (trusted_root)
         CHECK1(X509_STORE_add_cert(store, stack.back()));
 
@@ -783,6 +971,7 @@ namespace crypto
 
       if (options.ignore_time)
       {
+        log(fmt::format("  - ignoring certificate times"));
         // TODO: double free of param?
         X509_VERIFY_PARAM* param = X509_STORE_CTX_get0_param(store_ctx);
         if (!param)
@@ -792,19 +981,27 @@ namespace crypto
       }
 
       if (options.verification_time)
+      {
+        log(fmt::format("  - using custom certificate verification time"));
         X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
+      }
 
       int rc = X509_verify_cert(store_ctx);
 
       if (rc == 1)
+      {
+        log(fmt::format("  - certificate verification succeeded"));
         return Unique_STACK_OF_X509(store_ctx);
+      }
       else
       {
         int a = errno;
         unsigned long openssl_err = ERR_get_error();
         char buf[4096];
         ERR_error_string(openssl_err, buf);
-        throw std::runtime_error("certificate verification failed");
+        log(fmt::format("certificate verification failed: {}", buf));
+        throw std::runtime_error(
+          fmt::format("certificate verification failed: {}", buf));
       }
     }
 

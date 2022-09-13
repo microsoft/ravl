@@ -105,17 +105,69 @@ namespace ravl
       std::vector<uint8_t> qe_identity_issuer_chain;
       std::vector<uint8_t> qe_identity;
 
-      std::string to_string() const
+      std::string to_string(uint32_t verbosity) const
       {
         std::stringstream ss;
-        ss << fmt::format(
-                "Collateral version: {}.{}", major_version, minor_version)
+        ss << "- SGX Collateral" << std::endl;
+        ss << fmt::format("  - Version: {}.{}", major_version, minor_version)
            << std::endl;
-        ss << fmt::format("TEE type: {:08x}", tee_type) << std::endl;
-        ss << fmt::format("Root CA CRL: {}", vec2str(root_ca_crl)) << std::endl;
-        ss << fmt::format(
-                "PCK CRL issuer chain: {}", vec2str(pck_crl_issuer_chain))
-           << std::endl;
+        ss << fmt::format("  - TEE type: 0x{:08x}", tee_type) << std::endl;
+
+        if (verbosity > 0)
+        {
+          Unique_X509_CRL crl(root_ca_crl);
+          ss << "  - Root CA CRL:" << std::endl;
+          ss << crl.to_string(4) << std::endl;
+        }
+        if (verbosity > 1)
+          ss << fmt::format("    - PEM:\n{}", vec2str(root_ca_crl))
+             << std::endl;
+
+        if (verbosity > 0)
+        {
+          Unique_STACK_OF_X509 st(pck_crl_issuer_chain);
+          ss << "  - PCK CRL issuer chain:" << std::endl;
+          ss << st.to_string_short(4) << std::endl;
+        }
+        if (verbosity > 1)
+          ss << fmt::format("    - PEM:\n{}", vec2str(pck_crl_issuer_chain))
+             << std::endl;
+
+        if (verbosity > 0)
+        {
+          Unique_X509_CRL crl(pck_crl);
+          ss << "  - PCK CRL:" << std::endl;
+          ss << crl.to_string(4) << std::endl;
+        }
+        if (verbosity > 1)
+          ss << fmt::format("    - PEM:\n{}", vec2str(pck_crl)) << std::endl;
+
+        if (verbosity > 0)
+        {
+          Unique_STACK_OF_X509 st(tcb_info_issuer_chain);
+          ss << "  - TCB info issuer chain:" << std::endl;
+          ss << st.to_string_short(4) << std::endl;
+        }
+        if (verbosity > 1)
+          ss << fmt::format("    - PEM:\n{}", vec2str(tcb_info_issuer_chain))
+             << std::endl;
+
+        if (verbosity > 1)
+          ss << fmt::format("  - TCB info:\n{}", vec2str(tcb_info))
+             << std::endl;
+
+        if (verbosity > 0)
+        {
+          Unique_STACK_OF_X509 st(qe_identity_issuer_chain);
+          ss << "  - QE ID issuer chain:" << std::endl;
+          ss << st.to_string_short(4) << std::endl;
+        }
+        if (verbosity > 1)
+          ss << fmt::format("    - PEM:\n{}", vec2str(qe_identity_issuer_chain))
+             << std::endl;
+        if (verbosity > 1)
+          ss << fmt::format("  - QE ID:\n{}", vec2str(qe_identity))
+             << std::endl;
         return ss.str();
       }
     };
@@ -937,7 +989,8 @@ namespace ravl
           root_ca_pem = download_root_ca_pem(tracker);
       }
 
-      log(collateral->to_string());
+      if (options.verbosity > 0)
+        log(collateral->to_string(options.verbosity));
 
       // These flags also check that we have a CRL for each CA.
       store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
@@ -960,11 +1013,28 @@ namespace ravl
         options.certificate_validation,
         trusted_root);
 
-      log(fmt::format(
-        "Root CA Certificate{}: {}",
-        trusted_root ? " (auto-trusted)" : "",
-        trusted_root ? pck_crl_issuer_chain.back().to_string() :
-                       vec2str(root_ca_pem)));
+      if (options.verbosity > 0)
+      {
+        if (trusted_root)
+        {
+          log("- Root CA Certificate (auto-trusted):");
+          log(pck_crl_issuer_chain.back().to_string_short(2));
+        }
+        else
+        {
+          Unique_X509 root(root_ca_pem, true);
+          log("- Root CA Certificate:");
+          log(root.to_string_short(2));
+        }
+      }
+      if (options.verbosity > 1)
+      {
+        log("  - PEM:\n");
+        if (trusted_root)
+          log(pck_crl_issuer_chain.back().to_string());
+        else
+          log(vec2str(root_ca_pem));
+      }
 
       auto pck_cert_chain = verify_certificate_chain(
         signature_data.certification_data,

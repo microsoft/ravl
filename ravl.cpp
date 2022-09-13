@@ -62,7 +62,8 @@ namespace ravl
     json j = json::parse(json_string);
     source = j.at("source").get<Source>();
     evidence = from_base64(j.at("evidence").get<std::string>());
-    endorsements = from_base64(j.at("endorsements").get<std::string>());
+    if (j.contains("endorsements"))
+      endorsements = from_base64(j.at("endorsements").get<std::string>());
   }
 
   Attestation::Attestation(
@@ -79,7 +80,8 @@ namespace ravl
     nlohmann::json j;
     j["source"] = source;
     j["evidence"] = to_base64(evidence);
-    j["endorsements"] = to_base64(endorsements);
+    if (!endorsements.empty())
+      j["endorsements"] = to_base64(endorsements);
     return j.dump();
   }
 

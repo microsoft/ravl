@@ -15,8 +15,9 @@ inline std::string vec2str(const std::vector<uint8_t>& vec)
   return std::string((char*)vec.data(), vec.size());
 }
 
-inline void log(const std::string& msg)
+inline void log(const std::string& msg, bool verbose = false)
 {
+  // if (verbose)
   std::cout << msg << std::endl;
 }
 
