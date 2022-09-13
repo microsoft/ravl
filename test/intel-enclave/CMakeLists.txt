@@ -38,6 +38,6 @@ if (SGXSDK)
 
   add_executable(intel_host host.cpp ${CMAKE_CURRENT_BINARY_DIR}/enclave_u.c)
   target_include_directories(intel_host PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR} ${SGXSDK})
-  target_link_libraries(intel_host sgx_urts sgx_quote_ex )
+  target_link_libraries(intel_host sgx_urts sgx_quote_ex sgx_dcap_ql crypto)
   target_link_directories(intel_host PRIVATE ${SGXSDK}/../lib64)
 endif()

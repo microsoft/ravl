@@ -20,18 +20,14 @@ const char* enclave_name = "ravl-test-enclave";
 sgx_status_t get_report(
   const sgx_target_info_t* target_info,
   const sgx_report_data_t* report_data,
-  uint8_t* report_buffer,
-  size_t report_buffer_size)
+  sgx_report_t* report)
 {
   sgx_status_t status = SGX_ERROR_UNEXPECTED;
 
-  sgx_report_t report;
-  status = sgx_create_report(target_info, report_data, &report);
+  if (!report)
+    status = SGX_ERROR_INVALID_PARAMETER;
 
-  if (report_buffer_size < sizeof(report))
-    status = SGX_ERROR_UNEXPECTED;
-
-  memcpy(report_buffer, &report, sizeof(report));
+  status = sgx_create_report(target_info, report_data, report);
 
   return status;
 }

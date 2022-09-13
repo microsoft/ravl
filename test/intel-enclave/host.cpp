@@ -7,7 +7,8 @@
 
 #include <cstdio>
 #include <cstdlib>
-//#include <openssl/evp.h>
+#include <openssl/evp.h>
+#include <sgx_dcap_ql_wrapper.h>
 #include <sgx_eid.h>
 #include <sgx_error.h>
 #include <sgx_quote_3.h>
@@ -16,12 +17,12 @@
 #include <sgx_urts.h>
 #include <string>
 
-// std::string base64(uint8_t* data, size_t size)
-// {
-//   unsigned char buf[2 * size];
-//   int n = EVP_EncodeBlock(buf, data, size);
-//   return std::string((char*)buf, n);
-// }
+std::string base64(uint8_t* data, size_t size)
+{
+  unsigned char buf[2 * size];
+  int n = EVP_EncodeBlock(buf, data, size);
+  return std::string((char*)buf, n);
+}
 
 // oe_enclave_t* create_enclave(const char* enclave_path, uint32_t flags)
 // {
@@ -109,6 +110,43 @@ sgx_status_t make_quote(
   return SGX_SUCCESS;
 }
 
+sgx_status_t make_quote2(
+  sgx_target_info_t* target_info,
+  const sgx_report_t* report,
+  sgx_quote3_t** quote,
+  uint32_t* quote_size)
+{
+  if (!quote)
+    return SGX_ERROR_UNEXPECTED;
+
+  quote3_error_t qe3_ret = sgx_qe_get_quote_size(quote_size);
+
+  if (qe3_ret != SGX_QL_SUCCESS)
+  {
+    printf("Error in sgx_qe_get_quote_size. 0x%04x\n", qe3_ret);
+    return SGX_ERROR_UNEXPECTED;
+  }
+
+  if (*quote)
+    free(*quote);
+  *quote = (sgx_quote3_t*)malloc(*quote_size);
+  if (*quote == NULL)
+  {
+    printf("Couldn't allocate quote_buffer\n");
+    return SGX_ERROR_UNEXPECTED;
+  }
+  memset(*quote, 0, *quote_size);
+
+  qe3_ret = sgx_qe_get_quote(report, *quote_size, (uint8_t*)*quote);
+  if (qe3_ret != SGX_QL_SUCCESS)
+  {
+    printf("Error in sgx_qe_get_quote. 0x%04x\n", qe3_ret);
+    return SGX_ERROR_UNEXPECTED;
+  }
+
+  return SGX_SUCCESS;
+}
+
 sgx_status_t attest(sgx_enclave_id_t enclave_id)
 {
   sgx_status_t status = SGX_ERROR_UNEXPECTED;
@@ -133,30 +171,26 @@ sgx_status_t attest(sgx_enclave_id_t enclave_id)
   sgx_status_t ret_status;
   sgx_target_info_t target_info;
 
-  status = sgx_get_target_info(enclave_id, &target_info);
+  quote3_error_t qe_error = sgx_qe_get_target_info(&target_info);
 
-  if (status != SGX_SUCCESS)
-    return status;
+  if (qe_error != quote3_error_t::SGX_QL_SUCCESS)
+    return SGX_ERROR_UNEXPECTED;
 
   sgx_report_data_t report_data = {0};
+  sgx_report_t report = {0};
 
-  status = get_report(
-    enclave_id,
-    &ret_status,
-    &target_info,
-    &report_data,
-    report_buffer,
-    sizeof(report_buffer));
+  status =
+    get_report(enclave_id, &ret_status, &target_info, &report_data, &report);
 
   if ((status != SGX_SUCCESS) || (ret_status != SGX_SUCCESS))
   {
     printf("get_report failed. 0x%04x (%d)\n", status, ret_status);
-    if (ret == 0)
-      ret = 1;
-    goto exit;
+    return SGX_ERROR_UNEXPECTED;
   }
 
-  status = make_quote(&target_info, (sgx_report_t*)report_buffer);
+  sgx_quote3_t* quote = NULL;
+  uint32_t quote_size = 0;
+  status = make_quote2(&target_info, &report, &quote, &quote_size);
 
   if (status != SGX_SUCCESS)
   {
@@ -168,9 +202,8 @@ sgx_status_t attest(sgx_enclave_id_t enclave_id)
 
   printf("{\n");
   printf("  \"source\": \"sgx\",\n");
-  // printf(
-  //   "  \"evidence\": \"%s\",\n",
-  //   base64(evidence.buffer, evidence.size).c_str());
+  printf(
+    "  \"evidence\": \"%s\",\n", base64((uint8_t*)quote, quote_size).c_str());
   // printf(
   //   "  \"endorsements\": \"%s\"\n",
   //   endorsements.buffer && endorsements.size > 0 ?
