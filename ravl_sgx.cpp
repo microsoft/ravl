@@ -22,8 +22,6 @@
 
 #define SGX_QUOTE_VERSION 3
 
-using namespace crypto;
-
 // All of this is inspired by Open Enclave's SGX verification, especially
 // https://github.com/openenclave/openenclave/blob/master/common/sgx/quote.c
 
@@ -41,6 +39,8 @@ using namespace crypto;
 
 namespace ravl
 {
+  using namespace crypto;
+
   namespace sgx
   {
     static const std::string pck_cert_common_name = "Intel SGX PCK Certificate";
@@ -499,14 +499,6 @@ namespace ravl
       }
     };
 
-    static bool has_intel_public_key(const Unique_X509& certificate)
-    {
-      Unique_EVP_PKEY pubkey(certificate);
-      Unique_BIO bio(intel_root_public_key_pem);
-      Unique_EVP_PKEY intel_pubkey(bio, true);
-      return pubkey == intel_pubkey;
-    }
-
     static bool json_vector_eq(
       const nlohmann::json& tcbinfo_j,
       const std::string& key,
@@ -693,7 +685,7 @@ namespace ravl
 
       Unique_EVP_PKEY tcb_issuer_leaf_pubkey(tcb_issuer_leaf);
 
-      if (!has_intel_public_key(tcb_issuer_root))
+      if (!tcb_issuer_root.has_public_key(intel_root_public_key_pem))
         throw std::runtime_error(
           "TCB issuer root certificate does not use the expected Intel SGX "
           "public key");
@@ -733,7 +725,7 @@ namespace ravl
 
       Unique_EVP_PKEY qe_id_issuer_leaf_pubkey(qe_id_issuer_leaf);
 
-      if (!has_intel_public_key(qe_id_issuer_root))
+      if (!qe_id_issuer_root.has_public_key(intel_root_public_key_pem))
         throw std::runtime_error(
           "QE identity issuer root certificate does not use the expected Intel "
           "SGX public key");
@@ -1089,9 +1081,10 @@ namespace ravl
         throw std::runtime_error(
           "PCK certificate does not have expected common name");
 
-      if (!has_intel_public_key(pck_root))
+      if (!pck_root.has_public_key(intel_root_public_key_pem))
         throw std::runtime_error(
-          "root certificate does not have the expected Intel SGX public key");
+          "root CA certificate does not have the expected Intel SGX public "
+          "key");
 
       if (!pck_root.is_ca())
         throw std::runtime_error("root certificate is not from a CA");

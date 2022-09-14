@@ -3,6 +3,24 @@
 
 #pragma once
 
+#include <cstring>
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/engine.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/ossl_typ.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
+#include <openssl/x509v3.h>
+#include <stdexcept>
+#include <string>
+
 namespace OpenSSL
 {
   /*
@@ -67,7 +85,7 @@ namespace OpenSSL
     {
       unsigned long ec = ERR_get_error();
       throw std::runtime_error(
-        fmt::format("OpenSSL error: missing object ({})", error_string(ec)));
+        std::string("OpenSSL error: missing object: ") + error_string(ec));
     }
   }
 
@@ -358,6 +376,8 @@ namespace OpenSSL
     }
   };
 
+  class Unique_EVP_PKEY;
+
   struct Unique_X509_EXTENSION : public Unique_SSL_OBJECT<
                                    X509_EXTENSION,
                                    X509_EXTENSION_new,
@@ -437,8 +457,15 @@ namespace OpenSSL
       std::stringstream ss;
 
       ss << ins << "- Subject: " << subject_name() << std::endl;
-      ss << ins << "  - Key ID: " << subject_key_id() << std::endl;
-      ss << ins << "  - Authority key ID: " << authority_key_id() << std::endl;
+
+      std::string subj_key_id =
+        has_subject_key_id() ? subject_key_id() : "none";
+      ss << ins << "  - Subject key ID: " << subj_key_id << std::endl;
+
+      std::string auth_key_id =
+        has_authority_key_id() ? authority_key_id() : "none";
+      ss << ins << "  - Authority key ID: " << auth_key_id << std::endl;
+
       ss << ins << "  - CA: " << (is_ca() ? "yes" : "no") << std::endl;
       ss << ins << "  - Not before: " << not_before()
          << "  Not after: " << not_after();
@@ -453,22 +480,36 @@ namespace OpenSSL
       return bio.to_string();
     }
 
-    std::string subject_key_id(size_t indent = 0) const
+    bool has_subject_key_id() const
+    {
+      return X509_get0_subject_key_id(*this) != NULL;
+    }
+
+    std::string subject_key_id() const
     {
       const ASN1_OCTET_STRING* key_id = X509_get0_subject_key_id(*this);
-      std::string r;
+      if (!key_id)
+        throw std::runtime_error(
+          "certificate does not contain a subject key id");
       char* c = i2s_ASN1_OCTET_STRING(NULL, key_id);
-      r = c;
+      std::string r = c;
       free(c);
       return r;
     }
 
-    std::string authority_key_id(size_t indent = 0) const
+    bool has_authority_key_id() const
+    {
+      return X509_get0_authority_key_id(*this) != NULL;
+    }
+
+    std::string authority_key_id() const
     {
       const ASN1_OCTET_STRING* key_id = X509_get0_authority_key_id(*this);
-      std::string r;
+      if (!key_id)
+        throw std::runtime_error(
+          "certificate does not contain an authority key id");
       char* c = i2s_ASN1_OCTET_STRING(NULL, key_id);
-      r = c;
+      std::string r = c;
       free(c);
       return r;
     }
@@ -488,6 +529,10 @@ namespace OpenSSL
       CHECK1(ASN1_TIME_print(bio, t));
       return bio.to_string();
     }
+
+    bool has_public_key(const Unique_EVP_PKEY& target) const;
+    bool has_public_key(Unique_EVP_PKEY&& target) const;
+    bool has_public_key(const std::string& target) const;
   };
 
   struct Unique_X509_STORE
@@ -546,7 +591,9 @@ namespace OpenSSL
 
     bool operator==(const Unique_EVP_PKEY& other) const
     {
-      return EVP_PKEY_cmp_parameters((*this), other) == 1 &&
+      // TODO: Do the parameters need to match? (They don't match for the
+      // SEV/SNP root CA.)
+      return // EVP_PKEY_cmp_parameters((*this), other) == 1 &&
         EVP_PKEY_cmp((*this), other) == 1;
     }
 
@@ -567,6 +614,21 @@ namespace OpenSSL
         EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL), EVP_PKEY_CTX_free)
     {}
   };
+
+  inline bool Unique_X509::has_public_key(const Unique_EVP_PKEY& target) const
+  {
+    return Unique_EVP_PKEY(*this) == target;
+  }
+
+  inline bool Unique_X509::has_public_key(Unique_EVP_PKEY&& target) const
+  {
+    return has_public_key((Unique_EVP_PKEY&)target);
+  }
+
+  inline bool Unique_X509::has_public_key(const std::string& target) const
+  {
+    return has_public_key(Unique_EVP_PKEY(target));
+  }
 
   struct Unique_STACK_OF_X509
     : public Unique_SSL_OBJECT<STACK_OF(X509), nullptr, nullptr>

@@ -33,10 +33,11 @@
 #include <fmt/format.h>
 
 using namespace nlohmann;
-using namespace crypto;
 
 namespace ravl
 {
+  using namespace crypto;
+
   NLOHMANN_JSON_SERIALIZE_ENUM(
     Source,
     {

@@ -3,25 +3,12 @@
 
 #pragma once
 
-#include "crypto_options.h"
+#include "ravl_crypto_options.h"
 #include "ravl_util.h"
 
 #include <chrono>
 #include <cstring>
 #include <memory>
-#include <openssl/asn1.h>
-#include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
-#include <openssl/engine.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/ossl_typ.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/x509.h>
-#include <openssl/x509_vfy.h>
-#include <openssl/x509v3.h>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -33,30 +20,32 @@
 #include <fmt/format.h>
 
 #ifdef HAVE_OPENSSL
-#  include "crypto_openssl.h"
+#  include "ravl_crypto_openssl.h"
 #else
 #  error No crypto library available.
 #endif
 
-namespace crypto
+namespace ravl
 {
+  namespace crypto
+  {
 #ifdef HAVE_OPENSSL
-  using namespace OpenSSL;
+    using namespace OpenSSL;
 #endif
 
-  inline std::string to_base64(const std::span<const uint8_t>& bytes)
-  {
-    Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO());
+    inline std::string to_base64(const std::span<const uint8_t>& bytes)
+    {
+      Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO());
 
-    BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
-    BIO_set_close(bio_chain, BIO_CLOSE);
-    int n = BIO_write(bio_chain, bytes.data(), bytes.size());
-    BIO_flush(bio_chain);
+      BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
+      BIO_set_close(bio_chain, BIO_CLOSE);
+      int n = BIO_write(bio_chain, bytes.data(), bytes.size());
+      BIO_flush(bio_chain);
 
-    if (n < 0)
-      throw std::runtime_error("base64 encoding error");
+      if (n < 0)
+        throw std::runtime_error("base64 encoding error");
 
-    return bio_chain.to_string();
+      return bio_chain.to_string();
     }
 
     inline std::vector<uint8_t> from_base64(const std::string& b64)
@@ -77,26 +66,49 @@ namespace crypto
     }
 
     inline std::vector<uint8_t> convert_signature_to_der(
-      const std::span<const uint8_t>& signature)
+      const std::span<const uint8_t>& r,
+      const std::span<const uint8_t>& s,
+      bool little_endian = false)
     {
-      auto signature_size = signature.size();
-      auto half_size = signature_size / 2;
+      if (r.size() != s.size())
+        throw std::runtime_error("incompatible signature coordinates");
+
       Unique_ECDSA_SIG sig;
       {
-        Unique_BIGNUM r;
-        Unique_BIGNUM s;
-        CHECKNULL(BN_bin2bn(signature.data(), half_size, r));
-        CHECKNULL(BN_bin2bn(signature.data() + half_size, half_size, s));
-        CHECK1(ECDSA_SIG_set0(sig, r, s));
-        r.release(); // r, s now owned by the signature object
-        s.release();
+        Unique_BIGNUM r_bn;
+        Unique_BIGNUM s_bn;
+        if (little_endian)
+        {
+          CHECKNULL(BN_lebin2bn(r.data(), r.size(), r_bn));
+          CHECKNULL(BN_lebin2bn(s.data(), s.size(), s_bn));
+        }
+        else
+        {
+          CHECKNULL(BN_bin2bn(r.data(), r.size(), r_bn));
+          CHECKNULL(BN_bin2bn(s.data(), s.size(), s_bn));
+        }
+        CHECK1(ECDSA_SIG_set0(sig, r_bn, s_bn));
+        r_bn.release(); // r, s now owned by the signature object
+        s_bn.release();
       }
-      auto der_size = i2d_ECDSA_SIG(sig, NULL);
+      int der_size = i2d_ECDSA_SIG(sig, NULL);
       CHECK0(der_size);
+      if (der_size < 0)
+        throw std::runtime_error("not an ECDSA signature");
       std::vector<uint8_t> res(der_size);
       auto der_sig_buf = res.data();
       CHECK0(i2d_ECDSA_SIG(sig, &der_sig_buf));
       return res;
+    }
+
+    inline std::vector<uint8_t> convert_signature_to_der(
+      const std::span<const uint8_t>& signature, bool little_endian = false)
+    {
+      auto half_size = signature.size() / 2;
+      return convert_signature_to_der(
+        {signature.data(), half_size},
+        {signature.data() + half_size, half_size},
+        little_endian);
     }
 
     inline void printf_certificate(const Unique_X509& certificate)
@@ -145,6 +157,51 @@ namespace crypto
       }
 
       return r;
+    }
+
+    inline bool verify_certificate(
+      const Unique_X509_STORE& store,
+      const Unique_X509& certificate,
+      const CertificateValidationOptions& options,
+      size_t indent = 0)
+    {
+      Unique_X509_STORE_CTX store_ctx;
+      CHECK1(X509_STORE_CTX_init(store_ctx, store, certificate, NULL));
+
+      X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
+      X509_VERIFY_PARAM_set_depth(param, INT_MAX);
+      X509_VERIFY_PARAM_set_auth_level(param, 0);
+
+      CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
+      CHECK1(
+        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
+
+      if (options.ignore_time)
+      {
+        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
+      }
+
+      if (options.verification_time)
+      {
+        X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
+      }
+
+      X509_STORE_CTX_set0_param(store_ctx, param);
+
+      int rc = X509_verify_cert(store_ctx);
+
+      if (rc == 1)
+        return true;
+      else if (rc == 0)
+        throw std::runtime_error(
+          "certificate not self-signed or signature invalid");
+      else
+      {
+        unsigned long openssl_err = ERR_get_error();
+        char buf[4096];
+        ERR_error_string(openssl_err, buf);
+        throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
+      }
     }
 
     inline Unique_STACK_OF_X509 verify_certificate_chain(
@@ -204,8 +261,8 @@ namespace crypto
       const Unique_X509_STORE& store,
       const std::vector<std::string>& certificates)
     {
-      // Leaf tracking/searching may be unnecessary as the chains should be in
-      // order anyways.
+      // Leaf tracking/searching may be unnecessary as the chains should
+      // be in order anyways.
 
       Unique_STACK_OF_X509 r;
       X509* leaf = NULL;
@@ -228,9 +285,9 @@ namespace crypto
 
       if (!leaf)
       {
-        // Some chains, e.g. pck_crl_issuer_chain, contain only CAs, so the leaf
-        // isn't easy to detect, so we look for the certificate that isn't used
-        // as an authority.
+        // Some chains, e.g. pck_crl_issuer_chain, contain only CAs, so
+        // the leaf isn't easy to detect, so we look for the certificate
+        // that isn't used as an authority.
         for (size_t ii = 0; ii < r.size(); ii++)
         {
           const auto& i = r.at(ii);
@@ -335,4 +392,5 @@ namespace crypto
       return verify_certificate_chain(
         span, store, options, trusted_root, indent);
     }
+  }
 }
