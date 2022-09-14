@@ -56,7 +56,7 @@ std::string sev_snp_quote = R"({
 /* clang-format on */
 
 Options default_options = {
-  .verbosity = 2, .certificate_verification = {.ignore_time = true}};
+  .verbosity = 1, .certificate_verification = {.ignore_time = true}};
 
 std::shared_ptr<RequestTracker> request_tracker =
   std::make_shared<ThreadedRequestTracker>();

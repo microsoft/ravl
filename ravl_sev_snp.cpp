@@ -275,6 +275,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
           a.evidence.data());
 
+      if (quote.version != 2)
+        throw std::runtime_error("unsupported attestation format version");
+
       Unique_X509_STORE store;
 
       std::vector<uint8_t> root_ca_pem = {};
