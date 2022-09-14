@@ -10,6 +10,7 @@
 #include <cstring>
 #include <memory>
 #include <openssl/asn1.h>
+#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/engine.h>
@@ -184,6 +185,15 @@ namespace crypto
         Unique_SSL_OBJECT(
           BIO_new_mem_buf(d.data(), d.size()), [](auto x) { BIO_free(x); })
       {}
+      Unique_BIO(const BIO_METHOD* method) :
+        Unique_SSL_OBJECT(BIO_new(method), [](auto x) { BIO_free(x); })
+      {}
+      Unique_BIO(Unique_BIO&& b, Unique_BIO&& next) :
+        Unique_SSL_OBJECT(BIO_push(b, next), [](auto x) { BIO_free_all(x); })
+      {
+        b.release();
+        next.release();
+      }
 
       std::string to_string() const
       {
@@ -307,14 +317,6 @@ namespace crypto
         return bio.to_string();
       }
 
-      std::string last_update() const
-      {
-        auto lu = X509_CRL_get0_lastUpdate(*this);
-        Unique_BIO bio;
-        CHECK1(ASN1_TIME_print(bio, lu));
-        return "";
-      }
-
       Unique_STACK_OF_X509_REVOKED revoked() const
       {
         auto sk = X509_CRL_get_REVOKED(*this);
@@ -341,12 +343,30 @@ namespace crypto
         ss << ins << "- Revoked serial numbers: ";
         if (rkd.size() == 0)
           ss << "none";
+        ss << std::endl;
         for (size_t i = 0; i < rkd.size(); i++)
         {
-          ss << std::endl;
-          ss << ins << "- " << rkd.at(i).serial();
+          ss << ins << "- " << rkd.at(i).serial() << std::endl;
         }
+        ss << ins << "- Last update: " << last_update()
+           << "  Next update: " << next_update();
         return ss.str();
+      }
+
+      std::string last_update() const
+      {
+        auto lu = X509_CRL_get0_lastUpdate(*this);
+        Unique_BIO bio;
+        CHECK1(ASN1_TIME_print(bio, lu));
+        return bio.to_string();
+      }
+
+      std::string next_update() const
+      {
+        auto t = X509_CRL_get0_nextUpdate(*this);
+        Unique_BIO bio;
+        ASN1_TIME_print(bio, t);
+        return bio.to_string();
       }
     };
 
@@ -455,7 +475,9 @@ namespace crypto
         ss << ins << "  - Key ID: " << subject_key_id() << std::endl;
         ss << ins << "  - Authority key ID: " << authority_key_id()
            << std::endl;
-        ss << ins << "  - CA: " << (is_ca() ? "yes" : "no");
+        ss << ins << "  - CA: " << (is_ca() ? "yes" : "no") << std::endl;
+        ss << ins << "  - Not before: " << not_before()
+           << "  Not after: " << not_after();
         return ss.str();
       }
 
@@ -485,6 +507,22 @@ namespace crypto
         r = c;
         free(c);
         return r;
+      }
+
+      std::string not_before() const
+      {
+        auto t = X509_get0_notBefore(*this);
+        Unique_BIO bio;
+        CHECK1(ASN1_TIME_print(bio, t));
+        return bio.to_string();
+      }
+
+      std::string not_after() const
+      {
+        auto t = X509_get0_notAfter(*this);
+        Unique_BIO bio;
+        CHECK1(ASN1_TIME_print(bio, t));
+        return bio.to_string();
       }
     };
 
@@ -878,6 +916,41 @@ namespace crypto
         return v->value.boolean;
       }
     };
+  }
+
+  using namespace OpenSSL;
+
+  inline std::string to_base64(const std::span<const uint8_t>& bytes)
+  {
+    Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO());
+
+    BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
+    BIO_set_close(bio_chain, BIO_CLOSE);
+    int n = BIO_write(bio_chain, bytes.data(), bytes.size());
+    BIO_flush(bio_chain);
+
+    if (n < 0)
+      throw std::runtime_error("base64 encoding error");
+
+    return bio_chain.to_string();
+    }
+
+    inline std::vector<uint8_t> from_base64(const std::string& b64)
+    {
+      Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO(b64));
+
+      std::vector<uint8_t> out(b64.size());
+      BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
+      BIO_set_close(bio_chain, BIO_CLOSE);
+      int n = BIO_read(bio_chain, out.data(), b64.size());
+
+      if (n < 0)
+        throw std::runtime_error("base64 decoding error");
+
+      out.resize(n);
+
+      return out;
+    }
 
     inline std::vector<uint8_t> convert_signature_to_der(
       const std::span<const uint8_t>& signature)
@@ -1138,5 +1211,4 @@ namespace crypto
       return verify_certificate_chain(
         span, store, options, trusted_root, indent);
     }
-  }
 }

@@ -22,7 +22,7 @@
 
 #define SGX_QUOTE_VERSION 3
 
-using namespace crypto::OpenSSL;
+using namespace crypto;
 
 // All of this is inspired by Open Enclave's SGX verification, especially
 // https://github.com/openenclave/openenclave/blob/master/common/sgx/quote.c
@@ -88,9 +88,8 @@ namespace ravl
         n = get<uint64_t>(data, pos);
         qe_identity = get_n(data, n, pos);
 
-        // TODO: Investigate why there are sometimes extra null bytes
-        // if (pos != data.size())
-        //   throw std::runtime_error("excess collateral data");
+        if (pos != data.size())
+          throw std::runtime_error("excess collateral data");
       }
 
       uint16_t major_version;
