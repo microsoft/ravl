@@ -3,7 +3,7 @@
 
 #include "ravl_sgx.h"
 
-#include "crypto_wrappers.h"
+#include "ravl_crypto.h"
 #include "ravl_requests.h"
 #include "ravl_util.h"
 
