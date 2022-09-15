@@ -335,17 +335,13 @@ namespace ravl
     }
 
     inline Unique_STACK_OF_X509 verify_certificate_chain(
-      const std::span<const uint8_t> data,
+      const Unique_STACK_OF_X509& stack,
       const Unique_X509_STORE& store,
       const CertificateValidationOptions& options,
       bool trusted_root = false,
       uint8_t verbosity = 0,
       size_t indent = 0)
     {
-      std::vector<std::string> certificates = extract_pems(data);
-
-      auto stack = load_certificates(store, certificates);
-
       if (verbosity > 0)
       {
         for (size_t i = 0; i < stack.size(); i++)
@@ -383,6 +379,20 @@ namespace ravl
         log("- verification failed with unknown exception", indent);
         throw std::runtime_error("certificate chain verification failed");
       }
+    }
+
+    inline Unique_STACK_OF_X509 verify_certificate_chain(
+      const std::span<const uint8_t> data,
+      const Unique_X509_STORE& store,
+      const CertificateValidationOptions& options,
+      bool trusted_root = false,
+      uint8_t verbosity = 0,
+      size_t indent = 0)
+    {
+      std::vector<std::string> certificates = extract_pems(data);
+      auto stack = load_certificates(store, certificates);
+      return verify_certificate_chain(
+        stack, store, options, trusted_root, verbosity, indent);
     }
 
     inline Unique_STACK_OF_X509 verify_certificate_chain(

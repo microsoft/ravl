@@ -68,7 +68,11 @@ namespace OpenSSL
   }
 
   /// Throws if rc is 0 and has error
-  inline void CHECK0(int rc)
+  inline void
+#ifdef _DEBUG
+    __attribute__((noinline))
+#endif
+    CHECK0(int rc)
   {
     unsigned long ec = ERR_get_error();
     if (rc == 0 && ec != 0)
@@ -79,7 +83,11 @@ namespace OpenSSL
   }
 
   /// Throws if ptr is null
-  static void __attribute__((noinline)) CHECKNULL(void* ptr)
+  static void
+#ifdef _DEBUG
+    __attribute__((noinline))
+#endif
+    CHECKNULL(void* ptr)
   {
     if (ptr == NULL)
     {
@@ -297,6 +305,16 @@ namespace OpenSSL
       Unique_X509_CRL(
         std::span<const uint8_t>((uint8_t*)pem.data(), pem.size()), true)
     {}
+    Unique_X509_CRL(Unique_X509_CRL&& other)
+    {
+      p.reset(other.p.release());
+    }
+
+    Unique_X509_CRL& operator=(Unique_X509_CRL&& other)
+    {
+      p.reset(other.release());
+      return *this;
+    }
 
     std::string issuer(size_t indent = 0) const
     {
@@ -413,6 +431,13 @@ namespace OpenSSL
         check_null)
     {}
 
+    Unique_X509(const std::string& pem, bool check_null = true) :
+      Unique_SSL_OBJECT(
+        PEM_read_bio_X509(Unique_BIO(pem), NULL, NULL, NULL),
+        X509_free,
+        check_null)
+    {}
+
     Unique_X509(Unique_X509&& other) : Unique_SSL_OBJECT(NULL, X509_free, false)
     {
       X509* ptr = other;
@@ -423,6 +448,19 @@ namespace OpenSSL
     Unique_X509(X509* x509) : Unique_SSL_OBJECT(x509, X509_free, true)
     {
       X509_up_ref(x509);
+    }
+
+    Unique_X509& operator=(const Unique_X509& other)
+    {
+      X509_up_ref(other);
+      p.reset(other.p.get());
+      return *this;
+    }
+
+    Unique_X509& operator=(Unique_X509&& other)
+    {
+      p.reset(other.p.release());
+      return *this;
     }
 
     bool is_ca() const
@@ -557,10 +595,15 @@ namespace OpenSSL
       X509_STORE_set_flags(p.get(), flags);
     }
 
+    void add(const Unique_X509& x509)
+    {
+      X509_STORE_add_cert(p.get(), x509);
+    }
+
     void add(const std::span<const uint8_t>& data, bool pem = true)
     {
       Unique_X509 x509(Unique_BIO(data), pem);
-      X509_STORE_add_cert(p.get(), x509);
+      add(x509);
     }
 
     void add(const std::string& pem)
@@ -581,6 +624,12 @@ namespace OpenSSL
     void add_crl(const std::string& pem)
     {
       add_crl(std::span((uint8_t*)pem.data(), pem.size()));
+    }
+
+    void add_crl(const std::optional<Unique_X509_CRL>& crl)
+    {
+      if (crl)
+        CHECK1(X509_STORE_add_crl(p.get(), *crl));
     }
   };
 
@@ -649,7 +698,7 @@ namespace OpenSSL
 
   inline bool Unique_X509::has_public_key(const std::string& target) const
   {
-    return has_public_key(Unique_EVP_PKEY(target));
+    return has_public_key(Unique_EVP_PKEY(Unique_BIO(target)));
   }
 
   struct Unique_STACK_OF_X509
@@ -695,6 +744,12 @@ namespace OpenSSL
         std::span<const uint8_t>((uint8_t*)data.data(), data.size()))
     {}
 
+    Unique_STACK_OF_X509& operator=(Unique_STACK_OF_X509&& other)
+    {
+      p.reset(other.p.release());
+      return *this;
+    }
+
     size_t size() const
     {
       int r = sk_X509_num(p.get());
@@ -708,11 +763,15 @@ namespace OpenSSL
       return sk_X509_value(p.get(), i);
     }
 
+    void insert(size_t i, Unique_X509&& x)
+    {
+      X509_up_ref(x);
+      CHECK0(sk_X509_insert(p.get(), x, i));
+    }
+
     void push(Unique_X509&& x509)
     {
-      X509* ptr = x509;
-      x509.release();
-      sk_X509_push(p.get(), ptr);
+      sk_X509_push(p.get(), x509.release());
     }
 
     Unique_X509 front() const
@@ -759,6 +818,14 @@ namespace OpenSSL
         ss << at(i).to_string_short(indent + 2);
       }
       return ss.str();
+    }
+
+    std::string pem() const
+    {
+      std::string r;
+      for (size_t i = 0; i < size(); i++)
+        r += at(i).pem();
+      return r;
     }
   };
 

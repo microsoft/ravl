@@ -189,8 +189,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 #define SEV_SNP_GUEST_MSG_REPORT \
   _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct snp::GuestRequest)
 
-    std::string download_root_ca_pem(
+    Unique_X509 download_root_ca_pem(
       const std::string& product_name,
+      const Options& options,
       std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       if (!tracker)
@@ -223,20 +224,21 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (!tr)
         throw std::runtime_error("endorsement download request set failed");
 
-      return r;
+      return Unique_X509(r);
     }
 
     struct EndorsementsEtc
     {
-      std::string root_ca_certificate;
-      std::string vcek_certificate_chain;
-      std::string vcek_issuer_chain_crl;
+      std::optional<Unique_X509> root_ca_certificate;
+      Unique_STACK_OF_X509 vcek_certificate_chain;
+      std::optional<Unique_X509_CRL> vcek_issuer_chain_crl;
     };
 
     EndorsementsEtc download_endorsements(
       const std::string& product_name,
       const std::span<const uint8_t>& chip_id,
       const snp::TcbVersion& tcb_version,
+      const Options& options,
       std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       if (!tracker)
@@ -245,52 +247,92 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       EndorsementsEtc r;
 
       std::vector<Request> request_set;
+      bool tr = false;
 
-      // https://www.amd.com/system/files/TechDocs/57230.pdf Chapter 4
       auto hwid = fmt::format("{:02x}", fmt::join(chip_id, ""));
-      auto tcb_parameters = fmt::format(
-        "blSPL={}&teeSPL={}&snpSPL={}&ucodeSPL={}",
-        tcb_version.boot_loader,
-        tcb_version.tee,
-        tcb_version.snp,
-        tcb_version.microcode);
-      auto vcek_url = fmt::format(
-        "{}/vcek/v1/{}/{}?{}", kds_url, product_name, hwid, tcb_parameters);
-      auto vcek_issuer_chain_url =
-        fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
       auto vcek_issuer_crl_url =
         fmt::format("{}/vcek/v1/{}/crl", kds_url, product_name);
 
-      request_set.emplace_back(vcek_url);
-      request_set.emplace_back(vcek_issuer_chain_url);
-      request_set.emplace_back(vcek_issuer_crl_url);
+      if (options.endorsement_cache_url_template)
+      {
+        auto tcb_version_str = fmt::format("{:08x}", *(uint64_t*)&tcb_version);
+        const auto& url_template = *options.endorsement_cache_url_template;
+        auto chain_url = fmt::format(url_template, hwid, tcb_version_str);
 
-      if (!tracker)
-        tracker = std::make_shared<SynchronousRequestTracker>();
+        request_set.emplace_back(chain_url);
 
-      bool tr = tracker->when_completed(
-        std::move(request_set), [&r](std::vector<Response>&& response_set) {
-          if (response_set.size() != 3)
-            return false;
+        // TODO: Does the cache also provide CRLs?
+        request_set.emplace_back(vcek_issuer_crl_url);
 
-          auto issuer_chain = response_set[1].body;
+        tr = tracker->when_completed(
+          std::move(request_set), [&r](std::vector<Response>&& response_set) {
+            if (response_set.size() != 2)
+              return false;
 
-          Unique_STACK_OF_X509 stack(issuer_chain);
-          if (stack.size() != 2)
-            return false;
-          r.root_ca_certificate = stack.at(1).pem();
+            auto issuer_chain = response_set[0].body;
+            Unique_STACK_OF_X509 stack(issuer_chain);
 
-          auto vcek_cert = str2vec(response_set[0].body);
-          r.vcek_certificate_chain = Unique_X509(vcek_cert, false).pem();
-          r.vcek_certificate_chain += issuer_chain;
+            if (stack.size() != 3)
+              return false;
 
-          auto issuer_crl_der = std::span<const uint8_t>(
-            (uint8_t*)response_set[2].body.data(), response_set[2].body.size());
-          r.vcek_issuer_chain_crl =
-            Unique_X509_CRL(issuer_crl_der, false).pem();
+            r.root_ca_certificate = stack.at(2);
+            r.vcek_certificate_chain = std::move(stack);
 
-          return true;
-        });
+            auto issuer_crl_der = std::span<const uint8_t>(
+              (uint8_t*)response_set[1].body.data(),
+              response_set[1].body.size());
+            auto q = Unique_X509_CRL(issuer_crl_der, false);
+            r.vcek_issuer_chain_crl = std::move(q);
+
+            return true;
+          });
+      }
+      else
+      {
+        // https://www.amd.com/system/files/TechDocs/57230.pdf Chapter 4
+        auto tcb_parameters = fmt::format(
+          "blSPL={}&teeSPL={}&snpSPL={}&ucodeSPL={}",
+          tcb_version.boot_loader,
+          tcb_version.tee,
+          tcb_version.snp,
+          tcb_version.microcode);
+        auto vcek_url = fmt::format(
+          "{}/vcek/v1/{}/{}?{}", kds_url, product_name, hwid, tcb_parameters);
+        auto vcek_issuer_chain_url =
+          fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
+
+        request_set.emplace_back(vcek_url);
+        request_set.emplace_back(vcek_issuer_chain_url);
+        request_set.emplace_back(vcek_issuer_crl_url);
+
+        tr = tracker->when_completed(
+          std::move(request_set), [&r](std::vector<Response>&& response_set) {
+            if (response_set.size() != 3)
+              return false;
+
+            // TODO: wait if rate limits are hit (should be a HTTP 429 with
+            // retry-after header)
+
+            auto issuer_chain = response_set[1].body;
+
+            Unique_STACK_OF_X509 stack(issuer_chain);
+            if (stack.size() != 2)
+              return false;
+
+            r.root_ca_certificate = stack.at(1);
+
+            auto vcek_cert = response_set[0].body;
+            stack.insert(0, Unique_X509(Unique_BIO(vcek_cert), false));
+            r.vcek_certificate_chain = std::move(stack);
+
+            auto issuer_crl_der = std::span<const uint8_t>(
+              (uint8_t*)response_set[2].body.data(),
+              response_set[2].body.size());
+            r.vcek_issuer_chain_crl = Unique_X509_CRL(issuer_crl_der, false);
+
+            return true;
+          });
+      }
 
       if (!tr)
         throw std::runtime_error("endorsement download request set failed");
@@ -347,15 +389,16 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         endorsements.vcek_certificate_chain = vec2str(a.endorsements);
 
         if (options.root_ca_certificate)
-          endorsements.root_ca_certificate = *options.root_ca_certificate;
+          endorsements.root_ca_certificate =
+            Unique_X509(*options.root_ca_certificate);
         else if (options.fresh_root_ca_certificate)
           endorsements.root_ca_certificate =
-            download_root_ca_pem("Milan", tracker);
+            download_root_ca_pem("Milan", options, tracker);
       }
       else
       {
         endorsements = download_endorsements(
-          "Milan", quote.chip_id, quote.reported_tcb, tracker);
+          "Milan", quote.chip_id, quote.reported_tcb, options, tracker);
 
         if (options.root_ca_certificate)
           endorsements.root_ca_certificate = *options.root_ca_certificate;
@@ -367,38 +410,38 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         ss << std::string(indent + 2, ' ') << "- Endorsements" << std::endl;
 
         std::string ins(indent + 4, ' ');
-        Unique_STACK_OF_X509 st(endorsements.vcek_certificate_chain);
+        const Unique_STACK_OF_X509& st = endorsements.vcek_certificate_chain;
         ss << ins << "- VCEK certificate chain:" << std::endl;
         ss << st.to_string_short(indent + 4) << std::endl;
 
         if (options.verbosity > 1)
           ss << ins << "  - PEM:" << std::endl
-             << indentate(endorsements.vcek_certificate_chain, 8) << std::endl;
+             << indentate(st.pem(), 8) << std::endl;
 
         ss << ins << "- VCEK issuer CRL: ";
-        if (endorsements.vcek_issuer_chain_crl.empty())
+        if (!endorsements.vcek_issuer_chain_crl)
           ss << "none";
         else
         {
-          Unique_X509_CRL vcek_issuer_crl(endorsements.vcek_issuer_chain_crl);
+          Unique_X509_CRL& vcek_issuer_crl =
+            *endorsements.vcek_issuer_chain_crl;
           ss << std::endl
              << vcek_issuer_crl.to_string_short(indent + 6) << std::endl;
           if (options.verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
-               << indentate(endorsements.vcek_issuer_chain_crl, 8);
+               << indentate(vcek_issuer_crl.pem(), 8);
         }
 
         log(ss.str());
       }
 
       store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-      store.add_crl(
-        endorsements.vcek_issuer_chain_crl); // TODO: is this for ARK or ASK?
+      store.add_crl(endorsements.vcek_issuer_chain_crl);
 
       bool trusted_root = false;
 
-      if (!endorsements.root_ca_certificate.empty())
-        store.add(endorsements.root_ca_certificate);
+      if (endorsements.root_ca_certificate)
+        store.add(*endorsements.root_ca_certificate);
       else
         trusted_root = true;
 
