@@ -11,6 +11,9 @@
 
 using namespace ravl;
 
+Options default_options = {
+  .verbosity = 2, .certificate_verification = {.ignore_time = true}};
+
 /* clang-format off */
 std::string oe_coffeelake_attestation = R"({
   "source": "openenclave",
@@ -54,9 +57,6 @@ std::string sev_snp_quote = R"({
 })";
 
 /* clang-format on */
-
-Options default_options = {
-  .verbosity = 1, .certificate_verification = {.ignore_time = true}};
 
 std::shared_ptr<RequestTracker> request_tracker =
   std::make_shared<ThreadedRequestTracker>();
@@ -135,5 +135,12 @@ TEST_CASE("SGX SDK QE Quote3 w/o endorsements")
 TEST_CASE("SEV/SNP quote")
 {
   Attestation att(sev_snp_quote);
+  REQUIRE(att.verify(default_options, request_tracker));
+}
+
+TEST_CASE("SEV/SNP quote w/o endorsements")
+{
+  Attestation att(sev_snp_quote);
+  att.endorsements = {};
   REQUIRE(att.verify(default_options, request_tracker));
 }

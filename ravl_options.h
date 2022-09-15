@@ -7,7 +7,7 @@
 
 #include <cstdint>
 #include <optional>
-#include <vector>
+#include <string>
 
 namespace ravl
 {
@@ -26,7 +26,7 @@ namespace ravl
     bool fresh_root_ca_certificate = false;
 
     /// Sets the root CA certificate to use (overrides fresh_endorsements and
-    /// fresh_root_ca_certificate)
-    std::optional<std::vector<uint8_t>> root_ca_certificate_pem = std::nullopt;
+    /// fresh_root_ca_certificate; PEM format)
+    std::optional<std::string> root_ca_certificate = std::nullopt;
   };
 }

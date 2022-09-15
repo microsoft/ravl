@@ -272,7 +272,7 @@ namespace ravl
         Unique_BIO cert_bio(cert.data(), cert.size());
         Unique_X509 x509(cert_bio, true);
 
-        if (!X509_check_ca(x509))
+        if (!x509.is_ca())
         {
           if (leaf)
             throw std::runtime_error("multiple leaves in certificate set");
@@ -301,12 +301,16 @@ namespace ravl
 
             const auto& j = r.at(ji);
 
-            Unique_ASN1_OCTET_STRING auth_key_id(X509_get0_authority_key_id(j));
-
-            if (subj_key_id == auth_key_id)
+            if (j.has_authority_key_id())
             {
-              i_appears_as_ca = true;
-              break;
+              Unique_ASN1_OCTET_STRING auth_key_id(
+                X509_get0_authority_key_id(j));
+
+              if (subj_key_id == auth_key_id)
+              {
+                i_appears_as_ca = true;
+                break;
+              }
             }
           }
 
@@ -351,7 +355,7 @@ namespace ravl
           if (verbosity > 1)
           {
             log(std::string(indent + 2, ' ') + "- PEM:");
-            auto s = c.to_string();
+            auto s = c.pem();
             log(indentate(s, indent + 4));
           }
         }
@@ -382,15 +386,16 @@ namespace ravl
     }
 
     inline Unique_STACK_OF_X509 verify_certificate_chain(
-      const std::string& data,
+      const std::string& pem,
       const Unique_X509_STORE& store,
       const CertificateValidationOptions& options,
       bool trusted_root = false,
+      uint8_t verbosity = 0,
       size_t indent = 0)
     {
-      std::span<const uint8_t> span((uint8_t*)data.data(), data.size());
+      std::span<const uint8_t> span((uint8_t*)pem.data(), pem.size());
       return verify_certificate_chain(
-        span, store, options, trusted_root, indent);
+        span, store, options, trusted_root, verbosity, indent);
     }
   }
 }

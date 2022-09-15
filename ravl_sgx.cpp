@@ -118,9 +118,9 @@ namespace ravl
 
         if (verbosity > 0)
         {
-          Unique_X509_CRL crl(root_ca_crl);
+          Unique_X509_CRL crl((const std::string&)root_ca_crl);
           ss << ins << "- Root CA CRL:" << std::endl;
-          ss << crl.to_string(indent + 4) << std::endl;
+          ss << crl.to_string_short(indent + 4) << std::endl;
         }
         if (verbosity > 1)
           ss << ins << fmt::format("  - PEM:\n{}", vec2str(root_ca_crl, 8))
@@ -138,9 +138,9 @@ namespace ravl
 
         if (verbosity > 0)
         {
-          Unique_X509_CRL crl(pck_crl);
+          Unique_X509_CRL crl((const std::string&)pck_crl);
           ss << ins << "- PCK CRL:" << std::endl;
-          ss << crl.to_string(indent + 4) << std::endl;
+          ss << crl.to_string_short(indent + 4) << std::endl;
         }
         if (verbosity > 1)
           ss << ins << "  - PEM:" << std::endl
@@ -251,18 +251,18 @@ namespace ravl
     static const std::string qe_identity_url = api_base_url + "/qe/identity";
     static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
-    std::vector<uint8_t> download_root_ca_pem(
+    std::string download_root_ca_pem(
       std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       if (!tracker)
         tracker = std::make_shared<SynchronousRequestTracker>();
 
-      std::vector<uint8_t> r;
+      std::string r;
       auto response = tracker->when_completed(
         {Request(root_ca_url)}, [&r](std::vector<Response>&& response_set) {
           if (response_set.size() != 1)
             return false;
-          r = str2vec(response_set.at(0).body);
+          r = response_set.at(0).body;
           return true;
         });
 
@@ -978,14 +978,14 @@ namespace ravl
 
       Unique_X509_STORE store;
       std::shared_ptr<QL_QVE_Collateral> collateral = nullptr;
-      std::vector<uint8_t> root_ca_pem = {};
+      std::string root_ca_pem = {};
 
       if (!a.endorsements.empty() && !options.fresh_endorsements)
       {
         collateral = std::make_shared<QL_QVE_Collateral>(a.endorsements);
 
-        if (options.root_ca_certificate_pem)
-          root_ca_pem = *options.root_ca_certificate_pem;
+        if (options.root_ca_certificate)
+          root_ca_pem = *options.root_ca_certificate;
         else if (options.fresh_root_ca_certificate)
           root_ca_pem = download_root_ca_pem(tracker);
       }
@@ -1003,8 +1003,8 @@ namespace ravl
         auto fmspc_hex = fmt::format("{:02x}", fmt::join(pck_ext.fmspc, ""));
         collateral = download_collateral(ca_type, fmspc_hex, false, tracker);
 
-        if (options.root_ca_certificate_pem)
-          root_ca_pem = *options.root_ca_certificate_pem;
+        if (options.root_ca_certificate)
+          root_ca_pem = *options.root_ca_certificate;
         else
           root_ca_pem = download_root_ca_pem(tracker);
       }
@@ -1056,12 +1056,12 @@ namespace ravl
         log(" PEM:", indent + 4);
         if (trusted_root)
         {
-          std::string rs = pck_crl_issuer_chain.back().to_string();
-          indentate(rs, indent + 6);
+          std::string rs = pck_crl_issuer_chain.back().pem();
+          indentate_inplace(rs, indent + 6);
           log(rs);
         }
         else
-          log(vec2str(root_ca_pem, indent + 6));
+          log(root_ca_pem, indent + 6);
       }
 
       if (options.verbosity > 0)

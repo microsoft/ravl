@@ -22,16 +22,18 @@ namespace ravl
     // Based on the SEV-SNP ABI Spec document at
     // https://www.amd.com/system/files/TechDocs/56860.pdf
 
+    // ARK = AMD Root Key
+    // ASK = AMD SEV Signing Key (intermediate)
+    // VCEK = Versioned Chip Endorsement Key (VCEK) (leaf)
+
+    static const std::string kds_url = "https://kdsintf.amd.com";
+
     static constexpr size_t attestation_report_data_size = 64;
     using attestation_report_data =
       std::array<uint8_t, attestation_report_data_size>;
     static constexpr size_t attestation_measurement_size = 48;
     using attestation_measurement =
       std::array<uint8_t, attestation_measurement_size>;
-
-    static const std::string root_ca_url =
-      "https://certificates.trustedservices.intel.com/"
-      "Intel_SGX_Provisioning_Certification_RootCA.pem";
 
     namespace snp
     {
@@ -187,53 +189,111 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 #define SEV_SNP_GUEST_MSG_REPORT \
   _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct snp::GuestRequest)
 
-    std::vector<uint8_t> download_root_ca_pem(
+    std::string download_root_ca_pem(
+      const std::string& product_name,
       std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       if (!tracker)
         tracker = std::make_shared<SynchronousRequestTracker>();
 
-      std::vector<uint8_t> r;
-      auto response = tracker->when_completed(
-        {Request(root_ca_url)}, [&r](std::vector<Response>&& response_set) {
-          if (response_set.size() != 1)
-            return false;
-          r = str2vec(response_set.at(0).body);
-          return true;
-        });
-
-      if (r.empty())
-        throw std::runtime_error("download of root CA certificate failed");
-
-      return r;
-    }
-
-    std::vector<uint8_t> download_collateral(
-      std::shared_ptr<RequestTracker> tracker = nullptr)
-    {
-      std::vector<uint8_t> r;
+      std::string r;
 
       std::vector<Request> request_set;
 
-      // Root CRL?
-      auto root_crl_url = "https://kdsintf.amd.com/vcek/v1/Milan/crl";
-      // request_set.emplace_back(root_crl_url);
+      auto vcek_issuer_chain_url =
+        fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
+
+      request_set.emplace_back(vcek_issuer_chain_url);
 
       if (!tracker)
         tracker = std::make_shared<SynchronousRequestTracker>();
 
       bool tr = tracker->when_completed(
         std::move(request_set), [&r](std::vector<Response>&& response_set) {
-          if (response_set.size() != 4)
+          if (response_set.size() != 1)
+            return false;
+          auto issuer_chain = response_set[0].body;
+          Unique_STACK_OF_X509 stack(issuer_chain);
+          if (stack.size() != 2)
+            return false;
+          r = stack.at(1).pem();
+          return true;
+        });
+
+      if (!tr)
+        throw std::runtime_error("endorsement download request set failed");
+
+      return r;
+    }
+
+    struct EndorsementsEtc
+    {
+      std::string root_ca_certificate;
+      std::string vcek_certificate_chain;
+      std::string vcek_issuer_chain_crl;
+    };
+
+    EndorsementsEtc download_endorsements(
+      const std::string& product_name,
+      const std::span<const uint8_t>& chip_id,
+      const snp::TcbVersion& tcb_version,
+      std::shared_ptr<RequestTracker> tracker = nullptr)
+    {
+      if (!tracker)
+        tracker = std::make_shared<SynchronousRequestTracker>();
+
+      EndorsementsEtc r;
+
+      std::vector<Request> request_set;
+
+      // https://www.amd.com/system/files/TechDocs/57230.pdf Chapter 4
+      auto hwid = fmt::format("{:02x}", fmt::join(chip_id, ""));
+      auto tcb_parameters = fmt::format(
+        "blSPL={}&teeSPL={}&snpSPL={}&ucodeSPL={}",
+        tcb_version.boot_loader,
+        tcb_version.tee,
+        tcb_version.snp,
+        tcb_version.microcode);
+      auto vcek_url = fmt::format(
+        "{}/vcek/v1/{}/{}?{}", kds_url, product_name, hwid, tcb_parameters);
+      auto vcek_issuer_chain_url =
+        fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
+      auto vcek_issuer_crl_url =
+        fmt::format("{}/vcek/v1/{}/crl", kds_url, product_name);
+
+      request_set.emplace_back(vcek_url);
+      request_set.emplace_back(vcek_issuer_chain_url);
+      request_set.emplace_back(vcek_issuer_crl_url);
+
+      if (!tracker)
+        tracker = std::make_shared<SynchronousRequestTracker>();
+
+      bool tr = tracker->when_completed(
+        std::move(request_set), [&r](std::vector<Response>&& response_set) {
+          if (response_set.size() != 3)
             return false;
 
-          r = str2vec(response_set[0].body);
+          auto issuer_chain = response_set[1].body;
+
+          Unique_STACK_OF_X509 stack(issuer_chain);
+          if (stack.size() != 2)
+            return false;
+          r.root_ca_certificate = stack.at(1).pem();
+
+          auto vcek_cert = str2vec(response_set[0].body);
+          r.vcek_certificate_chain = Unique_X509(vcek_cert, false).pem();
+          r.vcek_certificate_chain += issuer_chain;
+
+          auto issuer_crl_der = std::span<const uint8_t>(
+            (uint8_t*)response_set[2].body.data(), response_set[2].body.size());
+          r.vcek_issuer_chain_crl =
+            Unique_X509_CRL(issuer_crl_der, false).pem();
 
           return true;
         });
 
       if (!tr)
-        throw std::runtime_error("collateral download request set failed");
+        throw std::runtime_error("endorsement download request set failed");
 
       return r;
     }
@@ -280,51 +340,72 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
       Unique_X509_STORE store;
 
-      std::vector<uint8_t> root_ca_pem = {};
-      std::vector<uint8_t> collateral = {};
+      EndorsementsEtc endorsements = {};
 
       if (!a.endorsements.empty() && !options.fresh_endorsements)
       {
-        collateral = a.endorsements;
+        endorsements.vcek_certificate_chain = vec2str(a.endorsements);
 
-        if (options.root_ca_certificate_pem)
-          root_ca_pem = *options.root_ca_certificate_pem;
+        if (options.root_ca_certificate)
+          endorsements.root_ca_certificate = *options.root_ca_certificate;
         else if (options.fresh_root_ca_certificate)
-          root_ca_pem = download_root_ca_pem(tracker);
+          endorsements.root_ca_certificate =
+            download_root_ca_pem("Milan", tracker);
       }
       else
       {
-        collateral = download_collateral(tracker);
+        endorsements = download_endorsements(
+          "Milan", quote.chip_id, quote.reported_tcb, tracker);
 
-        if (options.root_ca_certificate_pem)
-          root_ca_pem = *options.root_ca_certificate_pem;
-        else
-          root_ca_pem = download_root_ca_pem(tracker);
+        if (options.root_ca_certificate)
+          endorsements.root_ca_certificate = *options.root_ca_certificate;
       }
 
       if (options.verbosity > 0)
       {
         std::stringstream ss;
-        std::string ins(indent, ' ');
-        Unique_STACK_OF_X509 st(a.endorsements);
-        ss << ins << "- Attestation issuer chain:" << std::endl;
+        ss << std::string(indent + 2, ' ') << "- Endorsements" << std::endl;
+
+        std::string ins(indent + 4, ' ');
+        Unique_STACK_OF_X509 st(endorsements.vcek_certificate_chain);
+        ss << ins << "- VCEK certificate chain:" << std::endl;
         ss << st.to_string_short(indent + 4) << std::endl;
 
         if (options.verbosity > 1)
           ss << ins << "  - PEM:" << std::endl
-             << vec2str(a.endorsements, 8) << std::endl;
+             << indentate(endorsements.vcek_certificate_chain, 8) << std::endl;
+
+        ss << ins << "- VCEK issuer CRL: ";
+        if (endorsements.vcek_issuer_chain_crl.empty())
+          ss << "none";
+        else
+        {
+          Unique_X509_CRL vcek_issuer_crl(endorsements.vcek_issuer_chain_crl);
+          ss << std::endl
+             << vcek_issuer_crl.to_string_short(indent + 6) << std::endl;
+          if (options.verbosity > 1)
+            ss << ins << "  - PEM:" << std::endl
+               << indentate(endorsements.vcek_issuer_chain_crl, 8);
+        }
+
         log(ss.str());
       }
 
+      store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+      store.add_crl(
+        endorsements.vcek_issuer_chain_crl); // TODO: is this for ARK or ASK?
+
       bool trusted_root = false;
 
-      if (!root_ca_pem.empty())
-        store.add(root_ca_pem);
+      if (!endorsements.root_ca_certificate.empty())
+        store.add(endorsements.root_ca_certificate);
       else
         trusted_root = true;
 
+      if (options.verbosity > 0)
+        log("- VCEK issuer certificate chain verification", indent + 2);
       auto chain = crypto::verify_certificate_chain(
-        a.endorsements,
+        endorsements.vcek_certificate_chain,
         store,
         options.certificate_verification,
         trusted_root,
@@ -334,18 +415,17 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (chain.size() != 3)
         throw std::runtime_error("unexpected certificate chain length");
 
-      auto chip_certificate =
-        chain.at(0); // Versioned Chip Endorsement Key (VCEK) Certificate
-      auto sev_version_certificate = chain.at(1);
-      auto root_certificate = chain.at(2);
+      auto vcek_certificate = chain.at(0);
+      auto ask_certificate = chain.at(1);
+      auto ark_certificate = chain.at(2);
 
-      if (!root_certificate.has_public_key(
+      if (!ark_certificate.has_public_key(
             snp::amd_milan_root_signing_public_key))
         throw std::runtime_error(
           "Root CA certificate does not have the expected AMD Milan public "
           "key");
 
-      if (!root_certificate.is_ca())
+      if (!ark_certificate.is_ca())
         throw std::runtime_error("Root CA certificate is not a CA");
 
       if (quote.signature_algo != snp::SignatureAlgorithm::ecdsa_p384_sha384)
@@ -354,9 +434,13 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       std::span msg(
         a.evidence.data(), a.evidence.size() - sizeof(quote.signature));
 
-      Unique_EVP_PKEY vcek_pk(chip_certificate);
+      Unique_EVP_PKEY vcek_pk(vcek_certificate);
       if (!verify_signature(vcek_pk, msg, quote.signature))
         throw std::runtime_error("invalid VCEK signature");
+
+      // https://www.amd.com/system/files/TechDocs/55766_SEV-KM_API_Specification.pdf
+      // Appendix C defines a custom (?!) certificate format and steps to verify
+      // the various certificates.
 
       return true;
     }

@@ -91,7 +91,7 @@ namespace ravl
       log("- Fresh endorsements", 4);
     if (options.fresh_root_ca_certificate)
       log("- Fresh root CA certificate", 4);
-    if (options.root_ca_certificate_pem)
+    if (options.root_ca_certificate)
       log("- Custom root CA certificate", 4);
     if (
       options.certificate_verification.ignore_time ||

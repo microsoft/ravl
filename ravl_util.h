@@ -23,7 +23,7 @@ inline std::size_t replace_all(
   return count;
 }
 
-inline std::string& indentate(std::string& inout, size_t indent)
+inline std::string& indentate_inplace(std::string& inout, size_t indent)
 {
   std::string ins(indent, ' ');
   replace_all(inout, "\n", "\n" + ins);
@@ -31,13 +31,19 @@ inline std::string& indentate(std::string& inout, size_t indent)
   return inout;
 }
 
+inline std::string indentate(const std::string& in, size_t indent)
+{
+  std::string r = in, ins(indent, ' ');
+  replace_all(r, "\n", "\n" + ins);
+  r = ins + r;
+  return r;
+}
+
 inline std::string vec2str(const std::vector<uint8_t>& vec, size_t indent = 0)
 {
   auto r = std::string((char*)vec.data(), vec.size());
   if (indent > 0)
-  {
-    indentate(r, indent);
-  }
+    indentate_inplace(r, indent);
   return r;
 }
 

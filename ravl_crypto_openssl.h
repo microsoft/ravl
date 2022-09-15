@@ -286,11 +286,16 @@ namespace OpenSSL
       Unique_SSL_OBJECT(
         PEM_read_bio_X509_CRL(mem, NULL, NULL, NULL), X509_CRL_free)
     {}
-    Unique_X509_CRL(const std::span<uint8_t>& data) :
+    Unique_X509_CRL(const std::span<const uint8_t>& data, bool pem = true) :
       Unique_SSL_OBJECT(
-        PEM_read_bio_X509_CRL(
-          Unique_BIO(data.data(), data.size()), NULL, NULL, NULL),
+        pem ? PEM_read_bio_X509_CRL(
+                Unique_BIO(data.data(), data.size()), NULL, NULL, NULL) :
+              d2i_X509_CRL_bio(Unique_BIO(data.data(), data.size()), NULL),
         X509_CRL_free)
+    {}
+    Unique_X509_CRL(const std::string& pem) :
+      Unique_X509_CRL(
+        std::span<const uint8_t>((uint8_t*)pem.data(), pem.size()), true)
     {}
 
     std::string issuer(size_t indent = 0) const
@@ -318,7 +323,14 @@ namespace OpenSSL
       }
     }
 
-    std::string to_string(size_t indent = 0) const
+    std::string pem() const
+    {
+      Unique_BIO bio;
+      PEM_write_bio_X509_CRL(bio, *this);
+      return bio.to_string();
+    }
+
+    std::string to_string_short(size_t indent = 0) const
     {
       std::stringstream ss;
       auto rkd = revoked();
@@ -393,7 +405,7 @@ namespace OpenSSL
   {
     using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
     // p == nullptr is OK (e.g. wrong format)
-    Unique_X509(const Unique_BIO& mem, bool pem, bool check_null = false) :
+    Unique_X509(const Unique_BIO& mem, bool pem, bool check_null = true) :
       Unique_SSL_OBJECT(
         pem ? PEM_read_bio_X509(mem, NULL, NULL, NULL) :
               d2i_X509_bio(mem, NULL),
@@ -444,7 +456,7 @@ namespace OpenSSL
       return false;
     }
 
-    std::string to_string() const
+    std::string pem() const
     {
       Unique_BIO mem;
       CHECK1(PEM_write_bio_X509(mem, *this));
@@ -547,11 +559,16 @@ namespace OpenSSL
 
     void add(const std::span<const uint8_t>& data, bool pem = true)
     {
-      Unique_X509 x509(data, pem);
+      Unique_X509 x509(Unique_BIO(data), pem);
       X509_STORE_add_cert(p.get(), x509);
     }
 
-    void add_crl(const std::span<uint8_t>& data)
+    void add(const std::string& pem)
+    {
+      add({(uint8_t*)pem.data(), pem.size()}, true);
+    }
+
+    void add_crl(const std::span<const uint8_t>& data)
     {
       if (!data.empty())
       {
@@ -559,6 +576,11 @@ namespace OpenSSL
           data); // TODO: PEM only; some CRLs may be in DER format?
         CHECK1(X509_STORE_add_crl(p.get(), crl));
       }
+    }
+
+    void add_crl(const std::string& pem)
+    {
+      add_crl(std::span((uint8_t*)pem.data(), pem.size()));
     }
   };
 
@@ -667,6 +689,11 @@ namespace OpenSSL
       }
       sk_X509_INFO_pop_free(sk_info, X509_INFO_free);
     }
+
+    Unique_STACK_OF_X509(const std::string& data) :
+      Unique_STACK_OF_X509(
+        std::span<const uint8_t>((uint8_t*)data.data(), data.size()))
+    {}
 
     size_t size() const
     {
