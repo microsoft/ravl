@@ -144,3 +144,14 @@ TEST_CASE("SEV/SNP quote w/o endorsements")
   att.endorsements = {};
   REQUIRE(att.verify(default_options, request_tracker));
 }
+
+TEST_CASE("SEV/SNP quote w/ cached endorsements")
+{
+  Attestation att(sev_snp_quote);
+  att.endorsements = {};
+  Options options = default_options;
+  options.endorsement_cache_url_template =
+    "https://global.acccache.azure.net/SevSnpVM/certificates/{}/"
+    "{}?api-version=2020-10-15-preview";
+  REQUIRE(att.verify(options, request_tracker));
+}
