@@ -286,7 +286,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         auto tcb_version_str = fmt::format("{:08x}", *(uint64_t*)&tcb_version);
         const auto& url_template =
           *options.sev_snp_endorsement_cache_url_template;
-        auto chain_url = fmt::format(url_template, hwid, tcb_version_str);
+        auto chain_url = fmt::vformat(
+          url_template, fmt::make_format_args(hwid, tcb_version_str));
 
         request_set.emplace_back(chain_url);
 

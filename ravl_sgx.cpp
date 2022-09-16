@@ -3,6 +3,7 @@
 
 #include "ravl_sgx.h"
 
+#include "fmt/core.h"
 #include "ravl_crypto.h"
 #include "ravl_requests.h"
 #include "ravl_sgx_defs.h"
@@ -296,21 +297,22 @@ namespace ravl
       else
       {
         auto tmpl = *options.sgx_endorsement_cache_url_template;
-        request_set.emplace_back(fmt::format(tmpl, "pckcrl", root_crl_url));
         request_set.emplace_back(
-          fmt::format(tmpl, "tcb", tcb_url) + "&fmspc=" + fmspc);
-        request_set.emplace_back(
-          fmt::format(
-            tmpl,
+          fmt::vformat(tmpl, fmt::make_format_args("pckcrl", root_crl_url)));
+        request_set.emplace_back(fmt::vformat(
+          tmpl, fmt::make_format_args("tcb", tcb_url + "&fmspc=" + fmspc)));
+        request_set.emplace_back(fmt::vformat(
+          tmpl,
+          fmt::make_format_args(
             "pckcrl",
-            intel_certificates_url_base + "/intelsgxpck" + ca + ".crl") +
-          "&encoding=pem");
+            intel_certificates_url_base + "/intelsgxpck" + ca + ".crl" +
+              "&encoding=pem")));
         if (!qve)
-          request_set.emplace_back(
-            fmt::format(tmpl, "qe/identity", qe_identity_url));
+          request_set.emplace_back(fmt::vformat(
+            tmpl, fmt::make_format_args("qe/identity", qe_identity_url)));
         else
-          request_set.emplace_back(
-            fmt::format(tmpl, "qve/identity", qve_identity_url));
+          request_set.emplace_back(fmt::vformat(
+            tmpl, fmt::make_format_args("qve/identity", qve_identity_url)));
       }
 
       if (!tracker)
