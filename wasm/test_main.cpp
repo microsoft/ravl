@@ -16,7 +16,7 @@ Options default_options;
 
 namespace ravl
 {
-  Response Request::operator()() const
+  Response Request::execute(bool verbose) const
   {
     return Response();
   }
