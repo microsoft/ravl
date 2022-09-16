@@ -29,22 +29,19 @@ option(USE_OE_VERIFIER "use the Open Enclave verifier directly (requires Open En
 option(OE_TEST_ENCLAVE "enable Open Enclave test enclave (requires Open Enclave SDK)" OFF)
 option(SGX_TEST_ENCLAVE "enable SGX test enclave (requires Intel SGX SDK)" OFF)
 
-add_library(ravl)
-target_include_directories(ravl INTERFACE .)
-target_include_directories(ravl PRIVATE 3rdparty)
-
-add_executable(ravlcli cli.cpp)
-target_include_directories(ravlcli PUBLIC .)
-
-install(TARGETS ravl ravlcli)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
-find_package(OpenSSL REQUIRED)
 set(RAVL_SRC ravl.cpp ravl_requests.cpp ravl_requests_threaded.cpp)
-set(RAVL_DEFS HAVE_OPENSSL)
-set(RAVL_LIB_DEPS crypto)
+set(RAVL_INCLUDE)
+set(RAVL_DEFS)
+set(RAVL_LIB_DEPS)
+set(RAVL_LIB_DIRS)
+
+find_package(OpenSSL REQUIRED)
+list(APPEND RAVL_DEFS HAVE_OPENSSL)
+list(APPEND RAVL_LIB_DEPS crypto)
+
 
 if(SGX)
   list(APPEND RAVL_DEFS HAVE_SGX)
@@ -58,8 +55,8 @@ if(OE)
   if(USE_OE_VERIFIER)
     find_package(OpenEnclave REQUIRED)
     find_library(hostverify oehostverify PATHS ${OpenEnclave_DIR}/../host REQUIRED)
-    target_include_directories(ravl PRIVATE ${OE_INCLUDEDIR})
-    target_link_directories(ravl PRIVATE ${hostverify_DIR})
+    list(APPEND RAVL_INCLUDE ${OE_INCLUDEDIR})
+    list(APPEND RAVL_LIB_DIRS ${hostverify_DIR})
     list(APPEND RAVL_LIB_DEPS ${hostverify})
     list(APPEND RAVL_DEFS USE_OE_VERIFIER)
   endif()
@@ -70,18 +67,42 @@ if(SEV_SNP)
   list(APPEND RAVL_SRC ravl_sev_snp.cpp)
 endif()
 
+# TODO: make curl optional?
 find_package(CURL REQUIRED)
 list(APPEND RAVL_LIB_DEPS curl)
 list(APPEND RAVL_SRC ravl_requests_curl.cpp)
 
-target_sources(ravl PRIVATE ${RAVL_SRC})
-target_link_libraries(ravl INTERFACE ${RAVL_LIB_DEPS})
-target_compile_definitions(ravl PRIVATE ${RAVL_DEFS})
-
 if(PROFILE)
-  target_compile_options(ravl PRIVATE -g -pg)
-  target_link_options(ravl PRIVATE -g -pg)
+  list(APPEND RAVL_FLAGS -g -pg)
+  list(APPEND RAVL_LINK_OPTS -g -pg)
 endif()
+
+add_library(ravl STATIC)
+target_sources(ravl PRIVATE ${RAVL_SRC})
+target_include_directories(ravl INTERFACE .)
+target_include_directories(ravl PRIVATE 3rdparty ${RAVL_INCLUDE})
+target_compile_options(ravl PRIVATE ${RAVL_FLAGS})
+target_compile_definitions(ravl PRIVATE ${RAVL_DEFS})
+target_link_directories(ravl PRIVATE ${RAVL_LIB_DIRS})
+target_link_libraries(ravl INTERFACE ${RAVL_LIB_DEPS})
+target_link_options(ravl PRIVATE ${RAVL_LINK_OPTS})
+
+add_library(ravl-shared SHARED)
+target_sources(ravl-shared PRIVATE ${RAVL_SRC})
+target_include_directories(ravl-shared INTERFACE .)
+target_include_directories(ravl-shared PRIVATE 3rdparty PRIVATE ${RAVL_INCLUDE})
+target_compile_options(ravl-shared PRIVATE ${RAVL_FLAGS})
+target_compile_definitions(ravl-shared PRIVATE ${RAVL_DEFS})
+target_link_directories(ravl-shared PRIVATE ${RAVL_LIB_DIRS})
+target_link_libraries(ravl-shared INTERFACE ${RAVL_LIB_DEPS})
+target_link_options(ravl-shared PRIVATE ${RAVL_LINK_OPTS})
+set_target_properties(ravl-shared PROPERTIES OUTPUT_NAME ravl)
+
+add_executable(ravl-cli cli.cpp)
+target_include_directories(ravl-cli PUBLIC .)
+set_target_properties(ravl-cli PROPERTIES OUTPUT_NAME ravl)
+
+install(TARGETS ravl ravl-shared ravl-cli)
 
 if(TESTS)
   enable_testing()
