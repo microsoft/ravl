@@ -365,7 +365,8 @@ namespace ravl
         if (chain.size() < 2)
           throw std::runtime_error("certificate chain is too short");
 
-        log("- verification successful", indent);
+        if (verbosity > 0)
+          log("- verification successful", indent);
 
         return chain;
       }
