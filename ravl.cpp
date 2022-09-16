@@ -76,26 +76,29 @@ namespace ravl
   bool Attestation::verify(
     const Options& options, std::shared_ptr<RequestTracker> request_tracker)
   {
-    json j;
-    to_json(j, source);
-    log(fmt::format("* Verifying attestation from {}", j.dump()));
-
-    log("- Options", 2);
-    if (options.fresh_endorsements)
-      log("- Fresh endorsements", 4);
-    if (options.fresh_root_ca_certificate)
-      log("- Fresh root CA certificate", 4);
-    if (options.root_ca_certificate)
-      log("- Custom root CA certificate", 4);
-    if (
-      options.certificate_verification.ignore_time ||
-      options.certificate_verification.verification_time)
+    if (options.verbosity > 0)
     {
-      log("- Certificate verification", 4);
-      if (options.certificate_verification.ignore_time)
-        log("- Ignore certificate times", 6);
-      if (options.certificate_verification.verification_time)
-        log("- Use custom certificate verification time", 6);
+      json j;
+      to_json(j, source);
+      log(fmt::format("* Verifying attestation from {}", j.dump()));
+
+      log("- Options", 2);
+      if (options.fresh_endorsements)
+        log("- Fresh endorsements", 4);
+      if (options.fresh_root_ca_certificate)
+        log("- Fresh root CA certificate", 4);
+      if (options.root_ca_certificate)
+        log("- Custom root CA certificate", 4);
+      if (
+        options.certificate_verification.ignore_time ||
+        options.certificate_verification.verification_time)
+      {
+        log("- Certificate verification", 4);
+        if (options.certificate_verification.ignore_time)
+          log("- Ignore certificate times", 6);
+        if (options.certificate_verification.verification_time)
+          log("- Use custom certificate verification time", 6);
+      }
     }
 
     bool r = false;
@@ -137,10 +140,12 @@ namespace ravl
     {
       if (options.verbosity > 0)
         log(fmt::format("  - verification failed: {}", ex.what()));
-      throw std::runtime_error("attestation verification failed");
+      throw std::runtime_error(
+        fmt::format("attestation verification failed: {}", ex.what()));
     }
 
-    log(fmt::format("  - verification successful"));
+    if (options.verbosity > 0)
+      log(fmt::format("  - verification successful"));
 
     return r;
   }
