@@ -4,18 +4,108 @@
 #include "ravl_oe.h"
 
 #include "ravl_sgx.h"
+#include "ravl_sgx_defs.h"
+
+// By defining USE_OE_VERIFIER, all requests are simply forwarded to Open
+// Enclave. Without this, we support only a subset of attestation formats for
+// which we can extract a raw SGX quote, which is verified by ravl::sgx::verify.
+
+using namespace ravl::sgx;
 
 #ifdef USE_OE_VERIFIER
+#  ifndef HAVE_OPEN_ENCLAVE
+#    error Open Enclave Verifier requires Open Enclave library
+#  endif
 #  include <openenclave/attestation/sgx/evidence.h>
 #  include <openenclave/attestation/verifier.h>
 #  include <openenclave/bits/attestation.h>
 #  include <openenclave/bits/evidence.h>
 #  include <openenclave/bits/result.h>
 #else
-#  include <openenclave/attestation/sgx/evidence.h>
-#  include <openenclave/common/attest_plugin.h>
-#  include <openenclave/endorsements.h>
-#  include <openenclave/internal/report.h>
+#  define OE_UUID_SIZE 16
+#  define OE_ENUM_MAX 0xffffffff
+#  define OE_ATTESTATION_HEADER_VERSION 3
+#  define OE_SGX_ENDORSEMENTS_VERSION 1
+#  define OE_FORMAT_UUID_SGX_ECDSA \
+    { \
+      0xa3, 0xa2, 0x1e, 0x87, 0x1b, 0x4d, 0x40, 0x14, 0xb7, 0x0a, 0xa1, 0x25, \
+        0xd2, 0xfb, 0xcd, 0x8c \
+    }
+
+enum oe_enclave_type_t
+{
+
+  OE_ENCLAVE_TYPE_AUTO = 1,
+  OE_ENCLAVE_TYPE_SGX = 2,
+  OE_ENCLAVE_TYPE_OPTEE = 3,
+  __OE_ENCLAVE_TYPE_MAX = OE_ENUM_MAX,
+};
+
+enum oe_sgx_endorsements_fields_t
+{
+  OE_SGX_ENDORSEMENT_FIELD_VERSION,
+  OE_SGX_ENDORSEMENT_FIELD_TCB_INFO,
+  OE_SGX_ENDORSEMENT_FIELD_TCB_ISSUER_CHAIN,
+  OE_SGX_ENDORSEMENT_FIELD_CRL_PCK_CERT,
+  OE_SGX_ENDORSEMENT_FIELD_CRL_PCK_PROC_CA,
+  OE_SGX_ENDORSEMENT_FIELD_CRL_ISSUER_CHAIN_PCK_CERT,
+  OE_SGX_ENDORSEMENT_FIELD_QE_ID_INFO,
+  OE_SGX_ENDORSEMENT_FIELD_QE_ID_ISSUER_CHAIN,
+  OE_SGX_ENDORSEMENT_FIELD_CREATION_DATETIME,
+  OE_SGX_ENDORSEMENT_COUNT
+};
+
+#  pragma pack(push, 1)
+
+struct oe_uuid_t
+{
+  uint8_t b[OE_UUID_SIZE];
+};
+
+struct oe_attestation_header_t
+{
+  uint32_t version;
+  oe_uuid_t format_id;
+  uint64_t data_size;
+#  ifdef _MSC_VER
+#    pragma warning(push)
+#    pragma warning(disable : 4200)
+#  endif
+  uint8_t data[];
+#  ifdef _MSC_VER
+#    pragma warning(pop)
+#  endif
+};
+
+struct oe_endorsements_t
+{
+  uint32_t version;
+  uint32_t enclave_type;
+  uint32_t buffer_size;
+  uint32_t num_elements;
+#  ifdef _MSC_VER
+#    pragma warning(push)
+#    pragma warning(disable : 4200)
+#  endif
+  uint8_t buffer[];
+#  ifdef _MSC_VER
+#    pragma warning(pop)
+#  endif
+};
+
+struct oe_sgx_endorsement_item
+{
+  uint8_t* data;
+  uint32_t size;
+};
+
+struct oe_sgx_endorsements_t
+{
+  oe_sgx_endorsement_item items[OE_SGX_ENDORSEMENT_COUNT];
+};
+
+#  pragma pack(pop)
+
 #endif
 
 #include <cstring>

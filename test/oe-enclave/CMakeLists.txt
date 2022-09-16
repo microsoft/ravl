@@ -1,5 +1,7 @@
 
-if (OE)
+if(OE_TEST_ENCLAVE)
+  find_package(OpenEnclave REQUIRED)
+
   set(OE_CRYPTO_LIB openssl)
 
   add_custom_command(

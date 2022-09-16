@@ -5,12 +5,12 @@
 
 #include "ravl_crypto.h"
 #include "ravl_requests.h"
+#include "ravl_sgx_defs.h"
 #include "ravl_util.h"
 
 #include <dlfcn.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <sgx_quote_3.h>
 #include <span>
 #include <sstream>
 #include <stdexcept>

@@ -1,4 +1,6 @@
-if (SGXSDK)
+if (SGX_TEST_ENCLAVE)
+  find_path(SGXSDK sgx_edger8r.h HINTS /opt/sgxsdk/include /opt/intel/sgxsdk/include)
+
   add_custom_command(
     OUTPUT enclave_t.h enclave_t.c enclave_u.h enclave_u.c # enclave_args.h
     DEPENDS ${CMAKE_SOURCE_DIR}/test/intel-enclave/enclave.edl

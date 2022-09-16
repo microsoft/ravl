@@ -4,19 +4,13 @@
 #include "ravl.h"
 
 #include "ravl_crypto.h"
+#include "ravl_sgx.h"
 #include "ravl_util.h"
 
 #include <nlohmann/json.hpp>
 
-#ifdef HAVE_SGX_SDK
-#  include "ravl_sgx.h"
-#endif
-
 #ifdef HAVE_OPEN_ENCLAVE
 #  include "ravl_oe.h"
-#  ifndef HAVE_SGX_SDK
-#    define USE_OE_VERIFIER
-#  endif
 #endif
 
 #ifdef HAVE_SEV_SNP
@@ -111,19 +105,17 @@ namespace ravl
       switch (source)
       {
         case Source::SGX:
-#ifdef HAVE_SGX_SDK
+#ifdef HAVE_SGX
           r = ravl::sgx::verify(*this, options, request_tracker);
 #else
-        throw std::runtime_error(
-          "ravl was compiled without support for SGX support");
+          throw std::runtime_error("ravl was compiled without SGX support");
 #endif
         break;
       case Source::SEV_SNP:
 #ifdef HAVE_SEV_SNP
         r = ravl::sev_snp::verify(*this, options, request_tracker);
 #else
-        throw std::runtime_error(
-          "ravl was compiled without support for SEV/SNP support");
+        throw std::runtime_error("ravl was compiled without SEV/SNP support");
 #endif
         break;
       case Source::OPEN_ENCLAVE:
@@ -131,7 +123,7 @@ namespace ravl
         r = ravl::oe::verify(*this, options, request_tracker);
 #else
         throw std::runtime_error(
-          "ravl was compiled without support for Open Enclave support");
+          "ravl was compiled without Open Enclave support");
 #endif
         break;
       default:
