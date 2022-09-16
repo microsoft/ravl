@@ -20,7 +20,7 @@ namespace ravl
   class ThreadedRequestTracker : public RequestTracker
   {
   public:
-    ThreadedRequestTracker();
+    ThreadedRequestTracker(bool verbose = false);
     virtual ~ThreadedRequestTracker() = default;
 
     virtual bool when_completed(

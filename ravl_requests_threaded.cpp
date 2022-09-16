@@ -5,7 +5,9 @@
 
 namespace ravl
 {
-  ThreadedRequestTracker::ThreadedRequestTracker() : RequestTracker() {}
+  ThreadedRequestTracker::ThreadedRequestTracker(bool verbose) :
+    RequestTracker(verbose)
+  {}
 
   bool ThreadedRequestTracker::when_completed(
     std::vector<Request>&& rs, std::function<bool(std::vector<Response>&&)>&& f)
@@ -38,8 +40,9 @@ namespace ravl
         for (size_t i = 0; i < treq_set->size(); i++)
         {
           TrackedRequest& treq = treq_set->at(i);
-          treq.t = std::make_shared<std::thread>(
-            [&treq]() { treq.response = treq.request(); });
+          treq.t = std::make_shared<std::thread>([&treq, v = verbose]() {
+            treq.response = treq.request.execute(v);
+          });
         }
       }
 

@@ -195,7 +195,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       if (!tracker)
-        tracker = std::make_shared<SynchronousRequestTracker>();
+        tracker =
+          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
 
       std::string r;
 
@@ -205,9 +206,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
 
       request_set.emplace_back(vcek_issuer_chain_url);
-
-      if (!tracker)
-        tracker = std::make_shared<SynchronousRequestTracker>();
 
       bool tr = tracker->when_completed(
         std::move(request_set), [&r](std::vector<Response>&& response_set) {
@@ -232,6 +230,35 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       std::optional<Unique_X509> root_ca_certificate;
       Unique_STACK_OF_X509 vcek_certificate_chain;
       std::optional<Unique_X509_CRL> vcek_issuer_chain_crl;
+
+      std::string to_string(uint32_t verbosity, size_t indent = 0) const
+      {
+        std::stringstream ss;
+        ss << std::string(indent + 2, ' ') << "- Endorsements" << std::endl;
+
+        std::string ins(indent + 4, ' ');
+        const Unique_STACK_OF_X509& st = vcek_certificate_chain;
+        ss << ins << "- VCEK certificate chain:" << std::endl;
+        ss << st.to_string_short(indent + 4) << std::endl;
+
+        if (verbosity > 1)
+          ss << ins << "  - PEM:" << std::endl
+             << indentate(st.pem(), 8) << std::endl;
+
+        ss << ins << "- VCEK issuer CRL: ";
+        if (!vcek_issuer_chain_crl)
+          ss << "none";
+        else
+        {
+          const Unique_X509_CRL& vcek_issuer_crl = *vcek_issuer_chain_crl;
+          ss << std::endl << vcek_issuer_crl.to_string_short(indent + 6);
+          if (verbosity > 1)
+            ss << std::endl
+               << ins << "  - PEM:" << std::endl
+               << indentate(vcek_issuer_crl.pem(), 8);
+        }
+        return ss.str();
+      }
     };
 
     EndorsementsEtc download_endorsements(
@@ -242,7 +269,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       if (!tracker)
-        tracker = std::make_shared<SynchronousRequestTracker>();
+        tracker =
+          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
 
       EndorsementsEtc r;
 
@@ -253,10 +281,11 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       auto vcek_issuer_crl_url =
         fmt::format("{}/vcek/v1/{}/crl", kds_url, product_name);
 
-      if (options.endorsement_cache_url_template)
+      if (options.sev_snp_endorsement_cache_url_template)
       {
         auto tcb_version_str = fmt::format("{:08x}", *(uint64_t*)&tcb_version);
-        const auto& url_template = *options.endorsement_cache_url_template;
+        const auto& url_template =
+          *options.sev_snp_endorsement_cache_url_template;
         auto chain_url = fmt::format(url_template, hwid, tcb_version_str);
 
         request_set.emplace_back(chain_url);
@@ -310,8 +339,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
             if (response_set.size() != 3)
               return false;
 
-            // TODO: wait if rate limits are hit (should be a HTTP 429 with
-            // retry-after header)
+            // TODO: wait/retry if rate limits are hit (should be a HTTP 429
+            // with retry-after header)
 
             auto issuer_chain = response_set[1].body;
 
@@ -373,16 +402,19 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     {
       size_t indent = 0;
 
-      const auto& quote =
+      const auto& snp_att =
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
           a.evidence.data());
 
-      if (quote.version != 2)
+      if (snp_att.version != 2)
         throw std::runtime_error("unsupported attestation format version");
 
       Unique_X509_STORE store;
 
       EndorsementsEtc endorsements = {};
+
+      std::string product_name =
+        "Milan"; // TODO: How can we determine that from snp_att?
 
       if (!a.endorsements.empty() && !options.fresh_endorsements)
       {
@@ -393,47 +425,23 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
             Unique_X509(*options.root_ca_certificate);
         else if (options.fresh_root_ca_certificate)
           endorsements.root_ca_certificate =
-            download_root_ca_pem("Milan", options, tracker);
+            download_root_ca_pem(product_name, options, tracker);
       }
       else
       {
         endorsements = download_endorsements(
-          "Milan", quote.chip_id, quote.reported_tcb, options, tracker);
+          product_name,
+          snp_att.chip_id,
+          snp_att.reported_tcb,
+          options,
+          tracker);
 
         if (options.root_ca_certificate)
           endorsements.root_ca_certificate = *options.root_ca_certificate;
       }
 
       if (options.verbosity > 0)
-      {
-        std::stringstream ss;
-        ss << std::string(indent + 2, ' ') << "- Endorsements" << std::endl;
-
-        std::string ins(indent + 4, ' ');
-        const Unique_STACK_OF_X509& st = endorsements.vcek_certificate_chain;
-        ss << ins << "- VCEK certificate chain:" << std::endl;
-        ss << st.to_string_short(indent + 4) << std::endl;
-
-        if (options.verbosity > 1)
-          ss << ins << "  - PEM:" << std::endl
-             << indentate(st.pem(), 8) << std::endl;
-
-        ss << ins << "- VCEK issuer CRL: ";
-        if (!endorsements.vcek_issuer_chain_crl)
-          ss << "none";
-        else
-        {
-          Unique_X509_CRL& vcek_issuer_crl =
-            *endorsements.vcek_issuer_chain_crl;
-          ss << std::endl
-             << vcek_issuer_crl.to_string_short(indent + 6) << std::endl;
-          if (options.verbosity > 1)
-            ss << ins << "  - PEM:" << std::endl
-               << indentate(vcek_issuer_crl.pem(), 8);
-        }
-
-        log(ss.str());
-      }
+        log(endorsements.to_string(options.verbosity, indent));
 
       store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
       store.add_crl(endorsements.vcek_issuer_chain_crl);
@@ -471,19 +479,15 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (!ark_certificate.is_ca())
         throw std::runtime_error("Root CA certificate is not a CA");
 
-      if (quote.signature_algo != snp::SignatureAlgorithm::ecdsa_p384_sha384)
+      if (snp_att.signature_algo != snp::SignatureAlgorithm::ecdsa_p384_sha384)
         throw std::runtime_error("unexpected signature algorithm");
 
       std::span msg(
-        a.evidence.data(), a.evidence.size() - sizeof(quote.signature));
+        a.evidence.data(), a.evidence.size() - sizeof(snp_att.signature));
 
       Unique_EVP_PKEY vcek_pk(vcek_certificate);
-      if (!verify_signature(vcek_pk, msg, quote.signature))
+      if (!verify_signature(vcek_pk, msg, snp_att.signature))
         throw std::runtime_error("invalid VCEK signature");
-
-      // https://www.amd.com/system/files/TechDocs/55766_SEV-KM_API_Specification.pdf
-      // Appendix C defines a custom (?!) certificate format and steps to verify
-      // the various certificates.
 
       return true;
     }

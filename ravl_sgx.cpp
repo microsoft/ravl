@@ -28,15 +28,6 @@
 // Intel Provisioning Spec:
 // https://api.portal.trustedservices.intel.com/documentation
 
-// PCK Crl from cache:
-// 'https://global.acccache.azure.net/sgx/certification/v3/pckcrl?uri=https%253a%252f%252fcertificates.trustedservices.intel.com%252fintelsgxpckprocessor.crl&clientid=production_client&api-version=2020-02-12-preview'.
-// Root CA Crl from cache:
-// 'https://global.acccache.azure.net/sgx/certification/v3/pckcrl?uri=https%253a%252f%252fcertificates.trustedservices.intel.com%252fintelsgxrootca.crl&clientid=production_client&api-version=2020-02-12-preview'.
-// TCB Info from cache:
-// 'https://global.acccache.azure.net/sgx/certification/v3/tcb?fmspc=00906ed50000&clientid=production_client&api-version=2018-10-01-preview'.
-// QE Identity from cache:
-// 'https://global.acccache.azure.net/sgx/certification/v3/qe/identity?clientid=production_client&api-version=2018-10-01-preview'
-
 namespace ravl
 {
   using namespace crypto;
@@ -118,60 +109,46 @@ namespace ravl
 
         if (verbosity > 0)
         {
-          Unique_X509_CRL crl((const std::string&)root_ca_crl);
+          Unique_X509_CRL root_crl((const std::string&)root_ca_crl);
           ss << ins << "- Root CA CRL:" << std::endl;
-          ss << crl.to_string_short(indent + 4) << std::endl;
-        }
-        if (verbosity > 1)
-          ss << ins << fmt::format("  - PEM:\n{}", vec2str(root_ca_crl, 8))
-             << std::endl;
+          ss << root_crl.to_string_short(indent + 4) << std::endl;
+          if (verbosity > 1)
+            ss << ins << fmt::format("  - PEM:\n{}", vec2str(root_ca_crl, 8))
+               << std::endl;
 
-        if (verbosity > 0)
-        {
           Unique_STACK_OF_X509 st(pck_crl_issuer_chain);
           ss << ins << "- PCK CRL issuer chain:" << std::endl;
           ss << st.to_string_short(indent + 4) << std::endl;
-        }
-        if (verbosity > 1)
-          ss << ins << "  - PEM:" << std::endl
-             << vec2str(pck_crl_issuer_chain, 8) << std::endl;
+          if (verbosity > 1)
+            ss << ins << "  - PEM:" << std::endl
+               << vec2str(pck_crl_issuer_chain, 8) << std::endl;
 
-        if (verbosity > 0)
-        {
           Unique_X509_CRL crl((const std::string&)pck_crl);
           ss << ins << "- PCK CRL:" << std::endl;
           ss << crl.to_string_short(indent + 4) << std::endl;
-        }
-        if (verbosity > 1)
-          ss << ins << "  - PEM:" << std::endl
-             << vec2str(pck_crl, 8) << std::endl;
+          if (verbosity > 1)
+            ss << ins << "  - PEM:" << std::endl
+               << vec2str(pck_crl, 8) << std::endl;
 
-        if (verbosity > 0)
-        {
-          Unique_STACK_OF_X509 st(tcb_info_issuer_chain);
+          Unique_STACK_OF_X509 ist(tcb_info_issuer_chain);
           ss << ins << "- TCB info issuer chain:" << std::endl;
-          ss << st.to_string_short(indent + 4) << std::endl;
-        }
-        if (verbosity > 1)
-          ss << ins << "  - PEM:" << std::endl
-             << vec2str(tcb_info_issuer_chain, 8) << std::endl;
+          ss << ist.to_string_short(indent + 4) << std::endl;
+          if (verbosity > 1)
+            ss << ins << "  - PEM:" << std::endl
+               << vec2str(tcb_info_issuer_chain, 8) << std::endl;
 
-        if (verbosity > 1)
           ss << ins << fmt::format("- TCB info: {}", vec2str(tcb_info))
              << std::endl;
 
-        if (verbosity > 0)
-        {
-          Unique_STACK_OF_X509 st(qe_identity_issuer_chain);
+          Unique_STACK_OF_X509 qist(qe_identity_issuer_chain);
           ss << ins << "- QE identity issuer chain:" << std::endl;
-          ss << st.to_string_short(indent + 4) << std::endl;
-        }
-        if (verbosity > 1)
-          ss << ins << "  - PEM:" << std::endl
-             << vec2str(qe_identity_issuer_chain, 8) << std::endl;
+          ss << qist.to_string_short(indent + 4) << std::endl;
+          if (verbosity > 1)
+            ss << ins << "  - PEM:" << std::endl
+               << vec2str(qe_identity_issuer_chain, 8) << std::endl;
 
-        if (verbosity > 0)
           ss << ins << fmt::format("- QE identity: {}", vec2str(qe_identity));
+        }
         return ss.str();
       }
     };
@@ -239,11 +216,12 @@ namespace ravl
       return true;
     }
 
-    static const std::string root_ca_url =
-      "https://certificates.trustedservices.intel.com/"
-      "Intel_SGX_Provisioning_Certification_RootCA.pem";
+    static const std::string intel_certificates_url_base =
+      "https://certificates.trustedservices.intel.com";
+    static const std::string root_ca_url = intel_certificates_url_base +
+      "/Intel_SGX_Provisioning_Certification_RootCA.pem";
     static const std::string root_crl_url =
-      "https://certificates.trustedservices.intel.com/IntelSGXRootCA.crl";
+      intel_certificates_url_base + "/IntelSGXRootCA.crl";
     static const std::string api_base_url =
       "https://api.trustedservices.intel.com/sgx/certification/v3";
     static const std::string tcb_url = api_base_url + "/tcb";
@@ -252,10 +230,11 @@ namespace ravl
     static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
     std::string download_root_ca_pem(
-      std::shared_ptr<RequestTracker> tracker = nullptr)
+      const Options& options, std::shared_ptr<RequestTracker> tracker = nullptr)
     {
       if (!tracker)
-        tracker = std::make_shared<SynchronousRequestTracker>();
+        tracker =
+          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
 
       std::string r;
       auto response = tracker->when_completed(
@@ -275,6 +254,7 @@ namespace ravl
     std::shared_ptr<QL_QVE_Collateral> download_collateral(
       const std::string& ca,
       const std::string& fmspc,
+      const Options& options,
       bool qve = false,
       std::shared_ptr<RequestTracker> tracker = nullptr)
     {
@@ -286,32 +266,56 @@ namespace ravl
 
       std::vector<Request> request_set;
 
-      // Root CRL
-      request_set.emplace_back(root_crl_url);
+      if (!options.sgx_endorsement_cache_url_template)
 
-      // TCB info
-      // https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v3
-      request_set.emplace_back(tcb_url + "?fmspc=" + fmspc);
-
-      // PCK CRL
-      // https://api.portal.trustedservices.intel.com/documentation#pcs-revocation-v3
-      request_set.emplace_back(pck_crl_url + "?ca=" + ca + "&encoding=pem");
-
-      if (!qve)
       {
-        // QE Identity
-        // https://api.portal.trustedservices.intel.com/documentation#pcs-qe-identity-v3
-        request_set.emplace_back(qe_identity_url);
+        // Root CRL
+        request_set.emplace_back(root_crl_url);
+
+        // TCB info
+        // https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v3
+        request_set.emplace_back(tcb_url + "?fmspc=" + fmspc);
+
+        // PCK CRL
+        // https://api.portal.trustedservices.intel.com/documentation#pcs-revocation-v3
+        request_set.emplace_back(pck_crl_url + "?ca=" + ca + "&encoding=pem");
+
+        if (!qve)
+        {
+          // QE Identity
+          // https://api.portal.trustedservices.intel.com/documentation#pcs-qe-identity-v3
+          request_set.emplace_back(qe_identity_url);
+        }
+        else
+        {
+          // QVE Identity
+          // https://api.portal.trustedservices.intel.com/documentation#pcs-qve-identity-v3
+          request_set.emplace_back(qve_identity_url);
+        }
       }
       else
       {
-        // QVE Identity
-        // https://api.portal.trustedservices.intel.com/documentation#pcs-qve-identity-v3
-        request_set.emplace_back(qve_identity_url);
+        auto tmpl = *options.sgx_endorsement_cache_url_template;
+        request_set.emplace_back(fmt::format(tmpl, "pckcrl", root_crl_url));
+        request_set.emplace_back(
+          fmt::format(tmpl, "tcb", tcb_url) + "&fmspc=" + fmspc);
+        request_set.emplace_back(
+          fmt::format(
+            tmpl,
+            "pckcrl",
+            intel_certificates_url_base + "/intelsgxpck" + ca + ".crl") +
+          "&encoding=pem");
+        if (!qve)
+          request_set.emplace_back(
+            fmt::format(tmpl, "qe/identity", qe_identity_url));
+        else
+          request_set.emplace_back(
+            fmt::format(tmpl, "qve/identity", qve_identity_url));
       }
 
       if (!tracker)
-        tracker = std::make_shared<SynchronousRequestTracker>();
+        tracker =
+          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
 
       bool tr = tracker->when_completed(
         std::move(request_set),
@@ -987,7 +991,7 @@ namespace ravl
         if (options.root_ca_certificate)
           root_ca_pem = *options.root_ca_certificate;
         else if (options.fresh_root_ca_certificate)
-          root_ca_pem = download_root_ca_pem(tracker);
+          root_ca_pem = download_root_ca_pem(options, tracker);
       }
       else
       {
@@ -1001,12 +1005,13 @@ namespace ravl
           !is_all_zero(*pck_ext.platform_instance_id);
         auto ca_type = have_pid ? "platform" : "processor";
         auto fmspc_hex = fmt::format("{:02x}", fmt::join(pck_ext.fmspc, ""));
-        collateral = download_collateral(ca_type, fmspc_hex, false, tracker);
+        collateral =
+          download_collateral(ca_type, fmspc_hex, options, false, tracker);
 
         if (options.root_ca_certificate)
           root_ca_pem = *options.root_ca_certificate;
         else
-          root_ca_pem = download_root_ca_pem(tracker);
+          root_ca_pem = download_root_ca_pem(options, tracker);
       }
 
       if (options.verbosity > 0)

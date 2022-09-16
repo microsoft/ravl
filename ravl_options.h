@@ -29,7 +29,12 @@ namespace ravl
     /// fresh_root_ca_certificate; PEM format)
     std::optional<std::string> root_ca_certificate = std::nullopt;
 
-    /// Optional URL template for cached endorsements
-    std::optional<std::string> endorsement_cache_url_template = std::nullopt;
+    /// Optional URL template for cached Intel SGX endorsements (DCAP)
+    std::optional<std::string> sgx_endorsement_cache_url_template =
+      std::nullopt;
+
+    /// Optional URL template for cached AMD SEV/SNP endorsements
+    std::optional<std::string> sev_snp_endorsement_cache_url_template =
+      std::nullopt;
   };
 }

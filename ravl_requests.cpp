@@ -9,7 +9,9 @@
 
 namespace ravl
 {
-  SynchronousRequestTracker::SynchronousRequestTracker() : RequestTracker() {}
+  SynchronousRequestTracker::SynchronousRequestTracker(bool verbose) :
+    RequestTracker(verbose)
+  {}
 
   bool SynchronousRequestTracker::when_completed(
     std::vector<Request>&& rs, std::function<bool(std::vector<Response>&&)>&& f)
@@ -29,7 +31,7 @@ namespace ravl
       {
         auto& req = rsit->second.at(i);
         auto& rsps = response_sets[id][i];
-        rsps = req();
+        rsps = req.execute(verbose);
       }
 
       wait(id);

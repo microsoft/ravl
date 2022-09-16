@@ -12,7 +12,7 @@
 using namespace ravl;
 
 Options default_options = {
-  .verbosity = 2, .certificate_verification = {.ignore_time = true}};
+  .verbosity = 1, .certificate_verification = {.ignore_time = true}};
 
 /* clang-format off */
 std::string oe_coffeelake_attestation = R"({
@@ -59,7 +59,7 @@ std::string sev_snp_quote = R"({
 /* clang-format on */
 
 std::shared_ptr<RequestTracker> request_tracker =
-  std::make_shared<ThreadedRequestTracker>();
+  std::make_shared<ThreadedRequestTracker>(/*verbose=*/false);
 
 TEST_CASE("Open Enclave CoffeeLake")
 {
@@ -132,6 +132,17 @@ TEST_CASE("SGX SDK QE Quote3 w/o endorsements")
   REQUIRE(att.verify(default_options, request_tracker));
 }
 
+TEST_CASE("SGX quote with endorsements from cache")
+{
+  Attestation att(coffeelake_quote);
+  att.endorsements = {};
+  Options options = default_options;
+  options.sgx_endorsement_cache_url_template =
+    "https://global.acccache.azure.net/sgx/certification/v3/"
+    "{}?uri={}&clientid=production_client&api-version=2020-02-12-preview";
+  REQUIRE(att.verify(options, request_tracker));
+}
+
 TEST_CASE("SEV/SNP quote")
 {
   Attestation att(sev_snp_quote);
@@ -145,12 +156,12 @@ TEST_CASE("SEV/SNP quote w/o endorsements")
   REQUIRE(att.verify(default_options, request_tracker));
 }
 
-TEST_CASE("SEV/SNP quote w/ cached endorsements")
+TEST_CASE("SEV/SNP quote with endorsements from cache")
 {
   Attestation att(sev_snp_quote);
   att.endorsements = {};
   Options options = default_options;
-  options.endorsement_cache_url_template =
+  options.sev_snp_endorsement_cache_url_template =
     "https://global.acccache.azure.net/SevSnpVM/certificates/{}/"
     "{}?api-version=2020-10-15-preview";
   REQUIRE(att.verify(options, request_tracker));

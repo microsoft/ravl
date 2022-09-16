@@ -35,7 +35,7 @@ namespace ravl
     std::unordered_map<std::string, std::string> headers = {};
     std::string body = "";
 
-    Response operator()() const;
+    Response execute(bool verbose = false) const;
   };
 
   class RequestTracker
@@ -43,7 +43,7 @@ namespace ravl
   public:
     typedef size_t RequestSetId;
 
-    RequestTracker() {}
+    RequestTracker(bool verbose = false) : verbose(verbose) {}
     virtual ~RequestTracker() = default;
 
     virtual bool when_completed(
@@ -51,12 +51,15 @@ namespace ravl
       std::function<bool(std::vector<Response>&&)>&& f) = 0;
 
     virtual void wait(const RequestSetId& id) = 0;
+
+  protected:
+    bool verbose = false;
   };
 
   class SynchronousRequestTracker : public RequestTracker
   {
   public:
-    SynchronousRequestTracker();
+    SynchronousRequestTracker(bool verbose = false);
     virtual ~SynchronousRequestTracker() = default;
 
     virtual bool when_completed(

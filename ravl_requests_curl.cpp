@@ -39,7 +39,7 @@ namespace ravl
     return real_size;
   }
 
-  Response Request::operator()() const
+  Response Request::execute(bool verbose) const
   {
     if (!initialized)
     {
@@ -60,12 +60,15 @@ namespace ravl
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &r);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_write_fun);
 
+    if (verbose)
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
     if (!body.empty())
       curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.data());
 
     CURLcode curl_code = curl_easy_perform(curl);
     r.code = curl_code;
-    // printf("RESPONSE: %s\n", r.body.c_str());
+
     curl_easy_cleanup(curl);
     return r;
   }
