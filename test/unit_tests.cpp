@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include <ravl.h>
-#include <ravl_requests.h>
-#include <ravl_requests_threaded.h>
+#include <ravl_url_requests.h>
+#include <ravl_url_requests_threaded.h>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
@@ -12,7 +12,7 @@
 using namespace ravl;
 
 Options default_options = {
-  .verbosity = 1, .certificate_verification = {.ignore_time = true}};
+  .verbosity = 0, .certificate_verification = {.ignore_time = true}};
 
 /* clang-format off */
 std::string oe_coffeelake_attestation = R"({
@@ -58,8 +58,8 @@ std::string sev_snp_quote = R"({
 
 /* clang-format on */
 
-std::shared_ptr<RequestTracker> request_tracker =
-  std::make_shared<ThreadedRequestTracker>(/*verbose=*/false);
+std::shared_ptr<URLRequestTracker> request_tracker =
+  std::make_shared<ThreadedURLRequestTracker>(/*verbose=*/false);
 
 TEST_CASE("Open Enclave CoffeeLake")
 {

@@ -10,7 +10,108 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/test/unit_tests",
       "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Unit tests (OE CoffeeLake)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
       "stopAtEntry": false,
+      "args": [
+        "-tc=Open Enclave CoffeeLake"
+      ]
+    },
+    {
+      "name": "Unit tests (OE CoffeeLake) w/o",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "args": [
+        "-tc=Open Enclave CoffeeLake w/o endorsements"
+      ]
+    },
+    {
+      "name": "Unit tests (SGX CoffeeLake)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "args": [
+        "-tc=SGX CoffeeLake"
+      ]
+    },
+    {
+      "name": "Unit tests (SGX w/ cache)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "args": [
+        "-tc=SGX quote with endorsements from cache"
+      ]
+    },
+    {
+      "name": "Unit tests (SEV/SNP)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "args": [
+        "-tc=SEV/SNP quote"
+      ]
+    },
+    {
+      "name": "Unit tests (SEV/SNP) w/o",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "args": [
+        "-tc=SEV/SNP quote w/o*"
+      ]
+    },
+    {
+      "name": "Unit tests (SEV/SNP) w/ cache",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "args": [
+        "-tc=SEV/SNP quote w/ cached endorsements"
+      ]
+    },
+    {
+      "name": "intel-enclave",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/intel-enclave/intel_host",
+      "args": [
+        "test/intel-enclave/intel_enclave.signed"
+      ],
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false
+    },
+    {
+      "name": "WASM via Edge",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:8080/ravl.html"
+      // "url": "${workspaceFolder}/wasm/build/ravl.html"
+    },
+    {
+      "name": "Attach to Edge",
+      "type": "msedge",
+      "request": "attach",
+      "port": 8080
     }
   ]
 }

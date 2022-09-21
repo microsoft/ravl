@@ -5,6 +5,7 @@
 
 #include "ravl_sgx.h"
 #include "ravl_sgx_defs.h"
+#include "ravl_url_requests.h"
 
 // By defining USE_OE_VERIFIER, all requests are simply forwarded to Open
 // Enclave. Without this, we support only a subset of attestation formats for
@@ -170,39 +171,9 @@ namespace ravl
         data.push_back((t >> (8 * (sizeof(T) - i - 1))) & 0xFF);
     }
 
-    bool verify(
-      const Attestation& a,
-      const Options& options,
-      std::shared_ptr<RequestTracker> tracker)
+    Attestation extract_sgx_attestation(
+      const Attestation& a, const Options& options)
     {
-#ifdef USE_OE_VERIFIER
-      if (oe_verifier_initialize() != OE_OK)
-        throw std::runtime_error("failed to initialize Open Enclave verifier");
-
-      std::vector<oe_policy_t> policies;
-
-      oe_claim_t* claims = nullptr;
-      size_t claims_size = 0;
-
-      oe_result_t r = oe_verify_evidence(
-        &sgx_remote_uuid,
-        a.evidence.data(),
-        a.evidence.size(),
-        a.endorsements.size() > 0 ? a.endorsements.data() : nullptr,
-        a.endorsements.size(),
-        policies.data(),
-        policies.size(),
-        &claims,
-        &claims_size);
-
-      if (oe_free_claims(claims, claims_size) != OE_OK)
-        throw std::runtime_error("failed to free Open Enclave claims");
-
-      if (oe_verifier_shutdown() != OE_OK)
-        throw std::runtime_error("failed to initialize Open Enclave verifier");
-
-      return r == OE_OK;
-#else
       if (a.evidence.empty())
         throw std::runtime_error("No evidence to verify");
 
@@ -260,13 +231,12 @@ namespace ravl
               "is supported");
         }
 
-        Attestation sgx_attestation(
+        return Attestation(
           Source::SGX,
           {evidence_header->data,
            evidence_header->data + evidence_header->data_size},
           {endorsements_header->data,
            endorsements_header->data + endorsements_header->data_size});
-        return sgx_attestation.verify(options);
       }
       else
       {
@@ -407,11 +377,60 @@ namespace ravl
           }
         }
 
-        Attestation sgx_attestation(Source::SGX, squote, scollateral);
-        // std::string sat = sgx_attestation;
-        // printf("%s\n", sat.c_str());
-        return sgx::verify(sgx_attestation, options, tracker);
+        return Attestation(Source::SGX, squote, scollateral);
       }
+    }
+
+    std::optional<URLRequestSetId> prepare_endorsements(
+      const Attestation& a,
+      const Options& options,
+      std::shared_ptr<URLRequestTracker> tracker)
+    {
+#ifdef USE_OE_VERIFIER
+      return std::nullopt;
+#else
+      auto sgx_attestation = extract_sgx_attestation(a, options);
+      return sgx::prepare_endorsements(sgx_attestation, options, tracker);
+#endif
+    }
+
+    bool verify(
+      const Attestation& a,
+      const Options& options,
+      const std::vector<URLResponse>& url_response_set)
+    {
+#ifdef USE_OE_VERIFIER
+      if (oe_verifier_initialize() != OE_OK)
+        throw std::runtime_error("failed to initialize Open Enclave verifier");
+
+      std::vector<oe_policy_t> policies;
+
+      oe_claim_t* claims = nullptr;
+      size_t claims_size = 0;
+
+      oe_result_t r = oe_verify_evidence(
+        &sgx_remote_uuid,
+        a.evidence.data(),
+        a.evidence.size(),
+        a.endorsements.size() > 0 ? a.endorsements.data() : nullptr,
+        a.endorsements.size(),
+        policies.data(),
+        policies.size(),
+        &claims,
+        &claims_size);
+
+      if (oe_free_claims(claims, claims_size) != OE_OK)
+        throw std::runtime_error("failed to free Open Enclave claims");
+
+      if (oe_verifier_shutdown() != OE_OK)
+        throw std::runtime_error("failed to initialize Open Enclave verifier");
+
+      return r == OE_OK;
+#else
+      auto sgx_attestation = extract_sgx_attestation(a, options);
+      // std::string sat = sgx_attestation;
+      // printf("%s\n", sat.c_str());
+      return sgx::verify(sgx_attestation, options, url_response_set);
 #endif
     }
   }

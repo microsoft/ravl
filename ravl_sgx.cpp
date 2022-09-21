@@ -5,8 +5,8 @@
 
 #include "fmt/core.h"
 #include "ravl_crypto.h"
-#include "ravl_requests.h"
 #include "ravl_sgx_defs.h"
+#include "ravl_url_requests.h"
 #include "ravl_util.h"
 
 #include <dlfcn.h>
@@ -88,6 +88,7 @@ namespace ravl
       uint16_t minor_version;
       uint32_t tee_type;
 
+      std::string root_ca_pem = {};
       std::vector<uint8_t> pck_crl_issuer_chain;
       std::vector<uint8_t> root_ca_crl;
       std::vector<uint8_t> pck_crl;
@@ -110,7 +111,7 @@ namespace ravl
 
         if (verbosity > 0)
         {
-          Unique_X509_CRL root_crl((const std::string&)root_ca_crl);
+          Unique_X509_CRL root_crl(root_ca_crl, true);
           ss << ins << "- Root CA CRL:" << std::endl;
           ss << root_crl.to_string_short(indent + 4) << std::endl;
           if (verbosity > 1)
@@ -124,7 +125,7 @@ namespace ravl
             ss << ins << "  - PEM:" << std::endl
                << vec2str(pck_crl_issuer_chain, 8) << std::endl;
 
-          Unique_X509_CRL crl((const std::string&)pck_crl);
+          Unique_X509_CRL crl(pck_crl, true);
           ss << ins << "- PCK CRL:" << std::endl;
           ss << crl.to_string_short(indent + 4) << std::endl;
           if (verbosity > 1)
@@ -230,34 +231,20 @@ namespace ravl
     static const std::string qe_identity_url = api_base_url + "/qe/identity";
     static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
-    std::string download_root_ca_pem(
-      const Options& options, std::shared_ptr<RequestTracker> tracker = nullptr)
+    URLRequestSetId download_root_ca_pem(
+      const Options& options, std::shared_ptr<URLRequestTracker> tracker)
     {
-      if (!tracker)
-        tracker =
-          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
-
-      std::string r;
-      auto response = tracker->when_completed(
-        {Request(root_ca_url)}, [&r](std::vector<Response>&& response_set) {
-          if (response_set.size() != 1)
-            return false;
-          r = response_set.at(0).body;
-          return true;
-        });
-
-      if (r.empty())
-        throw std::runtime_error("download of root CA certificate failed");
-
-      return r;
+      std::vector<URLRequest> request_set;
+      request_set.emplace_back(root_ca_url);
+      return tracker->submit(std::move(request_set));
     }
 
-    std::shared_ptr<QL_QVE_Collateral> download_collateral(
+    URLRequestSetId download_collateral(
       const std::string& ca,
       const std::string& fmspc,
       const Options& options,
       bool qve = false,
-      std::shared_ptr<RequestTracker> tracker = nullptr)
+      std::shared_ptr<URLRequestTracker> tracker = nullptr)
     {
       auto r = std::make_shared<QL_QVE_Collateral>();
 
@@ -265,11 +252,14 @@ namespace ravl
       r->minor_version = 1;
       r->tee_type = 0;
 
-      std::vector<Request> request_set;
+      std::vector<URLRequest> request_set;
 
       if (!options.sgx_endorsement_cache_url_template)
-
       {
+        // Root CA certificate
+        if (!options.root_ca_certificate)
+          request_set.emplace_back(root_ca_url);
+
         // Root CRL
         request_set.emplace_back(root_crl_url);
 
@@ -296,6 +286,8 @@ namespace ravl
       }
       else
       {
+        if (!options.root_ca_certificate)
+          request_set.emplace_back(root_ca_url);
         auto tmpl = *options.sgx_endorsement_cache_url_template;
         request_set.emplace_back(
           fmt::vformat(tmpl, fmt::make_format_args("pckcrl", root_crl_url)));
@@ -317,46 +309,9 @@ namespace ravl
 
       if (!tracker)
         tracker =
-          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
+          std::make_shared<SynchronousURLRequestTracker>(options.verbosity > 0);
 
-      bool tr = tracker->when_completed(
-        std::move(request_set),
-        [&r, qve](std::vector<Response>&& response_set) {
-          if (response_set.size() != 4)
-            return false;
-
-          r->root_ca_crl = str2vec(response_set[0].body);
-
-          r->tcb_info = str2vec(response_set[1].body);
-          r->tcb_info_issuer_chain =
-            response_set[1].get_header_data("SGX-TCB-Info-Issuer-Chain", true);
-
-          r->pck_crl = str2vec(response_set[2].body);
-          r->pck_crl_issuer_chain =
-            response_set[2].get_header_data("SGX-PCK-CRL-Issuer-Chain", true);
-
-          if (!qve)
-          {
-            auto response = response_set[3];
-            r->qe_identity = str2vec(response.body);
-            r->qe_identity_issuer_chain = response.get_header_data(
-              "SGX-Enclave-Identity-Issuer-Chain", true);
-          }
-          else
-          {
-            auto response = response_set[3];
-            r->qe_identity = str2vec(response.body);
-            r->qe_identity_issuer_chain = response.get_header_data(
-              "SGX-Enclave-Identity-Issuer-Chain", true);
-          }
-
-          return true;
-        });
-
-      if (!tr)
-        throw std::runtime_error("collateral download request set failed");
-
-      return r;
+      return tracker->submit(std::move(request_set));
     }
 
     class CertificateExtension
@@ -973,32 +928,34 @@ namespace ravl
       std::span<const uint8_t> certification_data;
     };
 
-    bool verify(
+    std::optional<URLRequestSetId> prepare_endorsements(
       const Attestation& a,
       const Options& options,
-      std::shared_ptr<RequestTracker> tracker)
+      std::shared_ptr<URLRequestTracker> tracker)
     {
+      if (!tracker)
+        throw std::runtime_error("no URL request tracker");
+
+      if (
+        !a.endorsements.empty() && !options.fresh_endorsements &&
+        !options.fresh_root_ca_certificate)
+        return std::nullopt;
+
       size_t indent = 0;
       std::span quote = parse_quote(a);
       SignatureData signature_data(quote, a);
 
-      Unique_X509_STORE store;
-      std::shared_ptr<QL_QVE_Collateral> collateral = nullptr;
-      std::string root_ca_pem = {};
+      std::optional<URLRequestSetId> r = std::nullopt;
 
       if (!a.endorsements.empty() && !options.fresh_endorsements)
       {
-        collateral = std::make_shared<QL_QVE_Collateral>(a.endorsements);
-
-        if (options.root_ca_certificate)
-          root_ca_pem = *options.root_ca_certificate;
-        else if (options.fresh_root_ca_certificate)
-          root_ca_pem = download_root_ca_pem(options, tracker);
+        if (!options.root_ca_certificate)
+          r = download_root_ca_pem(options, tracker);
       }
       else
       {
-        // Get X509 extensions from the PCK cert to find CA type and fmspc. The
-        // cert chain is still unverified at this point.
+        // Get X509 extensions from the PCK cert to find CA type and fmspc.
+        // The cert chain is still unverified at this point.
         auto pck_pem = extract_pem(signature_data.certification_data);
         Unique_X509 pck_leaf(Unique_BIO(pck_pem), true);
         CertificateExtension pck_ext(pck_leaf);
@@ -1007,14 +964,81 @@ namespace ravl
           !is_all_zero(*pck_ext.platform_instance_id);
         auto ca_type = have_pid ? "platform" : "processor";
         auto fmspc_hex = fmt::format("{:02x}", fmt::join(pck_ext.fmspc, ""));
-        collateral =
-          download_collateral(ca_type, fmspc_hex, options, false, tracker);
-
-        if (options.root_ca_certificate)
-          root_ca_pem = *options.root_ca_certificate;
-        else
-          root_ca_pem = download_root_ca_pem(options, tracker);
+        r = download_collateral(ca_type, fmspc_hex, options, false, tracker);
       }
+
+      return r;
+    }
+
+    static std::shared_ptr<QL_QVE_Collateral> consume_url_responses(
+      const Options& options,
+      const std::vector<URLResponse>& url_response_set,
+      bool qve = false)
+    {
+      size_t expected_responses = 4;
+
+      if (!options.root_ca_certificate)
+        expected_responses++;
+
+      if (url_response_set.size() != expected_responses)
+        throw std::runtime_error(
+          "collateral download request set of unexpected size");
+
+      auto r = std::make_shared<QL_QVE_Collateral>();
+
+      size_t i = 0;
+
+      if (!options.root_ca_certificate)
+        r->root_ca_pem = url_response_set[i++].body;
+
+      r->root_ca_crl = str2vec(url_response_set[i++].body);
+
+      r->tcb_info = str2vec(url_response_set[i].body);
+      r->tcb_info_issuer_chain =
+        url_response_set[i].get_header_data("SGX-TCB-Info-Issuer-Chain", true);
+      i++;
+
+      r->pck_crl = str2vec(url_response_set[i].body);
+      r->pck_crl_issuer_chain =
+        url_response_set[i].get_header_data("SGX-PCK-CRL-Issuer-Chain", true);
+      i++;
+
+      if (!qve)
+      {
+        auto response = url_response_set[i];
+        r->qe_identity = str2vec(response.body);
+        r->qe_identity_issuer_chain =
+          response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
+      }
+      else
+      {
+        auto response = url_response_set[i];
+        r->qe_identity = str2vec(response.body);
+        r->qe_identity_issuer_chain =
+          response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
+      }
+
+      return r;
+    }
+
+    bool verify(
+      const Attestation& a,
+      const Options& options,
+      const std::vector<URLResponse>& url_response_set)
+    {
+      if (a.endorsements.empty() && url_response_set.empty())
+        throw std::runtime_error("missing endorsements");
+
+      size_t indent = 0;
+
+      Unique_X509_STORE store;
+
+      auto collateral = url_response_set.empty() ?
+        std::make_shared<QL_QVE_Collateral>(a.endorsements) :
+        consume_url_responses(options, url_response_set);
+
+      std::span quote = parse_quote(a);
+      SignatureData signature_data(quote, a);
 
       if (options.verbosity > 0)
         log(collateral->to_string(options.verbosity, indent + 2), indent);
@@ -1026,14 +1050,14 @@ namespace ravl
 
       bool trusted_root = false;
 
-      if (!root_ca_pem.empty())
-        store.add(root_ca_pem);
+      if (!collateral->root_ca_pem.empty())
+        store.add(collateral->root_ca_pem);
       else
         trusted_root = true;
 
       // Validate PCK certificate and it's issuer chain. We trust the root CA
-      // certificate in the endorsements if no other one is provided, but check
-      // that it has Intel's public key afterwards.
+      // certificate in the endorsements if no other one is provided, but
+      // check that it has Intel's public key afterwards.
       if (options.verbosity > 0)
         log("- PCK CRL issuer certificate chain verification", indent + 2);
       auto pck_crl_issuer_chain = verify_certificate_chain(
@@ -1053,7 +1077,7 @@ namespace ravl
         }
         else
         {
-          Unique_X509 root(root_ca_pem, true);
+          Unique_X509 root(collateral->root_ca_pem, true);
           log("- Root CA Certificate:", indent + 2);
           log(root.to_string_short(indent + 4));
         }
@@ -1068,7 +1092,7 @@ namespace ravl
           log(rs);
         }
         else
-          log(root_ca_pem, indent + 6);
+          log(collateral->root_ca_pem, indent + 6);
       }
 
       if (options.verbosity > 0)
