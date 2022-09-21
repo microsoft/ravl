@@ -15,14 +15,22 @@ namespace ravl
 
   namespace sev_snp
   {
-    std::optional<URLRequestSetId> prepare_endorsements(
-      const Attestation& a,
-      const Options& options,
-      std::shared_ptr<URLRequestTracker> request_tracker);
+    class Attestation : public ravl::Attestation
+    {
+    public:
+      Attestation(
+        const std::vector<uint8_t>& evidence,
+        const std::vector<uint8_t>& endorsements) :
+        ravl::Attestation(Source::SEV_SNP, evidence, endorsements)
+      {}
 
-    bool verify(
-      const Attestation& attestation,
-      const Options& options,
-      const std::vector<URLResponse>& url_response_set);
+      virtual std::optional<URLRequestSetId> prepare_endorsements(
+        const Options& options,
+        std::shared_ptr<URLRequestTracker> request_tracker) const override;
+
+      virtual bool verify(
+        const Options& options,
+        const std::vector<URLResponse>& url_response_set) const override;
+    };
   }
 }

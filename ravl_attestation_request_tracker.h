@@ -34,7 +34,7 @@ namespace ravl
 
     RequestID submit(
       const Options& options,
-      const Attestation& attestation,
+      std::shared_ptr<const Attestation> attestation,
       std::shared_ptr<URLRequestTracker> request_tracker = nullptr);
 
     RequestState state(RequestID id) const
@@ -57,7 +57,7 @@ namespace ravl
     {
       RequestState state = ERROR;
       Options options;
-      std::shared_ptr<Attestation> attestation;
+      std::shared_ptr<const Attestation> attestation;
       Result result = false;
       std::optional<URLRequestSetId> request_set_id = std::nullopt;
       std::shared_ptr<URLRequestTracker> url_request_tracker;

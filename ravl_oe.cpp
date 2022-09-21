@@ -7,6 +7,8 @@
 #include "ravl_sgx_defs.h"
 #include "ravl_url_requests.h"
 
+#include <memory>
+
 // By defining USE_OE_VERIFIER, all requests are simply forwarded to Open
 // Enclave. Without this, we support only a subset of attestation formats for
 // which we can extract a raw SGX quote, which is verified by ravl::sgx::verify.
@@ -171,7 +173,7 @@ namespace ravl
         data.push_back((t >> (8 * (sizeof(T) - i - 1))) & 0xFF);
     }
 
-    Attestation extract_sgx_attestation(
+    std::shared_ptr<sgx::Attestation> extract_sgx_attestation(
       const Attestation& a, const Options& options)
     {
       if (a.evidence.empty())
@@ -231,12 +233,13 @@ namespace ravl
               "is supported");
         }
 
-        return Attestation(
-          Source::SGX,
-          {evidence_header->data,
-           evidence_header->data + evidence_header->data_size},
-          {endorsements_header->data,
-           endorsements_header->data + endorsements_header->data_size});
+        return std::make_shared<sgx::Attestation>(
+          std::vector<uint8_t>(
+            evidence_header->data,
+            evidence_header->data + evidence_header->data_size),
+          std::vector<uint8_t>(
+            endorsements_header->data,
+            endorsements_header->data + endorsements_header->data_size));
       }
       else
       {
@@ -377,28 +380,33 @@ namespace ravl
           }
         }
 
-        return Attestation(Source::SGX, squote, scollateral);
+        return std::make_shared<sgx::Attestation>(squote, scollateral);
       }
     }
 
-    std::optional<URLRequestSetId> prepare_endorsements(
-      const Attestation& a,
-      const Options& options,
-      std::shared_ptr<URLRequestTracker> tracker)
+    std::optional<URLRequestSetId> Attestation::prepare_endorsements(
+      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
+#ifndef HAVE_OPEN_ENCLAVE
+      throw std::runtime_error(
+        "ravl was compiled without support for Open Enclave attestations");
+#endif
 #ifdef USE_OE_VERIFIER
       return std::nullopt;
 #else
-      auto sgx_attestation = extract_sgx_attestation(a, options);
-      return sgx::prepare_endorsements(sgx_attestation, options, tracker);
+      sgx_attestation = extract_sgx_attestation(*this, options);
+      return sgx_attestation->prepare_endorsements(options, tracker);
 #endif
     }
 
-    bool verify(
-      const Attestation& a,
+    bool Attestation::verify(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set)
+      const std::vector<URLResponse>& url_response_set) const
     {
+#ifndef HAVE_OPEN_ENCLAVE
+      throw std::runtime_error(
+        "ravl was compiled without support for Open Enclave attestations");
+#endif
 #ifdef USE_OE_VERIFIER
       if (oe_verifier_initialize() != OE_OK)
         throw std::runtime_error("failed to initialize Open Enclave verifier");
@@ -427,10 +435,11 @@ namespace ravl
 
       return r == OE_OK;
 #else
-      auto sgx_attestation = extract_sgx_attestation(a, options);
+      if (!sgx_attestation)
+        throw std::runtime_error("missing underlying SGX attestation");
       // std::string sat = sgx_attestation;
       // printf("%s\n", sat.c_str());
-      return sgx::verify(sgx_attestation, options, url_response_set);
+      return sgx_attestation->verify(options, url_response_set);
 #endif
     }
   }

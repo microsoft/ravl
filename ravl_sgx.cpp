@@ -928,26 +928,29 @@ namespace ravl
       std::span<const uint8_t> certification_data;
     };
 
-    std::optional<URLRequestSetId> prepare_endorsements(
-      const Attestation& a,
-      const Options& options,
-      std::shared_ptr<URLRequestTracker> tracker)
+    std::optional<URLRequestSetId> Attestation::prepare_endorsements(
+      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
+#ifndef HAVE_SGX
+      throw std::runtime_error(
+        "ravl was compiled without support for SGX attestations");
+#endif
+
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
 
       if (
-        !a.endorsements.empty() && !options.fresh_endorsements &&
+        !this->endorsements.empty() && !options.fresh_endorsements &&
         !options.fresh_root_ca_certificate)
         return std::nullopt;
 
       size_t indent = 0;
-      std::span quote = parse_quote(a);
-      SignatureData signature_data(quote, a);
+      std::span quote = parse_quote(*this);
+      SignatureData signature_data(quote, *this);
 
       std::optional<URLRequestSetId> r = std::nullopt;
 
-      if (!a.endorsements.empty() && !options.fresh_endorsements)
+      if (!this->endorsements.empty() && !options.fresh_endorsements)
       {
         if (!options.root_ca_certificate)
           r = download_root_ca_pem(options, tracker);
@@ -1021,12 +1024,17 @@ namespace ravl
       return r;
     }
 
-    bool verify(
-      const Attestation& a,
+    bool Attestation::verify(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set)
+      const std::vector<URLResponse>& url_response_set) const
     {
-      if (a.endorsements.empty() && url_response_set.empty())
+#ifndef HAVE_SGX
+      if (attestation.source == Source::SGX)
+        throw std::runtime_error(
+          "ravl was compiled without support for SGX attestations");
+#endif
+
+      if (this->endorsements.empty() && url_response_set.empty())
         throw std::runtime_error("missing endorsements");
 
       size_t indent = 0;
@@ -1034,11 +1042,11 @@ namespace ravl
       Unique_X509_STORE store;
 
       auto collateral = url_response_set.empty() ?
-        std::make_shared<QL_QVE_Collateral>(a.endorsements) :
+        std::make_shared<QL_QVE_Collateral>(this->endorsements) :
         consume_url_responses(options, url_response_set);
 
-      std::span quote = parse_quote(a);
-      SignatureData signature_data(quote, a);
+      std::span quote = parse_quote(*this);
+      SignatureData signature_data(quote, *this);
 
       if (options.verbosity > 0)
         log(collateral->to_string(options.verbosity, indent + 2), indent);
