@@ -32,7 +32,7 @@ option(SGX_TEST_ENCLAVE "enable SGX test enclave (requires Intel SGX SDK)" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
-set(RAVL_SRC ravl.cpp ravl_requests.cpp ravl_requests_threaded.cpp)
+set(RAVL_SRC ravl_url_requests.cpp ravl_url_requests_threaded.cpp ravl_attestation_request_tracker.cpp ravl.cpp)
 set(RAVL_INCLUDE 3rdparty)
 set(RAVL_DEFS)
 set(RAVL_LIB_DEPS)
@@ -67,10 +67,10 @@ if(SEV_SNP)
   list(APPEND RAVL_SRC ravl_sev_snp.cpp)
 endif()
 
-# TODO: make curl optional?
+# TODO: make curl optional
 find_package(CURL REQUIRED)
 list(APPEND RAVL_LIB_DEPS curl)
-list(APPEND RAVL_SRC ravl_requests_curl.cpp)
+list(APPEND RAVL_SRC ravl_url_requests_curl.cpp)
 
 if(PROFILE)
   list(APPEND RAVL_FLAGS -g -pg)

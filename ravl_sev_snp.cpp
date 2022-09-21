@@ -6,7 +6,7 @@
 #include "ravl.h"
 #include "ravl_crypto.h"
 #include "ravl_crypto_openssl.h"
-#include "ravl_requests.h"
+#include "ravl_url_requests.h"
 
 #include <stdexcept>
 
@@ -189,40 +189,33 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 #define SEV_SNP_GUEST_MSG_REPORT \
   _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct snp::GuestRequest)
 
-    Unique_X509 download_root_ca_pem(
+    Unique_X509 parse_root_cert(
+      const Options& options, const std::vector<URLResponse>& url_response_set)
+    {
+      if (url_response_set.size() != 1)
+        throw std::runtime_error("collateral download request set failed");
+      auto issuer_chain = url_response_set[0].body;
+      Unique_STACK_OF_X509 stack(issuer_chain);
+      if (stack.size() != 2)
+        throw std::runtime_error("unexpected size of issuer certificate chain");
+      return stack.at(1).pem();
+    }
+
+    URLRequestSetId download_root_ca_pem(
       const std::string& product_name,
       const Options& options,
-      std::shared_ptr<RequestTracker> tracker = nullptr)
+      std::shared_ptr<URLRequestTracker> tracker)
     {
-      if (!tracker)
-        tracker =
-          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
-
       std::string r;
 
-      std::vector<Request> request_set;
+      std::vector<URLRequest> request_set;
 
       auto vcek_issuer_chain_url =
         fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
 
       request_set.emplace_back(vcek_issuer_chain_url);
 
-      bool tr = tracker->when_completed(
-        std::move(request_set), [&r](std::vector<Response>&& response_set) {
-          if (response_set.size() != 1)
-            return false;
-          auto issuer_chain = response_set[0].body;
-          Unique_STACK_OF_X509 stack(issuer_chain);
-          if (stack.size() != 2)
-            return false;
-          r = stack.at(1).pem();
-          return true;
-        });
-
-      if (!tr)
-        throw std::runtime_error("endorsement download request set failed");
-
-      return Unique_X509(r);
+      return tracker->submit(std::move(request_set));
     }
 
     struct EndorsementsEtc
@@ -261,20 +254,76 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       }
     };
 
-    EndorsementsEtc download_endorsements(
+    static EndorsementsEtc parse_url_responses(
+      const Options& options, const std::vector<URLResponse>& url_response_set)
+    {
+      EndorsementsEtc r;
+
+      if (options.root_ca_certificate)
+        r.root_ca_certificate = *options.root_ca_certificate;
+
+      if (options.sev_snp_endorsement_cache_url_template)
+      {
+        if (url_response_set.size() != 2)
+          throw std::runtime_error("unexpected number of URL responses");
+
+        auto issuer_chain = url_response_set[0].body;
+        Unique_STACK_OF_X509 stack(issuer_chain);
+
+        if (stack.size() != 3)
+          throw std::runtime_error(
+            "unexpected size of issuer certificate chain");
+
+        r.root_ca_certificate = stack.at(2);
+        r.vcek_certificate_chain = std::move(stack);
+
+        auto issuer_crl_der = std::span<const uint8_t>(
+          (uint8_t*)url_response_set[1].body.data(),
+          url_response_set[1].body.size());
+        auto q = Unique_X509_CRL(issuer_crl_der, false);
+        r.vcek_issuer_chain_crl = std::move(q);
+      }
+      else
+      {
+        if (url_response_set.size() != 3)
+          throw std::runtime_error("unexpected number of URL responses");
+
+        // TODO: wait/retry if rate limits are hit (should be a HTTP 429
+        // with retry-after header)
+
+        auto issuer_chain = url_response_set[1].body;
+
+        Unique_STACK_OF_X509 stack(issuer_chain);
+        if (stack.size() != 2)
+          throw std::runtime_error(
+            "unexpected size of issuer certificate chain");
+
+        r.root_ca_certificate = stack.at(1);
+
+        auto vcek_cert = url_response_set[0].body;
+        stack.insert(0, Unique_X509(Unique_BIO(vcek_cert), false));
+        r.vcek_certificate_chain = std::move(stack);
+
+        auto issuer_crl_der = std::span<const uint8_t>(
+          (uint8_t*)url_response_set[2].body.data(),
+          url_response_set[2].body.size());
+        r.vcek_issuer_chain_crl = Unique_X509_CRL(issuer_crl_der, false);
+      }
+
+      return r;
+    }
+
+    URLRequestSetId download_endorsements(
       const std::string& product_name,
       const std::span<const uint8_t>& chip_id,
       const snp::TcbVersion& tcb_version,
       const Options& options,
-      std::shared_ptr<RequestTracker> tracker = nullptr)
+      std::shared_ptr<URLRequestTracker> tracker)
     {
       if (!tracker)
-        tracker =
-          std::make_shared<SynchronousRequestTracker>(options.verbosity > 0);
+        throw std::runtime_error("no URL request tracker");
 
-      EndorsementsEtc r;
-
-      std::vector<Request> request_set;
+      std::vector<URLRequest> request_set;
       bool tr = false;
 
       auto hwid = fmt::format("{:02x}", fmt::join(chip_id, ""));
@@ -293,29 +342,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
         // TODO: Does the cache also provide CRLs?
         request_set.emplace_back(vcek_issuer_crl_url);
-
-        tr = tracker->when_completed(
-          std::move(request_set), [&r](std::vector<Response>&& response_set) {
-            if (response_set.size() != 2)
-              return false;
-
-            auto issuer_chain = response_set[0].body;
-            Unique_STACK_OF_X509 stack(issuer_chain);
-
-            if (stack.size() != 3)
-              return false;
-
-            r.root_ca_certificate = stack.at(2);
-            r.vcek_certificate_chain = std::move(stack);
-
-            auto issuer_crl_der = std::span<const uint8_t>(
-              (uint8_t*)response_set[1].body.data(),
-              response_set[1].body.size());
-            auto q = Unique_X509_CRL(issuer_crl_der, false);
-            r.vcek_issuer_chain_crl = std::move(q);
-
-            return true;
-          });
       }
       else
       {
@@ -334,40 +360,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         request_set.emplace_back(vcek_url);
         request_set.emplace_back(vcek_issuer_chain_url);
         request_set.emplace_back(vcek_issuer_crl_url);
-
-        tr = tracker->when_completed(
-          std::move(request_set), [&r](std::vector<Response>&& response_set) {
-            if (response_set.size() != 3)
-              return false;
-
-            // TODO: wait/retry if rate limits are hit (should be a HTTP 429
-            // with retry-after header)
-
-            auto issuer_chain = response_set[1].body;
-
-            Unique_STACK_OF_X509 stack(issuer_chain);
-            if (stack.size() != 2)
-              return false;
-
-            r.root_ca_certificate = stack.at(1);
-
-            auto vcek_cert = response_set[0].body;
-            stack.insert(0, Unique_X509(Unique_BIO(vcek_cert), false));
-            r.vcek_certificate_chain = std::move(stack);
-
-            auto issuer_crl_der = std::span<const uint8_t>(
-              (uint8_t*)response_set[2].body.data(),
-              response_set[2].body.size());
-            r.vcek_issuer_chain_crl = Unique_X509_CRL(issuer_crl_der, false);
-
-            return true;
-          });
       }
 
-      if (!tr)
-        throw std::runtime_error("endorsement download request set failed");
-
-      return r;
+      return tracker->submit(std::move(request_set));
     }
 
     static bool verify_signature(
@@ -396,11 +391,14 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return rc == 1;
     }
 
-    bool verify(
+    std::optional<URLRequestSetId> prepare_endorsements(
       const Attestation& a,
       const Options& options,
-      std::shared_ptr<RequestTracker> tracker)
+      std::shared_ptr<URLRequestTracker> tracker)
     {
+      if (!tracker)
+        throw std::runtime_error("no URL request tracker");
+
       size_t indent = 0;
 
       const auto& snp_att =
@@ -410,36 +408,59 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (snp_att.version != 2)
         throw std::runtime_error("unsupported attestation format version");
 
-      Unique_X509_STORE store;
-
-      EndorsementsEtc endorsements = {};
-
       std::string product_name =
         "Milan"; // TODO: How can we determine that from snp_att?
 
+      std::optional<URLRequestSetId> r = std::nullopt;
+
       if (!a.endorsements.empty() && !options.fresh_endorsements)
       {
-        endorsements.vcek_certificate_chain = vec2str(a.endorsements);
-
-        if (options.root_ca_certificate)
-          endorsements.root_ca_certificate =
-            Unique_X509(*options.root_ca_certificate);
-        else if (options.fresh_root_ca_certificate)
-          endorsements.root_ca_certificate =
-            download_root_ca_pem(product_name, options, tracker);
+        if (!options.root_ca_certificate && options.fresh_root_ca_certificate)
+          r = download_root_ca_pem(product_name, options, tracker);
       }
       else
       {
-        endorsements = download_endorsements(
+        r = download_endorsements(
           product_name,
           snp_att.chip_id,
           snp_att.reported_tcb,
           options,
           tracker);
-
-        if (options.root_ca_certificate)
-          endorsements.root_ca_certificate = *options.root_ca_certificate;
       }
+
+      return r;
+    }
+
+    bool verify(
+      const Attestation& a,
+      const Options& options,
+      const std::vector<URLResponse>& url_response_set)
+    {
+      if (a.endorsements.empty() && url_response_set.empty())
+        throw std::runtime_error("missing endorsements");
+
+      size_t indent = 0;
+
+      const auto& snp_att =
+        *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
+          a.evidence.data());
+
+      Unique_X509_STORE store;
+
+      EndorsementsEtc endorsements;
+
+      if (!a.endorsements.empty() && !options.fresh_endorsements)
+      {
+        endorsements.vcek_certificate_chain = vec2str(a.endorsements);
+        if (options.root_ca_certificate)
+          endorsements.root_ca_certificate =
+            Unique_X509(*options.root_ca_certificate);
+        else if (options.fresh_root_ca_certificate)
+          endorsements.root_ca_certificate =
+            parse_root_cert(options, url_response_set);
+      }
+      else
+        endorsements = parse_url_responses(options, url_response_set);
 
       if (options.verbosity > 0)
         log(endorsements.to_string(options.verbosity, indent));

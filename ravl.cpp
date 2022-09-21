@@ -5,9 +5,14 @@
 
 #include "ravl_crypto.h"
 #include "ravl_sgx.h"
+#include "ravl_url_requests.h"
 #include "ravl_util.h"
 
+#include <map>
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <ratio>
+#include <thread>
 
 #ifdef HAVE_OPEN_ENCLAVE
 #  include "ravl_oe.h"
@@ -39,6 +44,8 @@ namespace ravl
       {Source::SEV_SNP, "sevsnp"},
       {Source::OPEN_ENCLAVE, "openenclave"},
     })
+
+  static AttestationRequestTracker attestation_request_tracker;
 
   Attestation::Attestation(const std::string& json_string)
   {
@@ -74,79 +81,28 @@ namespace ravl
   }
 
   bool Attestation::verify(
-    const Options& options, std::shared_ptr<RequestTracker> request_tracker)
+    const Options& options,
+    std::shared_ptr<URLRequestTracker> url_request_tracker)
   {
-    if (options.verbosity > 0)
-    {
-      json j;
-      to_json(j, source);
-      log(fmt::format("* Verifying attestation from {}", j.dump()));
+    if (!url_request_tracker)
+      url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
 
-      log("- Options", 2);
-      if (options.fresh_endorsements)
-        log("- Fresh endorsements", 4);
-      if (options.fresh_root_ca_certificate)
-        log("- Fresh root CA certificate", 4);
-      if (options.root_ca_certificate)
-        log("- Custom root CA certificate", 4);
-      if (
-        options.certificate_verification.ignore_time ||
-        options.certificate_verification.verification_time)
-      {
-        log("- Certificate verification", 4);
-        if (options.certificate_verification.ignore_time)
-          log("- Ignore certificate times", 6);
-        if (options.certificate_verification.verification_time)
-          log("- Use custom certificate verification time", 6);
-      }
+    auto id =
+      attestation_request_tracker.submit(options, *this, url_request_tracker);
+
+    auto state = attestation_request_tracker.advance(id);
+    while (state != AttestationRequestTracker::FINISHED &&
+           state != AttestationRequestTracker::ERROR)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      state = attestation_request_tracker.advance(id);
     }
 
-    bool r = false;
+    if (state == AttestationRequestTracker::ERROR)
+      throw std::runtime_error("error");
 
-    try
-    {
-      switch (source)
-      {
-        case Source::SGX:
-#ifdef HAVE_SGX
-          r = ravl::sgx::verify(*this, options, request_tracker);
-#else
-          throw std::runtime_error("ravl was compiled without SGX support");
-#endif
-        break;
-      case Source::SEV_SNP:
-#ifdef HAVE_SEV_SNP
-        r = ravl::sev_snp::verify(*this, options, request_tracker);
-#else
-        throw std::runtime_error("ravl was compiled without SEV/SNP support");
-#endif
-        break;
-      case Source::OPEN_ENCLAVE:
-#ifdef HAVE_OPEN_ENCLAVE
-        r = ravl::oe::verify(*this, options, request_tracker);
-#else
-        throw std::runtime_error(
-          "ravl was compiled without Open Enclave support");
-#endif
-        break;
-      default:
-        throw std::runtime_error(
-          "unsupported attestation source '" +
-          std::to_string((unsigned)source) + "'");
-        break;
-      };
-    }
-    catch (std::exception& ex)
-    {
-      if (options.verbosity > 0)
-        log(fmt::format("  - verification failed: {}", ex.what()));
-      throw std::runtime_error(
-        fmt::format("attestation verification failed: {}", ex.what()));
-    }
-
-    if (options.verbosity > 0)
-      log(fmt::format("  - verification successful"));
-
+    auto r = attestation_request_tracker.result(id);
+    attestation_request_tracker.erase(id);
     return r;
   }
 };

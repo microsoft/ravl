@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl_requests.h"
+#include "ravl_url_requests.h"
 
 #include <cstring>
 #include <curl/curl.h>
@@ -17,7 +17,7 @@ namespace ravl
   static size_t body_write_fun(
     char* ptr, size_t size, size_t nmemb, void* userdata)
   {
-    Response* r = static_cast<Response*>(userdata);
+    URLResponse* r = static_cast<URLResponse*>(userdata);
     size_t real_size = nmemb * size;
     r->body += std::string(ptr, real_size);
     return real_size;
@@ -26,7 +26,7 @@ namespace ravl
   static size_t header_write_fun(
     char* buffer, size_t size, size_t nitems, void* userdata)
   {
-    Response* r = static_cast<Response*>(userdata);
+    URLResponse* r = static_cast<URLResponse*>(userdata);
     size_t real_size = nitems * size;
     std::string h = std::string(buffer, real_size);
     char* colon = std::strchr(buffer, ':');
@@ -39,7 +39,7 @@ namespace ravl
     return real_size;
   }
 
-  Response Request::execute(bool verbose) const
+  URLResponse URLRequest::execute(bool verbose) const
   {
     if (!initialized)
     {
@@ -48,7 +48,7 @@ namespace ravl
       initialized = true;
     }
 
-    Response r;
+    URLResponse r;
 
     CURL* curl = curl_easy_init();
     if (!curl)
@@ -73,7 +73,7 @@ namespace ravl
     return r;
   }
 
-  std::vector<uint8_t> Response::url_decode(const std::string& in)
+  std::vector<uint8_t> URLResponse::url_decode(const std::string& in)
   {
     int outsz = 0;
     char* decoded = curl_easy_unescape(NULL, in.c_str(), in.size(), &outsz);
@@ -84,13 +84,12 @@ namespace ravl
     return r;
   }
 
-  std::vector<uint8_t> Response::get_header_data(
+  std::vector<uint8_t> URLResponse::get_header_data(
     const std::string& name, bool url_decoded) const
   {
     auto hit = headers.find(name);
     if (hit == headers.end())
-      throw std::runtime_error("missing reponse header '" + name + "'");
-    // printf("HEADER: %s\n", hit->second.c_str());
+      throw std::runtime_error("missing response header '" + name + "'");
     if (url_decoded)
       return url_decode(hit->second);
     else
