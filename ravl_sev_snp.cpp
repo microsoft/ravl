@@ -391,11 +391,14 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return rc == 1;
     }
 
-    std::optional<URLRequestSetId> prepare_endorsements(
-      const Attestation& a,
-      const Options& options,
-      std::shared_ptr<URLRequestTracker> tracker)
+    std::optional<URLRequestSetId> Attestation::prepare_endorsements(
+      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
+#ifndef HAVE_SEV_SNP
+      throw std::runtime_error(
+        "ravl was compiled without support for SEV/SNP attestations");
+#endif
+
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
 
@@ -403,7 +406,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
       const auto& snp_att =
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
-          a.evidence.data());
+          evidence.data());
 
       if (snp_att.version != 2)
         throw std::runtime_error("unsupported attestation format version");
@@ -413,7 +416,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
       std::optional<URLRequestSetId> r = std::nullopt;
 
-      if (!a.endorsements.empty() && !options.fresh_endorsements)
+      if (!endorsements.empty() && !options.fresh_endorsements)
       {
         if (!options.root_ca_certificate && options.fresh_root_ca_certificate)
           r = download_root_ca_pem(product_name, options, tracker);
@@ -431,54 +434,58 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return r;
     }
 
-    bool verify(
-      const Attestation& a,
+    bool Attestation::verify(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set)
+      const std::vector<URLResponse>& url_response_set) const
     {
-      if (a.endorsements.empty() && url_response_set.empty())
+#ifndef HAVE_SEV_SNP
+      throw std::runtime_error(
+        "ravl was compiled without support for SEV/SNP attestations");
+#endif
+
+      if (endorsements.empty() && url_response_set.empty())
         throw std::runtime_error("missing endorsements");
 
       size_t indent = 0;
 
       const auto& snp_att =
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
-          a.evidence.data());
+          evidence.data());
 
       Unique_X509_STORE store;
 
-      EndorsementsEtc endorsements;
+      EndorsementsEtc endorsements_etc;
 
-      if (!a.endorsements.empty() && !options.fresh_endorsements)
+      if (!endorsements.empty() && !options.fresh_endorsements)
       {
-        endorsements.vcek_certificate_chain = vec2str(a.endorsements);
+        endorsements_etc.vcek_certificate_chain = vec2str(endorsements);
         if (options.root_ca_certificate)
-          endorsements.root_ca_certificate =
+          endorsements_etc.root_ca_certificate =
             Unique_X509(*options.root_ca_certificate);
         else if (options.fresh_root_ca_certificate)
-          endorsements.root_ca_certificate =
+          endorsements_etc.root_ca_certificate =
             parse_root_cert(options, url_response_set);
       }
       else
-        endorsements = parse_url_responses(options, url_response_set);
+        endorsements_etc = parse_url_responses(options, url_response_set);
 
       if (options.verbosity > 0)
-        log(endorsements.to_string(options.verbosity, indent));
+        log(endorsements_etc.to_string(options.verbosity, indent));
 
       store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-      store.add_crl(endorsements.vcek_issuer_chain_crl);
+      store.add_crl(endorsements_etc.vcek_issuer_chain_crl);
 
       bool trusted_root = false;
 
-      if (endorsements.root_ca_certificate)
-        store.add(*endorsements.root_ca_certificate);
+      if (endorsements_etc.root_ca_certificate)
+        store.add(*endorsements_etc.root_ca_certificate);
       else
         trusted_root = true;
 
       if (options.verbosity > 0)
         log("- VCEK issuer certificate chain verification", indent + 2);
       auto chain = crypto::verify_certificate_chain(
-        endorsements.vcek_certificate_chain,
+        endorsements_etc.vcek_certificate_chain,
         store,
         options.certificate_verification,
         trusted_root,
@@ -505,7 +512,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         throw std::runtime_error("unexpected signature algorithm");
 
       std::span msg(
-        a.evidence.data(), a.evidence.size() - sizeof(snp_att.signature));
+        evidence.data(), evidence.size() - sizeof(snp_att.signature));
 
       Unique_EVP_PKEY vcek_pk(vcek_certificate);
       if (!verify_signature(vcek_pk, msg, snp_att.signature))

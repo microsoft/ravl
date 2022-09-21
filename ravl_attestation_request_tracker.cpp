@@ -27,18 +27,13 @@ namespace ravl
 
   AttestationRequestTracker::RequestID AttestationRequestTracker::submit(
     const Options& options,
-    const Attestation& attestation,
+    std::shared_ptr<const Attestation> attestation,
     std::shared_ptr<URLRequestTracker> request_tracker)
   {
     auto request_id = next_request_id++;
 
     requests[request_id] = {
-      RequestState::SUBMITTED,
-      options,
-      std::make_shared<Attestation>(attestation),
-      false,
-      0,
-      request_tracker};
+      RequestState::SUBMITTED, options, attestation, false, 0, request_tracker};
 
     return request_id;
   }
@@ -133,45 +128,10 @@ namespace ravl
       }
     }
 
-    request.request_set_id = std::nullopt;
-
     try
     {
-      switch (attestation.source)
-      {
-        case Source::SGX:
-#ifdef HAVE_SGX
-          request.request_set_id = ravl::sgx::prepare_endorsements(
-            attestation, options, request_tracker);
-#else
-          throw std::runtime_error(
-            "ravl was compiled without support for SGX attestations");
-#endif
-          break;
-        case Source::SEV_SNP:
-#ifdef HAVE_SEV_SNP
-          request.request_set_id = ravl::sev_snp::prepare_endorsements(
-            attestation, options, request_tracker);
-#else
-          throw std::runtime_error(
-            "ravl was compiled without support for SEV/SNP attestations");
-#endif
-          break;
-        case Source::OPEN_ENCLAVE:
-#ifdef HAVE_OPEN_ENCLAVE
-          request.request_set_id = ravl::oe::prepare_endorsements(
-            attestation, options, request_tracker);
-#else
-          throw std::runtime_error(
-            "ravl was compiled without support for Open Enclave attestations");
-#endif
-          break;
-        default:
-          throw std::runtime_error(
-            "unsupported attestation source '" +
-            std::to_string((unsigned)attestation.source) + "'");
-          break;
-      };
+      request.request_set_id =
+        request.attestation->prepare_endorsements(options, request_tracker);
     }
     catch (std::exception& ex)
     {
@@ -189,7 +149,7 @@ namespace ravl
     if (!request.attestation)
       throw std::runtime_error("no attestation to verify");
 
-    const auto& attestation = *request.attestation;
+    auto& attestation = *request.attestation;
     const auto& options = request.options;
     auto request_tracker = request.url_request_tracker;
 
@@ -202,36 +162,7 @@ namespace ravl
 
     try
     {
-      switch (attestation.source)
-      {
-        case Source::SGX:
-#ifdef HAVE_SGX
-          r = ravl::sgx::verify(attestation, options, responses);
-#else
-          throw std::runtime_error("ravl was compiled without SGX support");
-#endif
-          break;
-        case Source::SEV_SNP:
-#ifdef HAVE_SEV_SNP
-          r = ravl::sev_snp::verify(attestation, options, responses);
-#else
-          throw std::runtime_error("ravl was compiled without SEV/SNP support");
-#endif
-          break;
-        case Source::OPEN_ENCLAVE:
-#ifdef HAVE_OPEN_ENCLAVE
-          r = ravl::oe::verify(attestation, options, responses);
-#else
-          throw std::runtime_error(
-            "ravl was compiled without Open Enclave support");
-#endif
-          break;
-        default:
-          throw std::runtime_error(
-            "unsupported attestation source '" +
-            std::to_string((unsigned)attestation.source) + "'");
-          break;
-      };
+      r = attestation.verify(options, responses);
     }
     catch (std::exception& ex)
     {

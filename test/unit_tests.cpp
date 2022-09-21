@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include "ravl_attestation.h"
+
 #include <ravl.h>
 #include <ravl_url_requests.h>
 #include <ravl_url_requests_threaded.h>
@@ -63,106 +65,106 @@ std::shared_ptr<URLRequestTracker> request_tracker =
 
 TEST_CASE("Open Enclave CoffeeLake")
 {
-  Attestation att(oe_coffeelake_attestation);
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(oe_coffeelake_attestation);
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("Open Enclave CoffeeLake w/o endorsements")
 {
-  Attestation att(oe_coffeelake_attestation);
-  att.endorsements = {};
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(oe_coffeelake_attestation);
+  att->endorsements = {};
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("Open Enclave CoffeeLake w/o custom claims")
 {
-  Attestation att(oe_no_custom_claims);
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(oe_no_custom_claims);
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("Open Enclave IceLake")
 {
-  Attestation att(oe_icelake_attestation);
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(oe_icelake_attestation);
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("Open Enclave IceLake w/o endorsements")
 {
-  Attestation att(oe_icelake_attestation);
-  att.endorsements = {};
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(oe_icelake_attestation);
+  att->endorsements = {};
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX CoffeeLake")
 {
-  Attestation att(coffeelake_quote);
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(coffeelake_quote);
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX CoffeeLake w/o endorsements")
 {
-  Attestation att(coffeelake_quote);
-  att.endorsements = {};
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(coffeelake_quote);
+  att->endorsements = {};
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX IceLake")
 {
-  Attestation att(icelake_quote);
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(icelake_quote);
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX IceLake w/o endorsements")
 {
-  Attestation att(icelake_quote);
-  att.endorsements = {};
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(icelake_quote);
+  att->endorsements = {};
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX SDK QE Quote3")
 {
-  Attestation att(sgx_sdk_qe_quote3);
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(sgx_sdk_qe_quote3);
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX SDK QE Quote3 w/o endorsements")
 {
-  Attestation att(sgx_sdk_qe_quote3);
-  att.endorsements = {};
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(sgx_sdk_qe_quote3);
+  att->endorsements = {};
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX quote with endorsements from cache")
 {
-  Attestation att(coffeelake_quote);
-  att.endorsements = {};
+  auto att = parse_attestation(coffeelake_quote);
+  att->endorsements = {};
   Options options = default_options;
   options.sgx_endorsement_cache_url_template =
     "https://global.acccache.azure.net/sgx/certification/v3/"
     "{}?uri={}&clientid=production_client&api-version=2020-02-12-preview";
-  REQUIRE(att.verify(options, request_tracker));
+  REQUIRE(verify(att, options, request_tracker));
 }
 
 TEST_CASE("SEV/SNP quote")
 {
-  Attestation att(sev_snp_quote);
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(sev_snp_quote);
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SEV/SNP quote w/o endorsements")
 {
-  Attestation att(sev_snp_quote);
-  att.endorsements = {};
-  REQUIRE(att.verify(default_options, request_tracker));
+  auto att = parse_attestation(sev_snp_quote);
+  att->endorsements = {};
+  REQUIRE(verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SEV/SNP quote with endorsements from cache")
 {
-  Attestation att(sev_snp_quote);
-  att.endorsements = {};
+  auto att = parse_attestation(sev_snp_quote);
+  att->endorsements = {};
   Options options = default_options;
   options.sev_snp_endorsement_cache_url_template =
     "https://global.acccache.azure.net/SevSnpVM/certificates/{}/"
     "{}?api-version=2020-10-15-preview";
-  REQUIRE(att.verify(options, request_tracker));
+  REQUIRE(verify(att, options, request_tracker));
 }
