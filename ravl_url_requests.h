@@ -16,7 +16,7 @@ namespace ravl
 {
   struct URLResponse
   {
-    uint8_t code = 0;
+    uint32_t code = 0;
     std::unordered_map<std::string, std::string> headers = {};
     std::string body = "";
 
@@ -34,6 +34,7 @@ namespace ravl
     std::string url = "";
     std::unordered_map<std::string, std::string> headers = {};
     std::string body = "";
+    size_t max_retries = 5;
 
     URLResponse execute(bool verbose = false) const;
   };

@@ -4,22 +4,22 @@
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 function(add_unit_test NAME SRC)
-add_executable(${NAME} ${SRC})
-target_link_libraries(${NAME} PRIVATE $<BUILD_INTERFACE:ravl>)
+  add_executable(${NAME} ${SRC})
+  target_link_libraries(${NAME} PRIVATE $<BUILD_INTERFACE:ravl>)
 
-if(PROFILE)
-  target_compile_options(${NAME} PRIVATE -g -pg)
-  target_link_options(${NAME} PRIVATE -g -pg)
-endif()
+  if(PROFILE)
+    target_compile_options(${NAME} PRIVATE -g -pg)
+    target_link_options(${NAME} PRIVATE -g -pg)
+  endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(
-    ${NAME} PRIVATE -fsanitize=undefined,address -fno-omit-frame-pointer
-  )
-  target_link_options(${NAME} PRIVATE -fsanitize=undefined,address)
-endif()
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(
+      ${NAME} PRIVATE -fsanitize=undefined,address -fno-omit-frame-pointer
+    )
+    target_link_options(${NAME} PRIVATE -fsanitize=undefined,address)
+  endif()  
 
-add_test(${NAME} ${NAME})
+  add_test(${NAME} ${NAME})
 endfunction()
 
 function(add_ravl_test target source)
@@ -35,9 +35,8 @@ function(add_ravl_test target source)
   if (WIN32)
     target_compile_definitions(${RAVL_TEST_PREFIX}${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
   endif()
+  target_compile_definitions(${RAVL_TEST_PREFIX}${target} PRIVATE ${RAVL_DEFS})
 endfunction()
-
-# add_ravl_test(demo_tree demo_tree.cpp)
 
 find_path(DOCTEST_DIR "doctest.h" PATH 3rdparty/doctest)
 

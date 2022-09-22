@@ -7,6 +7,9 @@
 #include <thread>
 #include <vector>
 
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
+
 namespace ravl
 {
   SynchronousURLRequestTracker::SynchronousURLRequestTracker(bool verbose) :
@@ -28,6 +31,10 @@ namespace ravl
     {
       auto& request = rsit->second.at(i);
       response_sets[id][i] = request.execute(verbose);
+
+      if (response_sets[id][i].code != 200)
+        throw std::runtime_error(
+          fmt::format("unexpected HTTP status {}", response_sets[id][i].code));
     }
 
     return id;
