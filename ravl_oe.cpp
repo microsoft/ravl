@@ -123,34 +123,27 @@ typedef struct _sgx_ql_qve_collateral_t
 {
   union
   {
-    uint32_t
-      version; ///< 'version' is the backward compatible legacy representation
+    uint32_t version;
     struct
-    { ///< For PCS V1 and V2 APIs, the major_version = 1 and minor_version = 0
-      ///< and
-      uint16_t major_version; ///< the CRLs will be formatted in PEM. For PCS V3
-                              ///< APIs, the major_version = 3 and the
-      uint16_t
-        minor_version; ///< minor_version can be either 0 or 1. minor_verion of
-                       ///< 0 indicates the CRL’s are formatted in Base16
-                       ///< encoded DER.  A minor version of 1 indicates the
-                       ///< CRL’s are formatted in raw binary DER.
+    {
+      uint16_t major_version;
+      uint16_t minor_version;
     };
   };
-  uint32_t tee_type; ///<  0x00000000: SGX or 0x00000081: TDX
+  uint32_t tee_type;
   char* pck_crl_issuer_chain;
   uint32_t pck_crl_issuer_chain_size;
-  char* root_ca_crl; /// Root CA CRL
+  char* root_ca_crl;
   uint32_t root_ca_crl_size;
-  char* pck_crl; /// PCK Cert CRL
+  char* pck_crl;
   uint32_t pck_crl_size;
   char* tcb_info_issuer_chain;
   uint32_t tcb_info_issuer_chain_size;
-  char* tcb_info; /// TCB Info structure
+  char* tcb_info;
   uint32_t tcb_info_size;
   char* qe_identity_issuer_chain;
   uint32_t qe_identity_issuer_chain_size;
-  char* qe_identity; /// QE Identity Structure
+  char* qe_identity;
   uint32_t qe_identity_size;
 } sgx_ql_qve_collateral_t;
 
@@ -173,6 +166,7 @@ namespace ravl
         data.push_back((t >> (8 * (sizeof(T) - i - 1))) & 0xFF);
     }
 
+#ifndef USE_OE_VERIFIER
     std::shared_ptr<sgx::Attestation> extract_sgx_attestation(
       const Attestation& a, const Options& options)
     {
@@ -383,14 +377,11 @@ namespace ravl
         return std::make_shared<sgx::Attestation>(squote, scollateral);
       }
     }
+#endif
 
     std::optional<URLRequestSetId> Attestation::prepare_endorsements(
       const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
-#ifndef HAVE_OPEN_ENCLAVE
-      throw std::runtime_error(
-        "ravl was compiled without support for Open Enclave attestations");
-#endif
 #ifdef USE_OE_VERIFIER
       return std::nullopt;
 #else
@@ -401,12 +392,8 @@ namespace ravl
 
     bool Attestation::verify(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set) const
+      const std::optional<std::vector<URLResponse>>& url_response_set) const
     {
-#ifndef HAVE_OPEN_ENCLAVE
-      throw std::runtime_error(
-        "ravl was compiled without support for Open Enclave attestations");
-#endif
 #ifdef USE_OE_VERIFIER
       if (oe_verifier_initialize() != OE_OK)
         throw std::runtime_error("failed to initialize Open Enclave verifier");
@@ -418,10 +405,10 @@ namespace ravl
 
       oe_result_t r = oe_verify_evidence(
         &sgx_remote_uuid,
-        a.evidence.data(),
-        a.evidence.size(),
-        a.endorsements.size() > 0 ? a.endorsements.data() : nullptr,
-        a.endorsements.size(),
+        evidence.data(),
+        evidence.size(),
+        endorsements.size() > 0 ? endorsements.data() : nullptr,
+        endorsements.size(),
         policies.data(),
         policies.size(),
         &claims,

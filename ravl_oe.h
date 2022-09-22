@@ -30,7 +30,8 @@ namespace ravl
 
       virtual bool verify(
         const Options& options,
-        const std::vector<URLResponse>& url_response_set) const override;
+        const std::optional<std::vector<URLResponse>>& url_response_set)
+        const override;
 
     protected:
       mutable std::shared_ptr<ravl::Attestation> sgx_attestation;

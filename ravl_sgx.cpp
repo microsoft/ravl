@@ -931,11 +931,6 @@ namespace ravl
     std::optional<URLRequestSetId> Attestation::prepare_endorsements(
       const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
-#ifndef HAVE_SGX
-      throw std::runtime_error(
-        "ravl was compiled without support for SGX attestations");
-#endif
-
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
 
@@ -1026,24 +1021,20 @@ namespace ravl
 
     bool Attestation::verify(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set) const
+      const std::optional<std::vector<URLResponse>>& url_response_set) const
     {
-#ifndef HAVE_SGX
-      if (attestation.source == Source::SGX)
-        throw std::runtime_error(
-          "ravl was compiled without support for SGX attestations");
-#endif
-
-      if (this->endorsements.empty() && url_response_set.empty())
+      if (
+        this->endorsements.empty() &&
+        (!url_response_set || url_response_set->empty()))
         throw std::runtime_error("missing endorsements");
 
       size_t indent = 0;
 
       Unique_X509_STORE store;
 
-      auto collateral = url_response_set.empty() ?
+      auto collateral = !url_response_set || url_response_set->empty() ?
         std::make_shared<QL_QVE_Collateral>(this->endorsements) :
-        consume_url_responses(options, url_response_set);
+        consume_url_responses(options, *url_response_set);
 
       std::span quote = parse_quote(*this);
       SignatureData signature_data(quote, *this);

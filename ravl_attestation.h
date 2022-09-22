@@ -49,10 +49,11 @@ namespace ravl
       std::shared_ptr<URLRequestTracker> request_tracker) const = 0;
 
     /// Function to verify the attestation (with all endorsements present either
-    /// in the attestation or in the url_response_set).
+    /// in the attestation object or in the url_response_set).
     virtual bool verify(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set) const = 0;
+      const std::optional<std::vector<URLResponse>>& url_response_set)
+      const = 0;
 
     operator std::string() const;
 
