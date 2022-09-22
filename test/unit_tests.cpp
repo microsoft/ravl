@@ -63,11 +63,22 @@ std::string sev_snp_quote = R"({
 std::shared_ptr<URLRequestTracker> request_tracker =
   std::make_shared<ThreadedURLRequestTracker>(/*verbose=*/false);
 
+#ifndef USE_OE_VERIFIER
+// These attestations contain expired endorsements and the OE verifier doesn't
+// seem to have a flag to disable expiry checks.
+
 TEST_CASE("Open Enclave CoffeeLake")
 {
   auto att = parse_attestation(oe_coffeelake_attestation);
   REQUIRE(verify(att, default_options, request_tracker));
 }
+
+TEST_CASE("Open Enclave IceLake")
+{
+  auto att = parse_attestation(oe_icelake_attestation);
+  REQUIRE(verify(att, default_options, request_tracker));
+}
+#endif
 
 TEST_CASE("Open Enclave CoffeeLake w/o endorsements")
 {
@@ -79,12 +90,6 @@ TEST_CASE("Open Enclave CoffeeLake w/o endorsements")
 TEST_CASE("Open Enclave CoffeeLake w/o custom claims")
 {
   auto att = parse_attestation(oe_no_custom_claims);
-  REQUIRE(verify(att, default_options, request_tracker));
-}
-
-TEST_CASE("Open Enclave IceLake")
-{
-  auto att = parse_attestation(oe_icelake_attestation);
   REQUIRE(verify(att, default_options, request_tracker));
 }
 
@@ -134,7 +139,7 @@ TEST_CASE("SGX SDK QE Quote3 w/o endorsements")
   REQUIRE(verify(att, default_options, request_tracker));
 }
 
-TEST_CASE("SGX quote with endorsements from cache")
+TEST_CASE("SGX with endorsements from cache")
 {
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
@@ -145,20 +150,20 @@ TEST_CASE("SGX quote with endorsements from cache")
   REQUIRE(verify(att, options, request_tracker));
 }
 
-TEST_CASE("SEV/SNP quote")
+TEST_CASE("SEV/SNP")
 {
   auto att = parse_attestation(sev_snp_quote);
   REQUIRE(verify(att, default_options, request_tracker));
 }
 
-TEST_CASE("SEV/SNP quote w/o endorsements")
+TEST_CASE("SEV/SNP w/o endorsements")
 {
   auto att = parse_attestation(sev_snp_quote);
   att->endorsements = {};
   REQUIRE(verify(att, default_options, request_tracker));
 }
 
-TEST_CASE("SEV/SNP quote with endorsements from cache")
+TEST_CASE("SEV/SNP with endorsements from cache")
 {
   auto att = parse_attestation(sev_snp_quote);
   att->endorsements = {};
@@ -167,4 +172,18 @@ TEST_CASE("SEV/SNP quote with endorsements from cache")
     "https://global.acccache.azure.net/SevSnpVM/certificates/{}/"
     "{}?api-version=2020-10-15-preview";
   REQUIRE(verify(att, options, request_tracker));
+}
+
+TEST_CASE("SEV/SNP synchronous")
+{
+  auto att = parse_attestation(sev_snp_quote);
+  att->endorsements = {};
+  REQUIRE(verify_sync(att, default_options));
+}
+
+TEST_CASE("SGX CoffeeLake synchronous")
+{
+  auto att = parse_attestation(coffeelake_quote);
+  att->endorsements = {};
+  REQUIRE(verify_sync(att, default_options));
 }
