@@ -10,7 +10,7 @@ namespace ravl
   {}
 
   URLRequestSetId ThreadedURLRequestTracker::submit(
-    std::vector<URLRequest>&& rs)
+    std::vector<URLRequest>&& rs, std::function<void(Responses&&)> callback)
   {
     URLRequestSetId id = request_sets.size();
     std::vector<TrackedRequest>* treq_set = nullptr;
@@ -29,27 +29,12 @@ namespace ravl
     for (URLRequest& r : rs)
       treq_set->emplace_back(std::move(r));
 
-    auto rit_ok =
-      response_sets.emplace(id, std::vector<URLResponse>(rs.size()));
-    if (!rit_ok.second)
-      throw std::bad_alloc();
-
     // Start
     for (size_t i = 0; i < treq_set->size(); i++)
     {
       TrackedRequest& treq = treq_set->at(i);
-      treq.t =
-        std::make_shared<std::thread>([this, &treq, i, id, v = verbose]() {
-          std::vector<URLResponse>* response_set = nullptr;
-          {
-            std::lock_guard<std::mutex> guard(mtx);
-            auto rit = response_sets.find(id);
-            if (rit == response_sets.end())
-              throw std::runtime_error("invalid url request id");
-            response_set = &rit->second;
-          }
-          (*response_set)[i] = treq.request.execute(v);
-        });
+      treq.t = std::make_shared<std::thread>(
+        [&treq, v = verbose]() { treq.request.start(v); });
     }
 
     return id;
@@ -58,6 +43,26 @@ namespace ravl
   bool ThreadedURLRequestTracker::is_complete(const URLRequestSetId& id) const
   {
     const std::vector<TrackedRequest>* request_set = nullptr;
+    {
+      std::lock_guard<std::mutex> guard(mtx);
+      auto rit = request_sets.find(id);
+      if (rit == request_sets.end())
+        throw std::runtime_error("request set not found");
+      request_set = &rit->second;
+    }
+
+    for (const auto& r : *request_set)
+      if (!r.request.is_complete())
+        return false;
+
+    return true;
+  }
+
+  std::vector<URLResponse> ThreadedURLRequestTracker::collect(
+    const URLRequestSetId& id)
+  {
+    std::vector<TrackedRequest>* request_set = nullptr;
+    std::vector<URLResponse> responses;
 
     {
       std::lock_guard<std::mutex> guard(mtx);
@@ -67,22 +72,23 @@ namespace ravl
       request_set = &rit->second;
     }
 
-    for (auto& r : *request_set)
+    for (size_t i = 0; i < request_set->size(); i++)
+    {
+      auto& r = (*request_set)[i];
+
       if (r.t)
         r.t->join();
-    return true;
-  }
 
-  std::vector<URLResponse> ThreadedURLRequestTracker::collect(
-    const URLRequestSetId& id)
-  {
-    std::lock_guard<std::mutex> guard(mtx);
-    auto rit = response_sets.find(id);
-    if (rit == response_sets.end())
-      throw std::runtime_error("no such response set");
-    std::vector<URLResponse> r;
-    r.swap(rit->second);
-    response_sets.erase(id);
-    return r;
+      if (!r.request.is_complete())
+        throw std::runtime_error("not complete");
+
+      auto rsp = r.request.collect();
+      if (!rsp)
+        throw std::runtime_error("missing url response");
+
+      responses.emplace_back(std::move(*rsp));
+    }
+
+    return responses;
   }
 }

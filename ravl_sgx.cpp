@@ -236,7 +236,7 @@ namespace ravl
     {
       std::vector<URLRequest> request_set;
       request_set.emplace_back(root_ca_url);
-      return tracker->submit(std::move(request_set));
+      return tracker->submit(std::move(request_set), [](Responses) {});
     }
 
     URLRequestSetId download_collateral(
@@ -311,7 +311,7 @@ namespace ravl
         tracker =
           std::make_shared<SynchronousURLRequestTracker>(options.verbosity > 0);
 
-      return tracker->submit(std::move(request_set));
+      return tracker->submit(std::move(request_set), [](Responses) {});
     }
 
     class CertificateExtension
@@ -929,7 +929,9 @@ namespace ravl
     };
 
     std::optional<URLRequestSetId> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
+      const Options& options,
+      std::function<void(size_t)> callback,
+      std::shared_ptr<URLRequestTracker> tracker) const
     {
       if (!tracker)
         throw std::runtime_error("no URL request tracker");

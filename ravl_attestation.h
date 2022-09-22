@@ -7,6 +7,7 @@
 #include "ravl_url_requests.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -46,6 +47,7 @@ namespace ravl
     /// Function to prepare network requests for endorsements
     virtual std::optional<URLRequestSetId> prepare_endorsements(
       const Options& options,
+      std::function<void(size_t)> callback,
       std::shared_ptr<URLRequestTracker> request_tracker) const = 0;
 
     /// Function to verify the attestation (with all endorsements present either

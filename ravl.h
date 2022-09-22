@@ -35,7 +35,13 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
-      std::shared_ptr<URLRequestTracker> request_tracker = nullptr);
+      std::shared_ptr<URLRequestTracker> url_request_tracker = nullptr);
+
+    RequestID submit(
+      const Options& options,
+      std::shared_ptr<const Attestation> attestation,
+      std::function<void(RequestID)> callback,
+      std::shared_ptr<URLRequestTracker> url_request_tracker = nullptr);
 
     RequestState state(RequestID id) const;
     RequestID advance(RequestID id);

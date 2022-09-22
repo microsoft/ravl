@@ -215,7 +215,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
       request_set.emplace_back(vcek_issuer_chain_url);
 
-      return tracker->submit(std::move(request_set));
+      return tracker->submit(std::move(request_set), [](Responses) {});
     }
 
     struct EndorsementsEtc
@@ -362,7 +362,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         request_set.emplace_back(vcek_issuer_crl_url);
       }
 
-      return tracker->submit(std::move(request_set));
+      return tracker->submit(std::move(request_set), [](Responses) {});
     }
 
     static bool verify_signature(
@@ -392,7 +392,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     }
 
     std::optional<URLRequestSetId> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
+      const Options& options,
+      std::function<void(size_t)> callback,
+      std::shared_ptr<URLRequestTracker> tracker) const
     {
       if (!tracker)
         throw std::runtime_error("no URL request tracker");

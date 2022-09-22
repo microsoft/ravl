@@ -32,7 +32,7 @@ option(SGX_TEST_ENCLAVE "enable SGX test enclave (requires Intel SGX SDK)" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
-set(RAVL_SRC ravl_url_requests.cpp ravl_url_requests_threaded.cpp ravl.cpp)
+set(RAVL_SRC ravl_url_requests.cpp  ravl.cpp) # ravl_url_requests_threaded.cpp
 set(RAVL_INCLUDE 3rdparty)
 set(RAVL_DEFS)
 set(RAVL_LIB_DEPS)

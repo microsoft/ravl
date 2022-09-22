@@ -154,6 +154,7 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
+      std::function<void(RequestID)> callback,
       std::shared_ptr<URLRequestTracker> request_tracker)
     {
       auto request_id = next_request_id++;
@@ -274,8 +275,8 @@ namespace ravl
 
       try
       {
-        request.request_set_id =
-          request.attestation->prepare_endorsements(options, request_tracker);
+        request.request_set_id = request.attestation->prepare_endorsements(
+          options, [](size_t id) {}, request_tracker);
       }
       catch (std::exception& ex)
       {
@@ -340,7 +341,18 @@ namespace ravl
     std::shared_ptr<URLRequestTracker> url_request_tracker)
   {
     return static_cast<AttestationRequestTrackerImpl*>(implementation)
-      ->submit(options, attestation, url_request_tracker);
+      ->submit(
+        options, attestation, [](RequestID) {}, url_request_tracker);
+  }
+
+  AttestationRequestTracker::RequestID AttestationRequestTracker::submit(
+    const Options& options,
+    std::shared_ptr<const Attestation> attestation,
+    std::function<void(RequestID)> callback,
+    std::shared_ptr<URLRequestTracker> url_request_tracker)
+  {
+    return static_cast<AttestationRequestTrackerImpl*>(implementation)
+      ->submit(options, attestation, callback, url_request_tracker);
   }
 
   AttestationRequestTracker::RequestState AttestationRequestTracker::state(
@@ -406,7 +418,7 @@ namespace ravl
     while (state != AttestationRequestTracker::FINISHED &&
            state != AttestationRequestTracker::ERROR)
     {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      // std::this_thread::sleep_for(std::chrono::milliseconds(1));
       state = attestation_request_tracker.advance(id);
     }
 
@@ -438,7 +450,8 @@ namespace ravl
 #endif
 
     auto url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
-    auto rs = attestation->prepare_endorsements(options, url_request_tracker);
+    auto rs = attestation->prepare_endorsements(
+      options, [](auto) {}, url_request_tracker);
     std::optional<std::vector<URLResponse>> url_response_set = std::nullopt;
     if (rs)
       url_response_set = url_request_tracker->collect(*rs);

@@ -3,6 +3,7 @@
 
 #include "ravl_attestation.h"
 
+#include <chrono>
 #include <ravl.h>
 #include <ravl_url_requests.h>
 #include <ravl_url_requests_threaded.h>
@@ -61,7 +62,7 @@ std::string sev_snp_quote = R"({
 /* clang-format on */
 
 std::shared_ptr<URLRequestTracker> request_tracker =
-  std::make_shared<ThreadedURLRequestTracker>(/*verbose=*/false);
+  std::make_shared<AsynchronousURLRequestTracker>(/*verbose=*/true);
 
 #ifndef USE_OE_VERIFIER
 // These attestations contain expired endorsements and the OE verifier doesn't
@@ -186,4 +187,44 @@ TEST_CASE("SGX CoffeeLake synchronous")
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
   REQUIRE(verify_sync(att, default_options));
+}
+
+TEST_CASE("SGX CoffeeLake asynchronous")
+{
+  auto att = parse_attestation(coffeelake_quote);
+  att->endorsements = {};
+
+  AttestationRequestTracker tracker;
+  auto id = tracker.submit(
+    default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
+
+  std::thread t([&tracker, id]() {
+    while (!tracker.finished(id))
+    {
+      tracker.advance(id);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  });
+
+  t.join();
+}
+
+TEST_CASE("SEV/SNP asynchronous")
+{
+  auto att = parse_attestation(sev_snp_quote);
+  att->endorsements = {};
+
+  AttestationRequestTracker tracker;
+  auto id = tracker.submit(
+    default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
+
+  std::thread t([&tracker, id]() {
+    while (!tracker.finished(id))
+    {
+      tracker.advance(id);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  });
+
+  t.join();
 }
