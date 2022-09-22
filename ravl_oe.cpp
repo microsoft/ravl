@@ -380,13 +380,16 @@ namespace ravl
 #endif
 
     std::optional<URLRequestSetId> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
+      const Options& options,
+      std::function<void(size_t)> callback,
+      std::shared_ptr<URLRequestTracker> tracker) const
     {
 #ifdef USE_OE_VERIFIER
       return std::nullopt;
 #else
       sgx_attestation = extract_sgx_attestation(*this, options);
-      return sgx_attestation->prepare_endorsements(options, tracker);
+      return sgx_attestation->prepare_endorsements(
+        options, [](auto) {}, tracker);
 #endif
     }
 

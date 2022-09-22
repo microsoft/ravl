@@ -25,6 +25,7 @@ namespace ravl
 
       virtual std::optional<URLRequestSetId> prepare_endorsements(
         const Options& options,
+        std::function<void(size_t)> callback,
         std::shared_ptr<URLRequestTracker> request_tracker =
           nullptr) const override;
 

@@ -23,7 +23,9 @@ namespace ravl
     ThreadedURLRequestTracker(bool verbose = false);
     virtual ~ThreadedURLRequestTracker() = default;
 
-    virtual URLRequestSetId submit(std::vector<URLRequest>&& rs) override;
+    virtual URLRequestSetId submit(
+      std::vector<URLRequest>&& rs,
+      std::function<void(Responses&&)> callback) override;
 
     virtual bool is_complete(const URLRequestSetId& id) const override;
 
@@ -34,20 +36,18 @@ namespace ravl
     class TrackedRequest
     {
     public:
-      TrackedRequest(URLRequest&& req) : request(req) {}
+      TrackedRequest(URLRequest&& req) : request(std::move(req)) {}
       virtual ~TrackedRequest() = default;
 
       URLRequest request;
       std::shared_ptr<std::thread> t;
+      std::function<void(Responses&&)> callback;
     };
 
     typedef std::unordered_map<URLRequestSetId, std::vector<TrackedRequest>>
       RequestSets;
-    typedef std::unordered_map<URLRequestSetId, std::vector<URLResponse>>
-      ResponseSets;
 
     mutable std::mutex mtx;
     RequestSets request_sets;
-    ResponseSets response_sets;
   };
 }
