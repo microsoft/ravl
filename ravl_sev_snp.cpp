@@ -394,11 +394,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     std::optional<URLRequestSetId> Attestation::prepare_endorsements(
       const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
-#ifndef HAVE_SEV_SNP
-      throw std::runtime_error(
-        "ravl was compiled without support for SEV/SNP attestations");
-#endif
-
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
 
@@ -436,14 +431,11 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
     bool Attestation::verify(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set) const
+      const std::optional<std::vector<URLResponse>>& url_response_set) const
     {
-#ifndef HAVE_SEV_SNP
-      throw std::runtime_error(
-        "ravl was compiled without support for SEV/SNP attestations");
-#endif
-
-      if (endorsements.empty() && url_response_set.empty())
+      if (
+        endorsements.empty() &&
+        (!url_response_set || url_response_set->empty()))
         throw std::runtime_error("missing endorsements");
 
       size_t indent = 0;
@@ -464,10 +456,14 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
             Unique_X509(*options.root_ca_certificate);
         else if (options.fresh_root_ca_certificate)
           endorsements_etc.root_ca_certificate =
-            parse_root_cert(options, url_response_set);
+            parse_root_cert(options, *url_response_set);
       }
       else
-        endorsements_etc = parse_url_responses(options, url_response_set);
+      {
+        if (!url_response_set)
+          throw std::runtime_error("missing endorsements");
+        endorsements_etc = parse_url_responses(options, *url_response_set);
+      }
 
       if (options.verbosity > 0)
         log(endorsements_etc.to_string(options.verbosity, indent));

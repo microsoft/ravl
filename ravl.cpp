@@ -417,4 +417,31 @@ namespace ravl
     attestation_request_tracker.erase(id);
     return r;
   }
-};
+
+  bool verify_sync(
+    std::shared_ptr<const Attestation> attestation, const Options& options)
+  {
+#ifndef HAVE_SGX
+    if (attestation.source == Source::SGX)
+      throw std::runtime_error(
+        "ravl was compiled without support for SGX attestations");
+#endif
+#ifndef HAVE_SEV_SNP
+    if (attestation.source == Source::SEV_SNP)
+      throw std::runtime_error(
+        "ravl was compiled without support for SEV/SNP attestations");
+#endif
+#ifndef HAVE_OPEN_ENCLAVE
+    if (attestation.source == Source::OPEN_ENCLAVE)
+      throw std::runtime_error(
+        "ravl was compiled without support for Open Enclave attestations");
+#endif
+
+    auto url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
+    auto rs = attestation->prepare_endorsements(options, url_request_tracker);
+    std::optional<std::vector<URLResponse>> url_response_set = std::nullopt;
+    if (rs)
+      url_response_set = url_request_tracker->collect(*rs);
+    return attestation->verify(options, url_response_set);
+  }
+}

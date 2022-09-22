@@ -53,7 +53,7 @@
       "cwd": "${workspaceFolder}/build",
       "stopAtEntry": false,
       "args": [
-        "-tc=SGX quote with endorsements from cache"
+        "-tc=SGX with endorsements from cache"
       ]
     },
     {
@@ -75,7 +75,7 @@
       "cwd": "${workspaceFolder}/build",
       "stopAtEntry": false,
       "args": [
-        "-tc=SEV/SNP quote w/o*"
+        "-tc=SEV/SNP w/o*"
       ]
     },
     {
@@ -86,7 +86,7 @@
       "cwd": "${workspaceFolder}/build",
       "stopAtEntry": false,
       "args": [
-        "-tc=SEV/SNP quote w/ cached endorsements"
+        "-tc=SEV/SNP w/ cached endorsements"
       ]
     },
     {
