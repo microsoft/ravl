@@ -3,12 +3,17 @@
 
 #include "ravl_url_requests.h"
 
+#include <chrono>
 #include <cstring>
 #include <curl/curl.h>
 #include <new>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
+
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
 
 namespace ravl
 {
@@ -51,26 +56,57 @@ namespace ravl
     URLResponse r;
 
     CURL* curl = curl_easy_init();
+
     if (!curl)
       throw std::runtime_error("libcurl initialization failed");
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &r);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_write_fun);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &r);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_write_fun);
+    for (size_t num_retries = 0; num_retries < max_retries; num_retries++)
+    {
+      curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &r);
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_write_fun);
+      curl_easy_setopt(curl, CURLOPT_HEADERDATA, &r);
+      curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_write_fun);
 
-    if (verbose)
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+      if (verbose)
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-    if (!body.empty())
-      curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.data());
+      if (!body.empty())
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.data());
 
-    CURLcode curl_code = curl_easy_perform(curl);
-    r.code = curl_code;
+      CURLcode curl_code = curl_easy_perform(curl);
+
+      if (curl_code != CURLE_OK)
+      {
+        curl_easy_cleanup(curl);
+        throw std::runtime_error(fmt::format("curl error: {}", curl_code));
+      }
+      else
+      {
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &r.code);
+
+        if (r.code == 429)
+        {
+          long retry_after = 0;
+          curl_easy_getinfo(curl, CURLINFO_RETRY_AFTER, &retry_after);
+          if (verbose)
+            printf("HTTP 429; RETRY after %lds\n", retry_after);
+          std::this_thread::sleep_for(std::chrono::seconds(retry_after));
+          r.body = "";
+          r.headers.clear();
+          r.code = 0;
+        }
+        else
+        {
+          curl_easy_cleanup(curl);
+          return r;
+        }
+      }
+    }
 
     curl_easy_cleanup(curl);
-    return r;
+
+    throw std::runtime_error("maxmimum number of URL request retries exceeded");
   }
 
   std::vector<uint8_t> URLResponse::url_decode(const std::string& in)

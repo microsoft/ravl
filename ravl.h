@@ -47,9 +47,13 @@ namespace ravl
     void* implementation;
   };
 
-  /// Synchronous verification (including endorsement download).
+  /// Synchronized verification (including endorsement download).
   bool verify(
     std::shared_ptr<const Attestation> attestation,
     const Options& options,
     std::shared_ptr<URLRequestTracker> request_tracker = nullptr);
+
+  /// Entirely synchronous verification (including endorsement download).
+  bool verify_sync(
+    std::shared_ptr<const Attestation> attestation, const Options& options);
 }
