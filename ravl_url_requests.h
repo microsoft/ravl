@@ -82,7 +82,7 @@ namespace ravl
   {
   public:
     AsynchronousURLRequestTracker(bool verbose = false);
-    virtual ~AsynchronousURLRequestTracker() = default;
+    virtual ~AsynchronousURLRequestTracker();
 
     virtual URLRequestSetId submit(
       URLRequests&& rs,
@@ -90,34 +90,7 @@ namespace ravl
 
     virtual bool is_complete(const URLRequestSetId& id) const override;
 
-  protected:
-    mutable std::mutex mtx;
-
-    class MonitorThread;
-
-    struct TrackedRequests
-    {
-      ~TrackedRequests() {}
-      URLRequests requests = {};
-      void* handle = NULL;
-      std::function<void(URLResponses&&)> callback = nullptr;
-    };
-
-    typedef std::unordered_map<URLRequestSetId, std::shared_ptr<MonitorThread>>
-      MonitorThreads;
-
-    MonitorThreads monitor_threads;
-
-    typedef std::unordered_map<URLRequestSetId, TrackedRequests> Requests;
-    Requests requests;
-
-    std::unordered_map<URLRequestSetId, URLResponses> responses;
-
-    void complete(size_t id, size_t i, void* handle);
-
-    bool poll(
-      URLRequestSetId id,
-      void* multi,
-      std::function<void(URLResponses&&)>& callback);
+  private:
+    void* implementation;
   };
 }

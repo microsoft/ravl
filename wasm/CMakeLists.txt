@@ -18,11 +18,11 @@ option(TESTS "enable testing" ON)
 option(PROFILE "enable profiling" OFF)
 
 set(RAVL_SRC ${RAVL_DIR}/ravl.cpp)
-set(RAVL_INCLUDE ${RAVL_DIR}/3rdparty ${RAVL_DIR})
+set(RAVL_INCLUDE ${RAVL_DIR}/3rdparty ${RAVL_DIR} /data/cwinter/emsdk/upstream/emscripten/cache/sysroot/include)
 set(RAVL_DEFS)
 set(RAVL_LIB_DEPS)
 set(RAVL_LIB_DIRS)
-set(RAVL_LINK_OPTS -fexceptions)
+set(RAVL_LINK_OPTS -fexceptions -sFETCH)
 set(RAVL_FLAGS -sNO_DISABLE_EXCEPTION_CATCHING -fexceptions)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -48,7 +48,7 @@ if (SEV_SNP)
   list(APPEND RAVL_SRC ${RAVL_DIR}/ravl_sev_snp.cpp)
 endif()
 
-list(APPEND RAVL_SRC ${RAVL_DIR}/ravl_requests.cpp)
+list(APPEND RAVL_SRC ${RAVL_DIR}/ravl_url_requests.cpp ravl_requests_fetch.cpp)
 
 set(CMAKE_EXECUTABLE_SUFFIX_CXX .html)
 add_executable(ravl ${RAVL_SRC} test_main.cpp)
