@@ -6,7 +6,6 @@
 #include <chrono>
 #include <ravl.h>
 #include <ravl_url_requests.h>
-#include <ravl_url_requests_threaded.h>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
@@ -62,7 +61,7 @@ std::string sev_snp_quote = R"({
 /* clang-format on */
 
 std::shared_ptr<URLRequestTracker> request_tracker =
-  std::make_shared<AsynchronousURLRequestTracker>(/*verbose=*/true);
+  std::make_shared<AsynchronousURLRequestTracker>(/*verbose=*/false);
 
 #ifndef USE_OE_VERIFIER
 // These attestations contain expired endorsements and the OE verifier doesn't
@@ -198,15 +197,17 @@ TEST_CASE("SGX CoffeeLake asynchronous")
   auto id = tracker.submit(
     default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
 
-  std::thread t([&tracker, id]() {
+  bool result = false;
+
+  std::thread t([&tracker, id, &result]() {
     while (!tracker.finished(id))
-    {
-      tracker.advance(id);
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    result = tracker.result(id);
   });
 
   t.join();
+
+  REQUIRE(result);
 }
 
 TEST_CASE("SEV/SNP asynchronous")
@@ -218,13 +219,15 @@ TEST_CASE("SEV/SNP asynchronous")
   auto id = tracker.submit(
     default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
 
-  std::thread t([&tracker, id]() {
+  bool result = false;
+
+  std::thread t([&tracker, id, &result]() {
     while (!tracker.finished(id))
-    {
-      tracker.advance(id);
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    result = tracker.result(id);
   });
 
   t.join();
+
+  REQUIRE(result);
 }

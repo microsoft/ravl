@@ -17,7 +17,7 @@ function(add_unit_test NAME SRC)
       ${NAME} PRIVATE -fsanitize=undefined,address -fno-omit-frame-pointer
     )
     target_link_options(${NAME} PRIVATE -fsanitize=undefined,address)
-  endif()  
+  endif()
 
   add_test(${NAME} ${NAME})
 endfunction()
@@ -36,6 +36,7 @@ function(add_ravl_test target source)
     target_compile_definitions(${RAVL_TEST_PREFIX}${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
   endif()
   target_compile_definitions(${RAVL_TEST_PREFIX}${target} PRIVATE ${RAVL_DEFS})
+  target_link_libraries(${RAVL_TEST_PREFIX}${target} PRIVATE pthread)
 endfunction()
 
 find_path(DOCTEST_DIR "doctest.h" PATH 3rdparty/doctest)
