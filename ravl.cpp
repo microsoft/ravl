@@ -138,18 +138,36 @@ namespace ravl
 
     struct Request
     {
+      Request(
+        AttestationRequestTracker::RequestState state,
+        Options options,
+        std::shared_ptr<const Attestation> attestation,
+        AttestationRequestTracker::Result result,
+        std::shared_ptr<URLRequestTracker> url_request_tracker) :
+        state(state),
+        options(options),
+        attestation(attestation),
+        url_request_tracker(url_request_tracker)
+      {}
+
+      Request(const Request& other) = delete;
       AttestationRequestTracker::RequestState state = RequestState::ERROR;
       Options options;
       std::shared_ptr<const Attestation> attestation;
       AttestationRequestTracker::Result result = false;
-      std::optional<URLRequestSetId> request_set_id = std::nullopt;
       std::shared_ptr<URLRequestTracker> url_request_tracker;
     };
 
-    std::mutex requests_mtx;
-    std::map<AttestationRequestTracker::RequestID, Request> requests;
+    using Requests = std::map<AttestationRequestTracker::RequestID, Request>;
+    using URLResponseMap =
+      std::map<AttestationRequestTracker::RequestID, URLResponses>;
+
+    mutable std::mutex requests_mtx;
+    Requests requests;
     std::shared_ptr<URLRequestTracker> url_request_tracker;
     AttestationRequestTracker::RequestID next_request_id = 0;
+    mutable std::mutex responses_mtx;
+    URLResponseMap url_responses;
 
     RequestID submit(
       const Options& options,
@@ -157,21 +175,37 @@ namespace ravl
       std::function<void(RequestID)> callback,
       std::shared_ptr<URLRequestTracker> request_tracker)
     {
-      auto request_id = next_request_id++;
+      RequestID request_id;
+      Requests::iterator rit;
 
-      requests[request_id] = {
-        RequestState::SUBMITTED,
-        options,
-        attestation,
-        false,
-        0,
-        request_tracker};
+      {
+        std::lock_guard<std::mutex> guard(responses_mtx);
+
+        request_id = next_request_id++;
+
+        auto [it, ok] = requests.try_emplace(
+          request_id,
+          RequestState::SUBMITTED,
+          options,
+          attestation,
+          false,
+          request_tracker);
+
+        if (!ok)
+          throw std::bad_alloc();
+
+        rit = it;
+      }
+
+      advance(request_id, rit->second);
 
       return request_id;
     }
 
     RequestState state(RequestID id) const
     {
+      std::lock_guard<std::mutex> guard(requests_mtx);
+
       auto rit = requests.find(id);
       if (rit == requests.end())
         return RequestState::ERROR;
@@ -186,19 +220,18 @@ namespace ravl
         case RequestState::ERROR:
           throw std::runtime_error("verification request failed");
         case RequestState::SUBMITTED:
-          if (!prepare_endorsements(req))
+          req.state = RequestState::WAITING_FOR_ENDORSEMENTS;
+          if (!prepare_endorsements(id, req))
+          {
             req.state = RequestState::HAVE_ENDORSEMENTS;
-          else
-            req.state = RequestState::WAITING_FOR_ENDORSEMENTS;
+            advance(id, req);
+          }
           break;
         case RequestState::WAITING_FOR_ENDORSEMENTS:
-          if (
-            !req.request_set_id ||
-            req.url_request_tracker->is_complete(*req.request_set_id))
-            req.state = RequestState::HAVE_ENDORSEMENTS;
+          req.state = RequestState::HAVE_ENDORSEMENTS;
           break;
         case RequestState::HAVE_ENDORSEMENTS:
-          verify(req);
+          verify(id, req);
           req.state = RequestState::FINISHED;
           break;
         case RequestState::FINISHED:
@@ -217,6 +250,8 @@ namespace ravl
 
     Result result(RequestID id) const
     {
+      std::lock_guard<std::mutex> guard(requests_mtx);
+
       auto rit = requests.find(id);
       if (rit == requests.end())
         throw std::runtime_error("no such attestation verification request");
@@ -228,6 +263,8 @@ namespace ravl
 
     void erase(RequestID id)
     {
+      std::lock_guard<std::mutex> guard(requests_mtx);
+
       auto rit = requests.find(id);
       if (rit != requests.end())
         requests.erase(rit);
@@ -235,11 +272,19 @@ namespace ravl
 
     AttestationRequestTracker::RequestID advance(RequestID id)
     {
-      auto rit = requests.find(id);
+      Requests::iterator rit;
+
+      {
+        std::lock_guard<std::mutex> guard(requests_mtx);
+        rit = requests.find(id);
+        if (rit == requests.end())
+          throw std::runtime_error("request not found");
+      }
+
       return advance(id, rit->second);
     }
 
-    bool prepare_endorsements(Request& request)
+    bool prepare_endorsements(RequestID id, Request& request)
     {
       if (!request.attestation)
         throw std::runtime_error("no attestation to verify");
@@ -275,8 +320,23 @@ namespace ravl
 
       try
       {
-        request.request_set_id = request.attestation->prepare_endorsements(
-          options, [](size_t id) {}, request_tracker);
+        auto url_requests =
+          request.attestation->prepare_endorsements(options, request_tracker);
+        if (url_requests)
+        {
+          auto callback = [this, id](URLResponses&& r) {
+            {
+              std::lock_guard<std::mutex> guard(responses_mtx);
+              auto [it, ok] = url_responses.emplace(id, r);
+              if (!ok)
+                throw std::bad_alloc();
+            }
+            advance(id);
+            advance(id);
+          };
+          request_tracker->submit(std::move(*url_requests), callback);
+          return true;
+        }
       }
       catch (std::exception& ex)
       {
@@ -286,10 +346,10 @@ namespace ravl
           fmt::format("attestation verification failed: {}", ex.what()));
       }
 
-      return request.request_set_id.has_value();
+      return false;
     }
 
-    void verify(Request& request)
+    void verify(RequestID id, Request& request)
     {
       if (!request.attestation)
         throw std::runtime_error("no attestation to verify");
@@ -300,14 +360,18 @@ namespace ravl
 
       bool r = false;
 
-      std::vector<URLResponse> responses;
-
-      if (request.request_set_id)
-        responses =
-          request.url_request_tracker->collect(*request.request_set_id);
-
       try
       {
+        std::lock_guard<std::mutex> guard(responses_mtx);
+        std::vector<URLResponse> responses;
+
+        auto rit = url_responses.find(id);
+        if (rit != url_responses.end())
+        {
+          responses.swap(rit->second);
+          url_responses.erase(rit);
+        }
+
         r = attestation.verify(options, responses);
       }
       catch (std::exception& ex)
@@ -412,14 +476,19 @@ namespace ravl
       url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
 
     auto id = attestation_request_tracker.submit(
-      options, attestation, url_request_tracker);
+      options,
+      attestation,
+      [](AttestationRequestTracker::RequestID id) {
+        attestation_request_tracker.advance(id);
+      },
+      url_request_tracker);
 
-    auto state = attestation_request_tracker.advance(id);
+    auto state = attestation_request_tracker.state(id);
     while (state != AttestationRequestTracker::FINISHED &&
            state != AttestationRequestTracker::ERROR)
     {
-      // std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      state = attestation_request_tracker.advance(id);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      state = attestation_request_tracker.state(id);
     }
 
     if (state == AttestationRequestTracker::ERROR)
@@ -450,11 +519,14 @@ namespace ravl
 #endif
 
     auto url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
-    auto rs = attestation->prepare_endorsements(
-      options, [](auto) {}, url_request_tracker);
-    std::optional<std::vector<URLResponse>> url_response_set = std::nullopt;
-    if (rs)
-      url_response_set = url_request_tracker->collect(*rs);
+    auto requests =
+      attestation->prepare_endorsements(options, url_request_tracker);
+    std::optional<URLResponses> url_response_set = std::nullopt;
+    if (requests)
+      url_request_tracker->submit(
+        std::move(*requests), [&url_response_set](URLResponses&& r) {
+          url_response_set = std::move(r);
+        });
     return attestation->verify(options, url_response_set);
   }
 }

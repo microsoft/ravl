@@ -201,21 +201,21 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return stack.at(1).pem();
     }
 
-    URLRequestSetId download_root_ca_pem(
+    URLRequests download_root_ca_pem(
       const std::string& product_name,
       const Options& options,
       std::shared_ptr<URLRequestTracker> tracker)
     {
       std::string r;
 
-      std::vector<URLRequest> request_set;
+      URLRequests requests;
 
       auto vcek_issuer_chain_url =
         fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
 
-      request_set.emplace_back(vcek_issuer_chain_url);
+      requests.emplace_back(vcek_issuer_chain_url);
 
-      return tracker->submit(std::move(request_set), [](Responses) {});
+      return requests;
     }
 
     struct EndorsementsEtc
@@ -313,7 +313,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return r;
     }
 
-    URLRequestSetId download_endorsements(
+    URLRequests download_endorsements(
       const std::string& product_name,
       const std::span<const uint8_t>& chip_id,
       const snp::TcbVersion& tcb_version,
@@ -323,7 +323,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
 
-      std::vector<URLRequest> request_set;
+      URLRequests requests;
       bool tr = false;
 
       auto hwid = fmt::format("{:02x}", fmt::join(chip_id, ""));
@@ -338,10 +338,10 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         auto chain_url = fmt::vformat(
           url_template, fmt::make_format_args(hwid, tcb_version_str));
 
-        request_set.emplace_back(chain_url);
+        requests.emplace_back(chain_url);
 
         // TODO: Does the cache also provide CRLs?
-        request_set.emplace_back(vcek_issuer_crl_url);
+        requests.emplace_back(vcek_issuer_crl_url);
       }
       else
       {
@@ -357,12 +357,12 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         auto vcek_issuer_chain_url =
           fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
 
-        request_set.emplace_back(vcek_url);
-        request_set.emplace_back(vcek_issuer_chain_url);
-        request_set.emplace_back(vcek_issuer_crl_url);
+        requests.emplace_back(vcek_url);
+        requests.emplace_back(vcek_issuer_chain_url);
+        requests.emplace_back(vcek_issuer_crl_url);
       }
 
-      return tracker->submit(std::move(request_set), [](Responses) {});
+      return requests;
     }
 
     static bool verify_signature(
@@ -391,10 +391,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return rc == 1;
     }
 
-    std::optional<URLRequestSetId> Attestation::prepare_endorsements(
-      const Options& options,
-      std::function<void(size_t)> callback,
-      std::shared_ptr<URLRequestTracker> tracker) const
+    std::optional<URLRequests> Attestation::prepare_endorsements(
+      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
@@ -411,7 +409,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       std::string product_name =
         "Milan"; // TODO: How can we determine that from snp_att?
 
-      std::optional<URLRequestSetId> r = std::nullopt;
+      std::optional<URLRequests> r = std::nullopt;
 
       if (!endorsements.empty() && !options.fresh_endorsements)
       {

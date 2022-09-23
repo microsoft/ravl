@@ -111,14 +111,6 @@ namespace ravl
         little_endian);
     }
 
-    inline void printf_certificate(const Unique_X509& certificate)
-    {
-      Unique_BIO bio;
-      X509_print(bio, certificate);
-      std::string certificate_s = bio.to_string();
-      printf("%s\n", certificate_s.c_str());
-    }
-
     inline std::string_view extract_pem(std::string_view& data)
     {
       static std::string begin = "-----BEGIN CERTIFICATE-----";

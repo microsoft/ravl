@@ -231,15 +231,15 @@ namespace ravl
     static const std::string qe_identity_url = api_base_url + "/qe/identity";
     static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
-    URLRequestSetId download_root_ca_pem(
+    URLRequests download_root_ca_pem(
       const Options& options, std::shared_ptr<URLRequestTracker> tracker)
     {
-      std::vector<URLRequest> request_set;
-      request_set.emplace_back(root_ca_url);
-      return tracker->submit(std::move(request_set), [](Responses) {});
+      URLRequests requests;
+      requests.emplace_back(root_ca_url);
+      return requests;
     }
 
-    URLRequestSetId download_collateral(
+    URLRequests download_collateral(
       const std::string& ca,
       const std::string& fmspc,
       const Options& options,
@@ -252,58 +252,58 @@ namespace ravl
       r->minor_version = 1;
       r->tee_type = 0;
 
-      std::vector<URLRequest> request_set;
+      URLRequests requests;
 
       if (!options.sgx_endorsement_cache_url_template)
       {
         // Root CA certificate
         if (!options.root_ca_certificate)
-          request_set.emplace_back(root_ca_url);
+          requests.emplace_back(root_ca_url);
 
         // Root CRL
-        request_set.emplace_back(root_crl_url);
+        requests.emplace_back(root_crl_url);
 
         // TCB info
         // https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v3
-        request_set.emplace_back(tcb_url + "?fmspc=" + fmspc);
+        requests.emplace_back(tcb_url + "?fmspc=" + fmspc);
 
         // PCK CRL
         // https://api.portal.trustedservices.intel.com/documentation#pcs-revocation-v3
-        request_set.emplace_back(pck_crl_url + "?ca=" + ca + "&encoding=pem");
+        requests.emplace_back(pck_crl_url + "?ca=" + ca + "&encoding=pem");
 
         if (!qve)
         {
           // QE Identity
           // https://api.portal.trustedservices.intel.com/documentation#pcs-qe-identity-v3
-          request_set.emplace_back(qe_identity_url);
+          requests.emplace_back(qe_identity_url);
         }
         else
         {
           // QVE Identity
           // https://api.portal.trustedservices.intel.com/documentation#pcs-qve-identity-v3
-          request_set.emplace_back(qve_identity_url);
+          requests.emplace_back(qve_identity_url);
         }
       }
       else
       {
         if (!options.root_ca_certificate)
-          request_set.emplace_back(root_ca_url);
+          requests.emplace_back(root_ca_url);
         auto tmpl = *options.sgx_endorsement_cache_url_template;
-        request_set.emplace_back(
+        requests.emplace_back(
           fmt::vformat(tmpl, fmt::make_format_args("pckcrl", root_crl_url)));
-        request_set.emplace_back(fmt::vformat(
+        requests.emplace_back(fmt::vformat(
           tmpl, fmt::make_format_args("tcb", tcb_url + "&fmspc=" + fmspc)));
-        request_set.emplace_back(fmt::vformat(
+        requests.emplace_back(fmt::vformat(
           tmpl,
           fmt::make_format_args(
             "pckcrl",
             intel_certificates_url_base + "/intelsgxpck" + ca + ".crl" +
               "&encoding=pem")));
         if (!qve)
-          request_set.emplace_back(fmt::vformat(
+          requests.emplace_back(fmt::vformat(
             tmpl, fmt::make_format_args("qe/identity", qe_identity_url)));
         else
-          request_set.emplace_back(fmt::vformat(
+          requests.emplace_back(fmt::vformat(
             tmpl, fmt::make_format_args("qve/identity", qve_identity_url)));
       }
 
@@ -311,7 +311,7 @@ namespace ravl
         tracker =
           std::make_shared<SynchronousURLRequestTracker>(options.verbosity > 0);
 
-      return tracker->submit(std::move(request_set), [](Responses) {});
+      return requests;
     }
 
     class CertificateExtension
@@ -928,10 +928,8 @@ namespace ravl
       std::span<const uint8_t> certification_data;
     };
 
-    std::optional<URLRequestSetId> Attestation::prepare_endorsements(
-      const Options& options,
-      std::function<void(size_t)> callback,
-      std::shared_ptr<URLRequestTracker> tracker) const
+    std::optional<URLRequests> Attestation::prepare_endorsements(
+      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
@@ -945,7 +943,7 @@ namespace ravl
       std::span quote = parse_quote(*this);
       SignatureData signature_data(quote, *this);
 
-      std::optional<URLRequestSetId> r = std::nullopt;
+      std::optional<URLRequests> r = std::nullopt;
 
       if (!this->endorsements.empty() && !options.fresh_endorsements)
       {

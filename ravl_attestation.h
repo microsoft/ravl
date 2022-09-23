@@ -45,17 +45,15 @@ namespace ravl
     std::vector<uint8_t> endorsements;
 
     /// Function to prepare network requests for endorsements
-    virtual std::optional<URLRequestSetId> prepare_endorsements(
+    virtual std::optional<URLRequests> prepare_endorsements(
       const Options& options,
-      std::function<void(size_t)> callback,
       std::shared_ptr<URLRequestTracker> request_tracker) const = 0;
 
     /// Function to verify the attestation (with all endorsements present either
     /// in the attestation object or in the url_response_set).
     virtual bool verify(
       const Options& options,
-      const std::optional<std::vector<URLResponse>>& url_response_set)
-      const = 0;
+      const std::optional<URLResponses>& url_response_set) const = 0;
 
     operator std::string() const;
 

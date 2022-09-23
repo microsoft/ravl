@@ -26,15 +26,13 @@ namespace ravl
 
       virtual ~Attestation() = default;
 
-      virtual std::optional<URLRequestSetId> prepare_endorsements(
+      virtual std::optional<URLRequests> prepare_endorsements(
         const Options& options,
-        std::function<void(size_t)> callback,
         std::shared_ptr<URLRequestTracker> request_tracker) const override;
 
       virtual bool verify(
         const Options& options,
-        const std::optional<std::vector<URLResponse>>& url_response_set)
-        const override;
+        const std::optional<URLResponses>& url_response_set) const override;
     };
   }
 }

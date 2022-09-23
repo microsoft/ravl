@@ -49,7 +49,7 @@ namespace ravl
     Result result(RequestID id) const;
     void erase(RequestID id);
 
-  protected:
+  private:
     void* implementation;
   };
 
