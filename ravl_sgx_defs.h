@@ -166,35 +166,6 @@ namespace ravl
     };
     EXPECT_SIZE(sgx_ql_ecdsa_sig_data_t, 576);
 
-    struct sgx_ql_qve_collateral_t
-    {
-      union
-      {
-        uint32_t version;
-        struct
-        {
-          uint16_t major_version;
-          uint16_t minor_version;
-        };
-      };
-      uint32_t tee_type;
-      char* pck_crl_issuer_chain;
-      uint32_t pck_crl_issuer_chain_size;
-      char* root_ca_crl;
-      uint32_t root_ca_crl_size;
-      char* pck_crl;
-      uint32_t pck_crl_size;
-      char* tcb_info_issuer_chain;
-      uint32_t tcb_info_issuer_chain_size;
-      char* tcb_info;
-      uint32_t tcb_info_size;
-      char* qe_identity_issuer_chain;
-      uint32_t qe_identity_issuer_chain_size;
-      char* qe_identity;
-      uint32_t qe_identity_size;
-    };
-    EXPECT_SIZE(sgx_ql_qve_collateral_t, 92);
-
 #pragma pack(pop)
   }
 }
