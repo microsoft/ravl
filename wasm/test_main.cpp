@@ -19,7 +19,7 @@ std::string coffeelake_quote = R"({
 })";
 
 Options default_options = {
-  .verbosity = 2, .certificate_verification = {.ignore_time = true}};
+  .verbosity = 1, .certificate_verification = {.ignore_time = true}};
 
 int main()
 {
@@ -27,11 +27,12 @@ int main()
   {
     auto url_tracker = std::make_shared<AsynchronousURLRequestTracker>();
     auto att_tracker = std::make_shared<AttestationRequestTracker>();
-    bool r = false;
+    std::shared_ptr<Claims> claims;
 
     auto att = parse_attestation(coffeelake_quote);
-    r = verify(att, default_options, url_tracker);
-    printf("with endorsements: %d\n", r);
+
+    claims = verify(att, default_options, url_tracker);
+    printf("with endorsements: %d\n", claims != nullptr);
 
     auto att_without = att;
     att_without->endorsements = {};
@@ -44,12 +45,10 @@ int main()
       default_options,
       att_without,
       [att_tracker](AttestationRequestTracker::RequestID id) {
-        att_tracker->advance(id);
-        printf("state=%d\n", att_tracker->state(id));
-
-        bool r = att_tracker->result(id);
-        att_tracker->erase(id);
-        printf("without endorsements: %d\n", r);
+        // auto r = att_tracker->result(id);
+        // att_tracker->erase(id);
+        // printf("without endorsements: %d\n", r != nullptr);
+        printf("CALLBACK\n");
       },
       url_tracker);
 
@@ -58,13 +57,11 @@ int main()
     while (!att_tracker->finished(id))
     {
       emscripten_sleep(100);
-      printf(".");
-      fflush(stdout);
     }
 
-    bool result = att_tracker->result(id);
+    claims = att_tracker->result(id);
 
-    printf("\n\ndone: result=%d\n", result);
+    printf("\n\ndone: result=%d\n", claims != nullptr);
 
     return 0;
   }

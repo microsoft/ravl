@@ -92,9 +92,9 @@ namespace ravl
           throw std::runtime_error("excess collateral data");
       }
 
-      uint16_t major_version;
-      uint16_t minor_version;
-      uint32_t tee_type;
+      uint16_t major_version = 3;
+      uint16_t minor_version = 1;
+      uint32_t tee_type = 0;
 
       std::string root_ca;
       std::string pck_crl_issuer_chain;
@@ -961,7 +961,8 @@ namespace ravl
       {
         // Get X509 extensions from the PCK cert to find CA type and fmspc.
         // The cert chain is still unverified at this point.
-        auto pck_pem = extract_pem(signature_data.certification_data);
+        auto pck_pem =
+          extract_pem_certificate(signature_data.certification_data);
         Unique_X509 pck_leaf(Unique_BIO(pck_pem), true);
         CertificateExtension pck_ext(pck_leaf);
 
