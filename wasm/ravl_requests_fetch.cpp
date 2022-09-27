@@ -17,6 +17,65 @@
 
 namespace ravl
 {
+  namespace
+  {
+    // From http://www.geekhideout.com/urlcode.shtml
+
+    /* Converts a hex character to its integer value */
+    char from_hex(char ch)
+    {
+      return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
+    }
+
+    /* Converts an integer value to its hex character*/
+    char to_hex(char code)
+    {
+      static char hex[] = "0123456789abcdef";
+      return hex[code & 15];
+    }
+
+    /* Returns a url-decoded version of str */
+    /* IMPORTANT: be sure to free() the returned string after use */
+    char* url_decode(const char* str, size_t len)
+    {
+      const char* pstr = str;
+      char *buf = (char*)malloc(len + 1), *pbuf = buf;
+      while (*pstr)
+      {
+        if (*pstr == '%')
+        {
+          if (pstr[1] && pstr[2])
+          {
+            *pbuf++ = from_hex(pstr[1]) << 4 | from_hex(pstr[2]);
+            pstr += 2;
+          }
+        }
+        else if (*pstr == '+')
+        {
+          *pbuf++ = ' ';
+        }
+        else
+        {
+          *pbuf++ = *pstr;
+        }
+        pstr++;
+      }
+      *pbuf = '\0';
+      return buf;
+    }
+  }
+
+  std::vector<uint8_t> URLResponse::url_decode(const std::string& in)
+  {
+    int outsz = 0;
+    char* decoded = ravl::url_decode(in.data(), in.size());
+    if (!decoded)
+      throw std::bad_alloc();
+    std::vector<uint8_t> r = {decoded, decoded + outsz};
+    free(decoded);
+    return r;
+  }
+
   std::vector<uint8_t> URLResponse::get_header_data(
     const std::string& name, bool url_decoded) const
   {
@@ -25,7 +84,17 @@ namespace ravl
     auto hit = headers.find(lname);
     if (hit == headers.end())
       throw std::runtime_error("missing response header '" + name + "'");
-    return {hit->second.data(), hit->second.data() + hit->second.size()};
+    if (url_decoded)
+      return url_decode(hit->second);
+    else
+      return {hit->second.data(), hit->second.data() + hit->second.size()};
+  }
+
+  std::string URLResponse::get_header_string(
+    const std::string& name, bool url_decoded) const
+  {
+    auto t = get_header_data(name, url_decoded);
+    return std::string(t.begin(), t.end());
   }
 
   URLResponse URLRequest::execute(bool verbose)
@@ -185,6 +254,11 @@ namespace ravl
           response.body.size(),
           id);
 
+        // printf("HDRS:\n");
+        // for (const auto& kv : response.headers)
+        //   printf("%s=%s\n", kv.first.c_str(), kv.second.c_str());
+        // printf("BODY: %s\n", response.body.c_str());
+
         treqs.fetches[i] = NULL;
       }
 
@@ -207,8 +281,6 @@ namespace ravl
         return false;
 
       const TrackedRequests& treqs = rqit->second;
-
-      printf("Checking if all %zu are done\n", treqs.fetches.size());
 
       for (const auto& fetch : treqs.fetches)
         if (fetch)
