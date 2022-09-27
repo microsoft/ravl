@@ -2,9 +2,13 @@
 // Licensed under the MIT License.
 
 #include "ravl_attestation.h"
+#include "ravl_util.h"
 
 #include <chrono>
 #include <ravl.h>
+#include <ravl_oe.h>
+#include <ravl_sev_snp.h>
+#include <ravl_sgx.h>
 #include <ravl_url_requests.h>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -70,13 +74,15 @@ std::shared_ptr<URLRequestTracker> request_tracker =
 TEST_CASE("Open Enclave CoffeeLake")
 {
   auto att = parse_attestation(oe_coffeelake_attestation);
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("Open Enclave IceLake")
 {
   auto att = parse_attestation(oe_icelake_attestation);
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 #endif
 
@@ -84,59 +90,80 @@ TEST_CASE("Open Enclave CoffeeLake w/o endorsements")
 {
   auto att = parse_attestation(oe_coffeelake_attestation);
   att->endorsements = {};
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
+  auto sc = Claims::get<ravl::oe::Claims>(claims);
+  REQUIRE(
+    to_hex(sc->sgx_claims->report_body.mr_enclave) ==
+    "bf8689a1fdb3828efa56d9f23a1524ec1f1641968a811165b704cf6178f7e00b");
 }
 
 TEST_CASE("Open Enclave CoffeeLake w/o custom claims")
 {
   auto att = parse_attestation(oe_no_custom_claims);
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("Open Enclave IceLake w/o endorsements")
 {
   auto att = parse_attestation(oe_icelake_attestation);
   att->endorsements = {};
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
+  auto sc = Claims::get<ravl::oe::Claims>(claims);
+  REQUIRE(
+    to_hex(sc->sgx_claims->report_body.mr_enclave) ==
+    "dd723980d7534e75313bddbb14341d63a0357b91d9e136998fdda0e220b664c8");
 }
 
 TEST_CASE("SGX CoffeeLake")
 {
   auto att = parse_attestation(coffeelake_quote);
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
+  auto sc = Claims::get<ravl::sgx::Claims>(claims);
+  REQUIRE(
+    to_hex(sc->report_body.mr_enclave) ==
+    "bf8689a1fdb3828efa56d9f23a1524ec1f1641968a811165b704cf6178f7e00b");
 }
 
 TEST_CASE("SGX CoffeeLake w/o endorsements")
 {
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX IceLake")
 {
   auto att = parse_attestation(icelake_quote);
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX IceLake w/o endorsements")
 {
   auto att = parse_attestation(icelake_quote);
   att->endorsements = {};
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX SDK QE Quote3")
 {
   auto att = parse_attestation(sgx_sdk_qe_quote3);
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX SDK QE Quote3 w/o endorsements")
 {
   auto att = parse_attestation(sgx_sdk_qe_quote3);
   att->endorsements = {};
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SGX with endorsements from cache")
@@ -147,20 +174,28 @@ TEST_CASE("SGX with endorsements from cache")
   options.sgx_endorsement_cache_url_template =
     "https://global.acccache.azure.net/sgx/certification/v3/"
     "{}?uri={}&clientid=production_client&api-version=2020-02-12-preview";
-  REQUIRE(verify(att, options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, options, request_tracker));
 }
 
 TEST_CASE("SEV/SNP")
 {
   auto att = parse_attestation(sev_snp_quote);
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
+  auto sc = Claims::get<ravl::sev_snp::Claims>(claims);
+  REQUIRE(
+    to_hex(sc->measurement) ==
+    "ede826880a4e1a41898a96810efb09f2070513abb355e89652564cd18f1d43a7a031d1ff54"
+    "490dbd61687de101b66ed1");
 }
 
 TEST_CASE("SEV/SNP w/o endorsements")
 {
   auto att = parse_attestation(sev_snp_quote);
   att->endorsements = {};
-  REQUIRE(verify(att, default_options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, default_options, request_tracker));
 }
 
 TEST_CASE("SEV/SNP with endorsements from cache")
@@ -171,21 +206,24 @@ TEST_CASE("SEV/SNP with endorsements from cache")
   options.sev_snp_endorsement_cache_url_template =
     "https://global.acccache.azure.net/SevSnpVM/certificates/{}/"
     "{}?api-version=2020-10-15-preview";
-  REQUIRE(verify(att, options, request_tracker));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify(att, options, request_tracker));
 }
 
 TEST_CASE("SEV/SNP synchronous")
 {
   auto att = parse_attestation(sev_snp_quote);
   att->endorsements = {};
-  REQUIRE(verify_sync(att, default_options));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify_sync(att, default_options));
 }
 
 TEST_CASE("SGX CoffeeLake synchronous")
 {
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
-  REQUIRE(verify_sync(att, default_options));
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify_sync(att, default_options));
 }
 
 TEST_CASE("SGX CoffeeLake asynchronous")
@@ -193,21 +231,35 @@ TEST_CASE("SGX CoffeeLake asynchronous")
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
 
-  AttestationRequestTracker tracker;
-  auto id = tracker.submit(
-    default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
+  std::shared_ptr<ravl::Claims> claims;
 
-  bool result = false;
+  try
+  {
+    AttestationRequestTracker tracker;
+    auto id = tracker.submit(
+      default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
 
-  std::thread t([&tracker, id, &result]() {
-    while (!tracker.finished(id))
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    result = tracker.result(id);
-  });
+    std::thread t([&tracker, id, &claims]() {
+      while (!tracker.finished(id))
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      claims = tracker.result(id);
+    });
 
-  t.join();
+    t.join();
+  }
+  catch (const std::exception& ex)
+  {
+    FAIL(ex.what());
+  }
+  catch (...)
+  {
+    FAIL("unexpected exception");
+  }
 
-  REQUIRE(result);
+  auto sc = Claims::get<ravl::sgx::Claims>(claims);
+  REQUIRE(
+    to_hex(sc->report_body.mr_enclave) ==
+    "bf8689a1fdb3828efa56d9f23a1524ec1f1641968a811165b704cf6178f7e00b");
 }
 
 TEST_CASE("SEV/SNP asynchronous")
@@ -215,19 +267,34 @@ TEST_CASE("SEV/SNP asynchronous")
   auto att = parse_attestation(sev_snp_quote);
   att->endorsements = {};
 
-  AttestationRequestTracker tracker;
-  auto id = tracker.submit(
-    default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
+  std::shared_ptr<ravl::Claims> claims;
 
-  bool result = false;
+  try
+  {
+    AttestationRequestTracker tracker;
+    auto id = tracker.submit(
+      default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
 
-  std::thread t([&tracker, id, &result]() {
-    while (!tracker.finished(id))
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    result = tracker.result(id);
-  });
+    std::thread t([&tracker, id, &claims]() {
+      while (!tracker.finished(id))
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      claims = tracker.result(id);
+    });
 
-  t.join();
+    t.join();
+  }
+  catch (const std::exception& ex)
+  {
+    FAIL(ex.what());
+  }
+  catch (...)
+  {
+    FAIL("unexpected exception");
+  }
 
-  REQUIRE(result);
+  auto sc = Claims::get<ravl::sev_snp::Claims>(claims);
+  REQUIRE(
+    to_hex(sc->measurement) ==
+    "ede826880a4e1a41898a96810efb09f2070513abb355e89652564cd18f1d43a7a031d1ff54"
+    "490dbd61687de101b66ed1");
 }

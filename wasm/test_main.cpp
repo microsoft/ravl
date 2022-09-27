@@ -3,8 +3,12 @@
 
 #include "ravl_attestation.h"
 
+#include <chrono>
+#include <emscripten.h>
+#include <ostream>
 #include <ravl.h>
 #include <ravl_url_requests.h>
+#include <thread>
 
 using namespace ravl;
 
@@ -26,13 +30,15 @@ int main()
     bool r = false;
 
     auto att = parse_attestation(coffeelake_quote);
-    // r = verify(att, default_options, tracker);
-    // printf("with endorsements: %d\n", r);
+    r = verify(att, default_options, url_tracker);
+    printf("with endorsements: %d\n", r);
 
     auto att_without = att;
     att_without->endorsements = {};
 
-    // verify(att_without, default_options, tracker);
+    // default_options.sgx_endorsement_cache_url_template =
+    //   "https://global.acccache.azure.net/sgx/certification/v3/"
+    //   "{}?uri={}&clientid=production_client&api-version=2020-02-12-preview";
 
     auto id = att_tracker->submit(
       default_options,
@@ -46,6 +52,19 @@ int main()
         printf("without endorsements: %d\n", r);
       },
       url_tracker);
+
+    printf("\nwaiting for verification result...\n");
+
+    while (!att_tracker->finished(id))
+    {
+      emscripten_sleep(100);
+      printf(".");
+      fflush(stdout);
+    }
+
+    bool result = att_tracker->result(id);
+
+    printf("\n\ndone: result=%d\n", result);
 
     return 0;
   }

@@ -11,6 +11,7 @@
 
 #include <dlfcn.h>
 #include <iostream>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <span>
 #include <sstream>
@@ -60,25 +61,32 @@ namespace ravl
         tee_type = get<uint32_t>(data, pos);
 
         n = get<uint64_t>(data, pos);
-        pck_crl_issuer_chain = get_n(data, n, pos);
+        std::vector t = get_n(data, n, pos);
+        pck_crl_issuer_chain = std::string(t.begin(), t.end());
 
         n = get<uint64_t>(data, pos);
-        root_ca_crl = get_n(data, n, pos);
+        t = get_n(data, n, pos);
+        root_ca_crl = std::string(t.begin(), t.end());
 
         n = get<uint64_t>(data, pos);
-        pck_crl = get_n(data, n, pos);
+        t = get_n(data, n, pos);
+        pck_crl = std::string(t.begin(), t.end());
 
         n = get<uint64_t>(data, pos);
-        tcb_info_issuer_chain = get_n(data, n, pos);
+        t = get_n(data, n, pos);
+        tcb_info_issuer_chain = std::string(t.begin(), t.end());
 
         n = get<uint64_t>(data, pos);
-        tcb_info = get_n(data, n, pos);
+        t = get_n(data, n, pos);
+        tcb_info = std::string(t.begin(), t.end());
 
         n = get<uint64_t>(data, pos);
-        qe_identity_issuer_chain = get_n(data, n, pos);
+        t = get_n(data, n, pos);
+        qe_identity_issuer_chain = std::string(t.begin(), t.end());
 
         n = get<uint64_t>(data, pos);
-        qe_identity = get_n(data, n, pos);
+        t = get_n(data, n, pos);
+        qe_identity = std::string(t.begin(), t.end());
 
         if (pos != data.size())
           throw std::runtime_error("excess collateral data");
@@ -88,14 +96,14 @@ namespace ravl
       uint16_t minor_version;
       uint32_t tee_type;
 
-      std::string root_ca_pem = {};
-      std::vector<uint8_t> pck_crl_issuer_chain;
-      std::vector<uint8_t> root_ca_crl;
-      std::vector<uint8_t> pck_crl;
-      std::vector<uint8_t> tcb_info_issuer_chain;
-      std::vector<uint8_t> tcb_info;
-      std::vector<uint8_t> qe_identity_issuer_chain;
-      std::vector<uint8_t> qe_identity;
+      std::string root_ca;
+      std::string pck_crl_issuer_chain;
+      std::string root_ca_crl;
+      std::string pck_crl;
+      std::string tcb_info_issuer_chain;
+      std::string tcb_info;
+      std::string qe_identity_issuer_chain;
+      std::string qe_identity;
 
       std::string to_string(uint32_t verbosity, size_t indent = 0) const
       {
@@ -111,11 +119,11 @@ namespace ravl
 
         if (verbosity > 0)
         {
-          Unique_X509_CRL root_crl(root_ca_crl, true);
+          Unique_X509_CRL root_crl(root_ca_crl);
           ss << ins << "- Root CA CRL:" << std::endl;
           ss << root_crl.to_string_short(indent + 4) << std::endl;
           if (verbosity > 1)
-            ss << ins << fmt::format("  - PEM:\n{}", vec2str(root_ca_crl, 8))
+            ss << ins << fmt::format("  - PEM:\n{}", indentate(root_ca_crl, 8))
                << std::endl;
 
           Unique_STACK_OF_X509 st(pck_crl_issuer_chain);
@@ -123,33 +131,32 @@ namespace ravl
           ss << st.to_string_short(indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
-               << vec2str(pck_crl_issuer_chain, 8) << std::endl;
+               << indentate(pck_crl_issuer_chain, 8) << std::endl;
 
-          Unique_X509_CRL crl(pck_crl, true);
+          Unique_X509_CRL crl(pck_crl);
           ss << ins << "- PCK CRL:" << std::endl;
           ss << crl.to_string_short(indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
-               << vec2str(pck_crl, 8) << std::endl;
+               << indentate(pck_crl, 8) << std::endl;
 
           Unique_STACK_OF_X509 ist(tcb_info_issuer_chain);
           ss << ins << "- TCB info issuer chain:" << std::endl;
           ss << ist.to_string_short(indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
-               << vec2str(tcb_info_issuer_chain, 8) << std::endl;
+               << indentate(tcb_info_issuer_chain, 8) << std::endl;
 
-          ss << ins << fmt::format("- TCB info: {}", vec2str(tcb_info))
-             << std::endl;
+          ss << ins << fmt::format("- TCB info: {}", tcb_info) << std::endl;
 
           Unique_STACK_OF_X509 qist(qe_identity_issuer_chain);
           ss << ins << "- QE identity issuer chain:" << std::endl;
           ss << qist.to_string_short(indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
-               << vec2str(qe_identity_issuer_chain, 8) << std::endl;
+               << indentate(qe_identity_issuer_chain, 8) << std::endl;
 
-          ss << ins << fmt::format("- QE identity: {}", vec2str(qe_identity));
+          ss << ins << fmt::format("- QE identity: {}", qe_identity);
         }
         return ss.str();
       }
@@ -499,7 +506,7 @@ namespace ravl
     }
 
     TCBLevel verify_tcb_json(
-      const std::span<uint8_t>& tcb_info,
+      const std::string& tcb_info,
       const CertificateExtension& pck_ext,
       const Unique_EVP_PKEY& signer_pubkey)
     {
@@ -621,8 +628,8 @@ namespace ravl
     }
 
     TCBLevel verify_tcb(
-      const std::span<uint8_t>& tcb_info_issuer_chain,
-      const std::span<uint8_t>& tcb_info,
+      const std::string& tcb_info_issuer_chain,
+      const std::string& tcb_info,
       const CertificateExtension& pck_ext,
       const Unique_X509_STORE& store,
       const Options& options,
@@ -655,8 +662,8 @@ namespace ravl
     }
 
     bool verify_qe_id(
-      const std::span<const uint8_t>& qe_identity_issuer_chain,
-      const std::span<const uint8_t>& qe_identity,
+      const std::string& qe_identity_issuer_chain,
+      const std::string& qe_identity,
       const std::span<const uint8_t>& qe_report_body_s,
       const TCBLevel& platform_tcb_level,
       const CertificateExtension& pck_ext,
@@ -968,6 +975,13 @@ namespace ravl
       return r;
     }
 
+    static void check_http_200(
+      const URLResponse& response, const std::string& name)
+    {
+      if (response.status != 200)
+        throw std::runtime_error(fmt::format("download of {} failed", name));
+    }
+
     static std::shared_ptr<QL_QVE_Collateral> consume_url_responses(
       const Options& options,
       const std::vector<URLResponse>& url_response_set,
@@ -987,39 +1001,114 @@ namespace ravl
       size_t i = 0;
 
       if (!options.root_ca_certificate)
-        r->root_ca_pem = url_response_set[i++].body;
+      {
+        check_http_200(url_response_set[i], "root CA certificate");
+        r->root_ca = url_response_set[i++].body;
+      }
 
-      r->root_ca_crl = str2vec(url_response_set[i++].body);
+      check_http_200(url_response_set[i], "root CA CRL");
+      r->root_ca_crl = url_response_set[i++].body;
 
-      r->tcb_info = str2vec(url_response_set[i].body);
-      r->tcb_info_issuer_chain =
-        url_response_set[i].get_header_data("SGX-TCB-Info-Issuer-Chain", true);
+      check_http_200(url_response_set[i], "TCB info");
+      r->tcb_info = url_response_set[i].body;
+      r->tcb_info_issuer_chain = url_response_set[i].get_header_string(
+        "SGX-TCB-Info-Issuer-Chain", true);
       i++;
 
-      r->pck_crl = str2vec(url_response_set[i].body);
+      check_http_200(url_response_set[i], "PCK CRL");
+      r->pck_crl = url_response_set[i].body;
       r->pck_crl_issuer_chain =
-        url_response_set[i].get_header_data("SGX-PCK-CRL-Issuer-Chain", true);
+        url_response_set[i].get_header_string("SGX-PCK-CRL-Issuer-Chain", true);
       i++;
 
       if (!qve)
       {
         auto response = url_response_set[i];
-        r->qe_identity = str2vec(response.body);
+        check_http_200(response, "QE identity");
+        r->qe_identity = response.body;
         r->qe_identity_issuer_chain =
-          response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
+          response.get_header_string("SGX-Enclave-Identity-Issuer-Chain", true);
       }
       else
       {
         auto response = url_response_set[i];
-        r->qe_identity = str2vec(response.body);
+        check_http_200(response, "QVE identity");
+        r->qe_identity = response.body;
         r->qe_identity_issuer_chain =
-          response.get_header_data("SGX-Enclave-Identity-Issuer-Chain", true);
+          response.get_header_string("SGX-Enclave-Identity-Issuer-Chain", true);
       }
 
       return r;
     }
 
-    bool Attestation::verify(
+#define SET_ARRAY(TO, FROM) \
+  std::copy(std::begin(FROM), std::end(FROM), std::begin(TO))
+
+    static void make_report_body_claims(
+      Claims::ReportBody& to, const sgx_report_body_t& from)
+    {
+      SET_ARRAY(to.cpu_svn, from.cpu_svn.svn);
+      to.misc_select = from.misc_select;
+      SET_ARRAY(to.isv_ext_prod_id, from.isv_ext_prod_id);
+      to.attributes.flags = from.attributes.flags;
+      to.attributes.xfrm = from.attributes.xfrm;
+      SET_ARRAY(to.mr_enclave, from.mr_enclave.m);
+      SET_ARRAY(to.mr_signer, from.mr_signer.m);
+      SET_ARRAY(to.config_id, from.config_id);
+      to.isv_prod_id = from.isv_prod_id;
+      to.isv_svn = from.isv_svn;
+      to.config_svn = from.config_svn;
+      SET_ARRAY(to.isv_family_id, from.isv_family_id);
+      SET_ARRAY(to.report_data, from.report_data.d);
+    };
+
+    std::shared_ptr<Claims> make_claims(
+      const sgx_quote_t& raw,
+      const SignatureData& signature_data,
+      const QL_QVE_Collateral& collateral)
+    {
+      auto claims = std::make_shared<Claims>();
+
+      claims->version = raw.version;
+      claims->sign_type = raw.sign_type;
+      SET_ARRAY(claims->epid_group_id, raw.epid_group_id);
+      claims->qe_svn = raw.qe_svn;
+      claims->pce_svn = raw.pce_svn;
+      claims->xeid = raw.xeid;
+      SET_ARRAY(claims->basename, raw.basename.name);
+
+      make_report_body_claims(claims->report_body, raw.report_body);
+
+      SET_ARRAY(
+        claims->signature_data.signature, signature_data.quote_signature);
+      SET_ARRAY(
+        claims->signature_data.attest_pub_key, signature_data.public_key);
+      const sgx_ql_ecdsa_sig_data_t* sig_data =
+        (sgx_ql_ecdsa_sig_data_t*)raw.signature;
+      make_report_body_claims(
+        claims->signature_data.qe_report, sig_data->qe_report);
+      SET_ARRAY(
+        claims->signature_data.qe_report_sig, signature_data.report_signature);
+      claims->signature_data.auth_data.assign(
+        signature_data.auth_data.begin(), signature_data.auth_data.end());
+
+      claims->collateral = {
+        .major_version = collateral.major_version,
+        .minor_version = collateral.minor_version,
+        .tee_type = collateral.tee_type,
+        .root_ca = collateral.root_ca,
+        .pck_crl_issuer_chain = collateral.pck_crl_issuer_chain,
+        .root_ca_crl = collateral.root_ca_crl,
+        .pck_crl = collateral.pck_crl,
+        .tcb_info_issuer_chain = collateral.tcb_info_issuer_chain,
+        .tcb_info = collateral.tcb_info_issuer_chain,
+        .qe_identity_issuer_chain = collateral.qe_identity_issuer_chain,
+        .qe_identity = collateral.qe_identity};
+
+      return claims;
+    }
+
+    std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
       const std::optional<std::vector<URLResponse>>& url_response_set) const
     {
@@ -1049,8 +1138,8 @@ namespace ravl
 
       bool trusted_root = false;
 
-      if (!collateral->root_ca_pem.empty())
-        store.add(collateral->root_ca_pem);
+      if (!collateral->root_ca.empty())
+        store.add(collateral->root_ca);
       else
         trusted_root = true;
 
@@ -1076,22 +1165,22 @@ namespace ravl
         }
         else
         {
-          Unique_X509 root(collateral->root_ca_pem, true);
+          Unique_X509 root(collateral->root_ca, true);
           log("- Root CA Certificate:", indent + 2);
           log(root.to_string_short(indent + 4));
         }
-      }
-      if (options.verbosity > 1)
-      {
-        log(" PEM:", indent + 4);
-        if (trusted_root)
+        if (options.verbosity > 1)
         {
-          std::string rs = pck_crl_issuer_chain.back().pem();
-          indentate_inplace(rs, indent + 6);
-          log(rs);
+          log(" PEM:", indent + 4);
+          if (trusted_root)
+          {
+            std::string rs = pck_crl_issuer_chain.back().pem();
+            indentate_inplace(rs, indent + 6);
+            log(rs);
+          }
+          else
+            log(collateral->root_ca, indent + 6);
         }
-        else
-          log(collateral->root_ca_pem, indent + 6);
       }
 
       if (options.verbosity > 0)
@@ -1132,7 +1221,6 @@ namespace ravl
       if (!quote_sig_ok)
         throw std::runtime_error("quote signature verification failed");
 
-      // TODO: This hash check seems open-enclave specific?
       bool pk_auth_hash_matches = verify_hash_match(
         {signature_data.public_key, signature_data.auth_data},
         signature_data.report_data.subspan(0, 32));
@@ -1160,8 +1248,21 @@ namespace ravl
         options,
         indent + 2);
 
-      return pck_cert_chain && qe_sig_ok && pk_auth_hash_matches &&
-        quote_sig_ok && qe_id_ok;
+      if (
+        !pck_cert_chain && qe_sig_ok && pk_auth_hash_matches && quote_sig_ok &&
+        qe_id_ok)
+        std::runtime_error("one of the basic properties is not satisfied");
+
+      return make_claims(
+        *(const sgx_quote_t*)quote.data(), signature_data, *collateral);
     }
+  }
+
+  template <>
+  std::shared_ptr<sgx::Claims> Claims::get(std::shared_ptr<Claims>& claims)
+  {
+    if (claims->source != Source::SGX)
+      throw std::runtime_error("invalid request for SGX claim conversion");
+    return static_pointer_cast<sgx::Claims>(claims);
   }
 }
