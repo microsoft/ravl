@@ -6,19 +6,26 @@
 #include "ravl_sgx.h"
 #include "ravl_sgx_defs.h"
 #include "ravl_url_requests.h"
+#include "ravl_util.h"
 
 #include <memory>
+#include <span>
+#include <vector>
+
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
+
+using namespace ravl::sgx;
 
 // By defining USE_OE_VERIFIER, all requests are simply forwarded to Open
 // Enclave. Without this, we support only a subset of attestation formats for
 // which we can extract a raw SGX quote, which is verified by ravl::sgx::verify.
 
-using namespace ravl::sgx;
-
 #ifdef USE_OE_VERIFIER
 #  ifndef HAVE_OPEN_ENCLAVE
 #    error Open Enclave Verifier requires Open Enclave library
 #  endif
+#  include <openenclave/attestation/custom_claims.h>
 #  include <openenclave/attestation/sgx/evidence.h>
 #  include <openenclave/attestation/verifier.h>
 #  include <openenclave/bits/attestation.h>
@@ -118,35 +125,6 @@ struct oe_sgx_endorsements_t
 
 static oe_uuid_t sgx_remote_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
 
-// From SGX SDK/library headers
-typedef struct _sgx_ql_qve_collateral_t
-{
-  union
-  {
-    uint32_t version;
-    struct
-    {
-      uint16_t major_version;
-      uint16_t minor_version;
-    };
-  };
-  uint32_t tee_type;
-  char* pck_crl_issuer_chain;
-  uint32_t pck_crl_issuer_chain_size;
-  char* root_ca_crl;
-  uint32_t root_ca_crl_size;
-  char* pck_crl;
-  uint32_t pck_crl_size;
-  char* tcb_info_issuer_chain;
-  uint32_t tcb_info_issuer_chain_size;
-  char* tcb_info;
-  uint32_t tcb_info_size;
-  char* qe_identity_issuer_chain;
-  uint32_t qe_identity_issuer_chain_size;
-  char* qe_identity;
-  uint32_t qe_identity_size;
-} sgx_ql_qve_collateral_t;
-
 namespace ravl
 {
   namespace oe
@@ -167,11 +145,13 @@ namespace ravl
     }
 
 #ifndef USE_OE_VERIFIER
-    std::shared_ptr<sgx::Attestation> extract_sgx_attestation(
-      const Attestation& a, const Options& options)
+    std::pair<std::shared_ptr<sgx::Attestation>, std::vector<uint8_t>>
+    extract_sgx_attestation(const Attestation& a, const Options& options)
     {
       if (a.evidence.empty())
         throw std::runtime_error("No evidence to verify");
+
+      std::vector<uint8_t> claims;
 
       bool with_plugin_header = false;
 
@@ -227,18 +207,19 @@ namespace ravl
               "is supported");
         }
 
-        return std::make_shared<sgx::Attestation>(
-          std::vector<uint8_t>(
-            evidence_header->data,
-            evidence_header->data + evidence_header->data_size),
-          std::vector<uint8_t>(
-            endorsements_header->data,
-            endorsements_header->data + endorsements_header->data_size));
+        return std::make_pair(
+          std::make_shared<sgx::Attestation>(
+            std::vector<uint8_t>(
+              evidence_header->data,
+              evidence_header->data + evidence_header->data_size),
+            std::vector<uint8_t>(
+              endorsements_header->data,
+              endorsements_header->data + endorsements_header->data_size)),
+          claims);
       }
       else
       {
         const sgx_quote_t* quote = (sgx_quote_t*)a.evidence.data();
-        const uint8_t* custom_claims = NULL;
 
         if (a.evidence.size() < sizeof(sgx_quote_t))
           throw std::runtime_error(
@@ -246,10 +227,12 @@ namespace ravl
 
         auto squote = a.evidence;
 
-        if (squote.size() > (sizeof(sgx_quote_t) + quote->signature_len))
+        size_t quote_and_sig_len = sizeof(sgx_quote_t) + quote->signature_len;
+        if (squote.size() > quote_and_sig_len)
         {
-          custom_claims = quote->signature + quote->signature_len;
-          squote.resize(sizeof(sgx_quote_t) + quote->signature_len);
+          claims = {squote.begin() + quote_and_sig_len, squote.end()};
+
+          squote.resize(quote_and_sig_len);
         }
 
         std::vector<uint8_t> scollateral;
@@ -374,7 +357,8 @@ namespace ravl
           }
         }
 
-        return std::make_shared<sgx::Attestation>(squote, scollateral);
+        return std::make_pair(
+          std::make_shared<sgx::Attestation>(squote, scollateral), claims);
       }
     }
 #endif
@@ -385,12 +369,14 @@ namespace ravl
 #ifdef USE_OE_VERIFIER
       return std::nullopt;
 #else
-      sgx_attestation = extract_sgx_attestation(*this, options);
+      auto [sgx_att, cc] = extract_sgx_attestation(*this, options);
+      sgx_attestation = sgx_att;
+      custom_claims = cc;
       return sgx_attestation->prepare_endorsements(options, tracker);
 #endif
     }
 
-    bool Attestation::verify(
+    std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
       const std::optional<std::vector<URLResponse>>& url_response_set) const
     {
@@ -414,20 +400,107 @@ namespace ravl
         &claims,
         &claims_size);
 
+      auto rclaims = std::make_shared<Claims>();
+      rclaims->sgx_claims = std::make_shared<sgx::Claims>();
+
+#  define SET_ARRAY(TO, FROM) \
+    std::copy(std::begin(FROM), std::end(FROM), std::begin(TO))
+
+      for (size_t i = 0; i < claims_size; i++)
+      {
+        printf("%s=%s\n", claims[i].name, "");
+        const auto& claim = claims[i];
+        std::span value(claim.value, claim.value_size);
+
+        if (strcmp(claim.name, "security_version") == 0)
+          rclaims->sgx_claims->report_body.isv_svn = *(uint16_t*)claim.value;
+        else if (strcmp(claim.name, "attributes") == 0)
+        {
+          rclaims->sgx_claims->report_body.attributes.flags =
+            ((sgx::Claims::ReportAttributes*)claim.value)->flags;
+          rclaims->sgx_claims->report_body.attributes.xfrm =
+            ((sgx::Claims::ReportAttributes*)claim.value)->xfrm;
+        }
+        else if (strcmp(claim.name, "unique_id") == 0)
+          SET_ARRAY(rclaims->sgx_claims->report_body.mr_enclave, value);
+        else if (strcmp(claim.name, "signer_id") == 0)
+          SET_ARRAY(rclaims->sgx_claims->report_body.mr_signer, value);
+        else if (strcmp(claim.name, "product_id") == 0)
+          rclaims->sgx_claims->report_body.isv_prod_id =
+            *(uint16_t*)claim.value;
+        else if (strcmp(claim.name, "sgx_isv_extended_product_id") == 0)
+          SET_ARRAY(rclaims->sgx_claims->report_body.isv_ext_prod_id, value);
+        else if (strcmp(claim.name, "sgx_config_id") == 0)
+          SET_ARRAY(rclaims->sgx_claims->report_body.config_id, value);
+        else if (strcmp(claim.name, "sgx_config_svn") == 0)
+          rclaims->sgx_claims->report_body.config_svn = *(uint16_t*)claim.value;
+        else if (strcmp(claim.name, "sgx_isv_family_id") == 0)
+          SET_ARRAY(rclaims->sgx_claims->report_body.isv_family_id, value);
+        else if (strcmp(claim.name, "sgx_cpu_svn") == 0)
+          SET_ARRAY(rclaims->sgx_claims->report_body.cpu_svn, value);
+        else if (strcmp(claim.name, "tcb_status") == 0)
+          ; // TODO; parse from sgx_tcb_info?
+        else if (strcmp(claim.name, "sgx_tcb_info") == 0)
+          rclaims->sgx_claims->collateral.tcb_info =
+            std::string(value.begin(), value.end());
+        else if (strcmp(claim.name, "sgx_tcb_issuer_chain") == 0)
+          rclaims->sgx_claims->collateral.tcb_info_issuer_chain =
+            std::string(value.begin(), value.end());
+        else if (strcmp(claim.name, "sgx_pck_crl") == 0)
+          rclaims->sgx_claims->collateral.pck_crl =
+            std::string(value.begin(), value.end());
+        else if (strcmp(claim.name, "sgx_root_ca_crl") == 0)
+          rclaims->sgx_claims->collateral.root_ca_crl =
+            std::string(value.begin(), value.end());
+        else if (strcmp(claim.name, "sgx_crl_issuer_chain") == 0)
+          rclaims->sgx_claims->collateral.pck_crl_issuer_chain =
+            std::string(value.begin(), value.end());
+        else if (strcmp(claim.name, "sgx_qe_id_info") == 0)
+          rclaims->sgx_claims->collateral.qe_identity =
+            std::string(value.begin(), value.end());
+        else if (strcmp(claim.name, "sgx_qe_id_issuer_chain") == 0)
+          rclaims->sgx_claims->collateral.qe_identity_issuer_chain =
+            std::string(value.begin(), value.end());
+        else if (strcmp(claim.name, "sgx_pce_svn") == 0)
+          rclaims->sgx_claims->pce_svn = *(uint16_t*)claim.value;
+        else if (strcmp(claim.name, "custom_claims_buffer") == 0)
+          rclaims->custom_claims =
+            std::vector(claim.value, claim.value + claim.value_size);
+        else
+          log(fmt::format("  - ignoring OE claim '{}'", claim.name));
+      }
+
       if (oe_free_claims(claims, claims_size) != OE_OK)
         throw std::runtime_error("failed to free Open Enclave claims");
 
       if (oe_verifier_shutdown() != OE_OK)
         throw std::runtime_error("failed to initialize Open Enclave verifier");
 
-      return r == OE_OK;
+      if (r != OE_OK)
+        throw std::runtime_error("verification failed");
+
+      return rclaims;
 #else
       if (!sgx_attestation)
         throw std::runtime_error("missing underlying SGX attestation");
       // std::string sat = sgx_attestation;
       // printf("%s\n", sat.c_str());
-      return sgx_attestation->verify(options, url_response_set);
+
+      auto claims = std::make_shared<Claims>();
+      claims->sgx_claims = static_pointer_cast<sgx::Claims>(
+        sgx_attestation->verify(options, url_response_set));
+      claims->custom_claims = custom_claims;
+      return claims;
 #endif
     }
+  }
+
+  template <>
+  std::shared_ptr<ravl::oe::Claims> Claims::get(std::shared_ptr<Claims>& claims)
+  {
+    if (claims->source != Source::OPEN_ENCLAVE)
+      throw std::runtime_error(
+        "invalid request for Open Enclave claim conversion");
+    return static_pointer_cast<oe::Claims>(claims);
   }
 }

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <emscripten/fetch.h>
 #include <new>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -16,27 +17,14 @@
 
 namespace ravl
 {
-  std::vector<uint8_t> URLResponse::url_decode(const std::string& in)
-  {
-    // int outsz = 0;
-    // char* decoded = curl_easy_unescape(NULL, in.c_str(), in.size(),
-    // &outsz); if (!decoded)
-    //   throw std::bad_alloc();
-    // std::vector<uint8_t> r = {decoded, decoded + outsz};
-    // free(decoded);
-    // return r;
-    return {};
-  }
-
   std::vector<uint8_t> URLResponse::get_header_data(
     const std::string& name, bool url_decoded) const
   {
-    auto hit = headers.find(name);
+    std::string lname = name;
+    std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
+    auto hit = headers.find(lname);
     if (hit == headers.end())
       throw std::runtime_error("missing response header '" + name + "'");
-    // if (url_decoded)
-    //   return url_decode(hit->second);
-    // else
     return {hit->second.data(), hit->second.data() + hit->second.size()};
   }
 
@@ -45,68 +33,53 @@ namespace ravl
     throw std::runtime_error("synchronous fetch not supported");
   }
 
-  bool is_complete(void* handle)
-  {
-    if (!handle)
-      throw std::runtime_error("missing url handle in is_complete()");
-
-    emscripten_fetch_t* fetch = static_cast<emscripten_fetch_t*>(handle);
-
-    return fetch->readyState == EMSCRIPTEN_FETCH_DONE;
-  }
-
   class FetchTracker : public URLRequestTracker
   {
   public:
     FetchTracker(bool verbose = false) : URLRequestTracker(verbose) {}
 
-    bool poll(
-      URLRequestSetId id,
-      void* multi,
-      std::function<void(URLResponses&&)>& callback)
+    struct UserData
     {
-      // auto consume_msgs = [this, id, multi]() {
-      //   struct CURLMsg* m;
-      //   do
-      //   {
-      //     int msgq = 0;
-      //     m = curl_multi_info_read(multi, &msgq);
-      //     if (m && m->msg == CURLMSG_DONE)
-      //     {
-      //       size_t i = 0;
-      //       auto cc = curl_easy_getinfo(m->easy_handle, CURLINFO_PRIVATE,
-      //       &i); if (cc == CURLE_OK)
-      //         complete(id, i, m->easy_handle);
-      //     }
-      //   } while (m);
-      // };
+      FetchTracker* tracker = nullptr;
+      size_t id = 0;
+      size_t i = 0;
+    };
 
-      if (!is_complete(id))
-      {
-        std::lock_guard<std::mutex> guard(mtx);
-        // poll?
-        //  consume_msgs();
-        return true;
-      }
-      else if (callback)
-      {
-        std::lock_guard<std::mutex> guard(mtx);
+    static emscripten_fetch_t* make_fetch(
+      const char* method,
+      FetchTracker* tracker,
+      size_t id,
+      size_t i,
+      const std::string& url)
+    {
+      emscripten_fetch_attr_t* attr = new emscripten_fetch_attr_t();
+      emscripten_fetch_attr_init(attr);
+      strcpy(attr->requestMethod, method);
+      attr->attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+      // TODO: request headers into attr->requestHeaders
+      // TODO: timeout into attr->timeoutMSecs
 
-        // consume_msgs();
-        auto rsps_it = responses.find(id);
-        if (rsps_it == responses.end())
-          throw std::runtime_error("could not find url responses");
+      attr->userData = new UserData{tracker, id, i};
 
-        URLResponses rs;
-        rs.swap(rsps_it->second);
-        callback(std::move(rs));
-        responses.erase(rsps_it);
-        requests.erase(id);
-      }
+      attr->onsuccess = [](struct emscripten_fetch_t* fetch) {
+        auto ud = static_cast<UserData*>(fetch->userData);
+        ud->tracker->complete(ud->id, ud->i, fetch);
+        emscripten_fetch_close(fetch);
+      };
 
-      // curl_multi_cleanup(multi);
+      attr->onerror = [](emscripten_fetch_t* fetch) {
+        printf(
+          "Downloading %s failed, HTTP status: %d.\n",
+          fetch->url,
+          fetch->status);
+        auto ud = static_cast<UserData*>(fetch->userData);
+        ud->tracker->complete(ud->id, ud->i, fetch);
+        emscripten_fetch_close(fetch);
+      };
 
-      return false;
+      attr->onprogress = [](emscripten_fetch_t* fetch) {};
+
+      return emscripten_fetch(attr, url.c_str());
     }
 
     URLRequestSetId submit(
@@ -129,61 +102,10 @@ namespace ravl
       for (size_t i = 0; i < reqs.requests.size(); i++)
       {
         auto& request = reqs.requests.at(i);
-
-        printf("Submit   %zu: %s\n", i, request.url.c_str());
-
-        emscripten_fetch_attr_t* attr = new emscripten_fetch_attr_t();
-        emscripten_fetch_attr_init(attr);
-        strcpy(attr->requestMethod, "GET");
-        attr->attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-
-        struct FT
-        {
-          FetchTracker* tracker = nullptr;
-          size_t id = 0;
-          size_t i = 0;
-        };
-
-        attr->userData = new FT{this, id, i};
-
-        attr->onsuccess = [](struct emscripten_fetch_t* fetch) {
-          printf(
-            "Finished downloading %llu bytes from URL %s.\n",
-            fetch->numBytes,
-            fetch->url);
-
-          auto ud = static_cast<FT*>(fetch->userData);
-          ud->tracker->complete(ud->id, ud->i, fetch);
-          emscripten_fetch_close(fetch);
-        };
-
-        attr->onerror = [](emscripten_fetch_t* fetch) {
-          printf(
-            "Downloading %s failed, HTTP status: %d.\n",
-            fetch->url,
-            fetch->status);
-          emscripten_fetch_close(fetch);
-        };
-
-        attr->onprogress = [](emscripten_fetch_t* fetch) {
-          if (fetch->totalBytes)
-          {
-            printf(
-              "Downloading %s.. %.2f%% complete.\n",
-              fetch->url,
-              fetch->dataOffset * 100.0 / fetch->totalBytes);
-          }
-          else
-          {
-            printf(
-              "Downloading %s.. %lld bytes complete.\n",
-              fetch->url,
-              fetch->dataOffset + fetch->numBytes);
-          }
-        };
-
-        reqs.handles.push_back(emscripten_fetch(attr, request.url.c_str()));
+        reqs.fetches.push_back(make_fetch("GET", this, id, i, request.url));
       }
+
+      reqs.callback = callback;
 
       printf("All submissions done.\n");
 
@@ -211,13 +133,15 @@ namespace ravl
 
     void complete(size_t id, size_t i, emscripten_fetch_t* fetch)
     {
-      // Lock held by the monitor thread?
+      std::lock_guard<std::mutex> guard(mtx);
 
       auto rqit = requests.find(id);
       if (rqit == requests.end())
         return;
 
-      auto& req = rqit->second.requests.at(i);
+      TrackedRequests& treqs = rqit->second;
+      auto& reqs = treqs.requests;
+      auto& req = reqs.at(i);
 
       auto rsit = responses.find(id);
       if (rsit == responses.end())
@@ -232,29 +156,71 @@ namespace ravl
       URLResponse& response = rsit->second.at(i);
 
       if (must_retry(fetch, response, true))
-      {
-        // TODO: requeue
-      }
+        treqs.fetches[i] = make_fetch("GET", this, id, i, fetch->url);
       else
       {
         response.status = fetch->status;
+
+        size_t headers_len =
+          emscripten_fetch_get_response_headers_length(fetch);
+        auto hdrs = std::string(headers_len, ' ');
+        emscripten_fetch_get_response_headers(
+          fetch, hdrs.data(), headers_len + 1);
+        char** hdrs_kv = emscripten_fetch_unpack_response_headers(hdrs.data());
+        if (hdrs_kv)
+          for (size_t j = 0; hdrs_kv[j] != NULL; j += 2)
+            response.headers[hdrs_kv[j]] = hdrs_kv[j + 1];
+        emscripten_fetch_free_unpacked_response_headers(hdrs_kv);
+
+        // for (const auto& kv : response.headers)
+        //   printf("|%s|=|%s|\n", kv.first.c_str(), kv.second.c_str());
+
         response.body = {fetch->data, static_cast<size_t>(fetch->numBytes)};
-        // TODO
-        // emscripten_fetch_get_response_headers_length(fetch);
-        // r.headers = {};
 
         printf(
-          "Complete %zu: %u size %zu (req. %zu)\n",
+          "Complete %zu: %u size %zu/%zu (req. %zu)\n",
           i,
           response.status,
+          response.headers.size(),
           response.body.size(),
           id);
+
+        treqs.fetches[i] = NULL;
       }
+
+      if (treqs.callback && is_complete_unlocked(id))
+      {
+        printf("All done\n");
+
+        URLResponses rs;
+        rs.swap(rsit->second);
+        treqs.callback(std::move(rs));
+        requests.erase(id);
+        responses.erase(id);
+      }
+    }
+
+    bool is_complete_unlocked(const URLRequestSetId& id) const
+    {
+      auto rqit = requests.find(id);
+      if (rqit == requests.end())
+        return false;
+
+      const TrackedRequests& treqs = rqit->second;
+
+      printf("Checking if all %zu are done\n", treqs.fetches.size());
+
+      for (const auto& fetch : treqs.fetches)
+        if (fetch)
+          return false;
+
+      return true;
     }
 
     bool is_complete(const URLRequestSetId& id) const
     {
-      return false;
+      std::lock_guard<std::mutex> guard(mtx);
+      return is_complete_unlocked(id);
     }
 
   protected:
@@ -263,7 +229,7 @@ namespace ravl
     struct TrackedRequests
     {
       URLRequests requests = {};
-      std::vector<emscripten_fetch_t*> handles;
+      std::vector<emscripten_fetch_t*> fetches;
       std::function<void(URLResponses&&)> callback = nullptr;
     };
 

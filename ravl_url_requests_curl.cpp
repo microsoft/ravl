@@ -162,6 +162,13 @@ namespace ravl
       return {hit->second.data(), hit->second.data() + hit->second.size()};
   }
 
+  std::string URLResponse::get_header_string(
+    const std::string& name, bool url_decoded) const
+  {
+    auto t = get_header_data(name, url_decoded);
+    return std::string(t.begin(), t.end());
+  }
+
   class CurlTracker : public URLRequestTracker
   {
   public:

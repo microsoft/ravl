@@ -22,7 +22,7 @@ set(RAVL_INCLUDE ${RAVL_DIR}/3rdparty ${RAVL_DIR} /data/cwinter/emsdk/upstream/e
 set(RAVL_DEFS)
 set(RAVL_LIB_DEPS)
 set(RAVL_LIB_DIRS)
-set(RAVL_LINK_OPTS -fexceptions -sFETCH)
+set(RAVL_LINK_OPTS -fexceptions -sFETCH -sASYNCIFY)
 set(RAVL_FLAGS -sNO_DISABLE_EXCEPTION_CATCHING -fexceptions)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -49,6 +49,7 @@ if (SEV_SNP)
 endif()
 
 list(APPEND RAVL_SRC ${RAVL_DIR}/ravl_url_requests.cpp ravl_requests_fetch.cpp)
+
 
 set(CMAKE_EXECUTABLE_SUFFIX_CXX .html)
 add_executable(ravl ${RAVL_SRC} test_main.cpp)

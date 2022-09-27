@@ -134,7 +134,6 @@ namespace ravl
   public:
     using RequestID = AttestationRequestTracker::RequestID;
     using RequestState = AttestationRequestTracker::RequestState;
-    using Result = AttestationRequestTracker::Result;
 
     struct Request
     {
@@ -142,7 +141,7 @@ namespace ravl
         AttestationRequestTracker::RequestState state,
         Options options,
         std::shared_ptr<const Attestation> attestation,
-        AttestationRequestTracker::Result result,
+        std::shared_ptr<Claims> claims,
         std::shared_ptr<URLRequestTracker> url_request_tracker) :
         state(state),
         options(options),
@@ -154,7 +153,7 @@ namespace ravl
       AttestationRequestTracker::RequestState state = RequestState::ERROR;
       Options options;
       std::shared_ptr<const Attestation> attestation;
-      AttestationRequestTracker::Result result = false;
+      std::shared_ptr<Claims> claims;
       std::shared_ptr<URLRequestTracker> url_request_tracker;
     };
 
@@ -188,7 +187,7 @@ namespace ravl
           RequestState::SUBMITTED,
           options,
           attestation,
-          false,
+          nullptr,
           request_tracker);
 
         if (!ok)
@@ -248,7 +247,7 @@ namespace ravl
       return state(id) == RequestState::FINISHED;
     }
 
-    Result result(RequestID id) const
+    std::shared_ptr<Claims> result(RequestID id) const
     {
       std::lock_guard<std::mutex> guard(requests_mtx);
 
@@ -258,7 +257,7 @@ namespace ravl
       if (rit->second.state != RequestState::FINISHED)
         throw std::runtime_error(
           "attestation verification request not finished");
-      return rit->second.result;
+      return rit->second.claims;
     }
 
     void erase(RequestID id)
@@ -358,7 +357,7 @@ namespace ravl
       const auto& options = request.options;
       auto request_tracker = request.url_request_tracker;
 
-      bool r = false;
+      std::shared_ptr<Claims> claims;
 
       try
       {
@@ -372,7 +371,7 @@ namespace ravl
           url_responses.erase(rit);
         }
 
-        r = attestation.verify(options, responses);
+        claims = attestation.verify(options, responses);
       }
       catch (std::exception& ex)
       {
@@ -385,7 +384,7 @@ namespace ravl
       if (options.verbosity > 0)
         log(fmt::format("  - verification successful"));
 
-      request.result = r;
+      request.claims = claims;
     }
   };
 
@@ -432,8 +431,7 @@ namespace ravl
       ->finished(id);
   }
 
-  AttestationRequestTracker::Result AttestationRequestTracker::result(
-    RequestID id) const
+  std::shared_ptr<Claims> AttestationRequestTracker::result(RequestID id) const
   {
     return static_cast<AttestationRequestTrackerImpl*>(implementation)
       ->result(id);
@@ -451,7 +449,7 @@ namespace ravl
       ->advance(id);
   }
 
-  bool verify(
+  std::shared_ptr<Claims> verify(
     std::shared_ptr<const Attestation> attestation,
     const Options& options,
     std::shared_ptr<URLRequestTracker> url_request_tracker)
@@ -499,7 +497,7 @@ namespace ravl
     return r;
   }
 
-  bool verify_sync(
+  std::shared_ptr<Claims> verify_sync(
     std::shared_ptr<const Attestation> attestation, const Options& options)
   {
 #ifndef HAVE_SGX

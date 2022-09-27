@@ -429,7 +429,57 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return r;
     }
 
-    bool Attestation::verify(
+#define SET_ARRAY(TO, FROM) \
+  std::copy(std::begin(FROM), std::end(FROM), std::begin(TO))
+
+    static void set_tcb_version(
+      Claims::TCBVersion& to, const struct snp::TcbVersion& from)
+    {
+      to.boot_loader = from.boot_loader;
+      to.tee = from.tee;
+      to.snp = from.snp;
+      to.microcode = from.microcode;
+    }
+
+    static std::shared_ptr<Claims> make_claims(
+      const ravl::sev_snp::snp::Attestation& a)
+    {
+      auto r = std::make_shared<Claims>();
+
+      r->version = a.version;
+      r->guest_svn = a.guest_svn;
+      r->policy = a.policy;
+      SET_ARRAY(r->family_id, a.family_id);
+      SET_ARRAY(r->image_id, a.image_id);
+      r->vmpl = a.vmpl;
+      r->signature_algo = static_cast<uint32_t>(a.signature_algo);
+      set_tcb_version(r->platform_version, a.platform_version);
+      r->platform_info = a.platform_info;
+      r->flags = a.flags;
+      SET_ARRAY(r->report_data, a.report_data);
+      SET_ARRAY(r->measurement, a.measurement);
+      SET_ARRAY(r->host_data, a.host_data);
+      SET_ARRAY(r->id_key_digest, a.id_key_digest);
+      SET_ARRAY(r->author_key_digest, a.author_key_digest);
+      SET_ARRAY(r->report_id, a.report_id);
+      SET_ARRAY(r->report_id_ma, a.report_id_ma);
+      set_tcb_version(r->reported_tcb, a.reported_tcb);
+      SET_ARRAY(r->chip_id, a.chip_id);
+      set_tcb_version(r->committed_tcb, a.committed_tcb);
+      r->current_minor = a.current_minor;
+      r->current_build = a.current_build;
+      r->current_major = a.current_major;
+      r->committed_build = a.committed_build;
+      r->committed_minor = a.committed_minor;
+      r->committed_major = a.committed_major;
+      set_tcb_version(r->launch_tcb, a.launch_tcb);
+      SET_ARRAY(r->signature.r, a.signature.r);
+      SET_ARRAY(r->signature.s, a.signature.s);
+
+      return r;
+    }
+
+    std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
       const std::optional<std::vector<URLResponse>>& url_response_set) const
     {
@@ -514,7 +564,15 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (!verify_signature(vcek_pk, msg, snp_att.signature))
         throw std::runtime_error("invalid VCEK signature");
 
-      return true;
+      return make_claims(snp_att);
     }
+  }
+
+  template <>
+  std::shared_ptr<sev_snp::Claims> Claims::get(std::shared_ptr<Claims>& claims)
+  {
+    if (claims->source != Source::SEV_SNP)
+      throw std::runtime_error("invalid request for SEV/SNP claim conversion");
+    return static_pointer_cast<sev_snp::Claims>(claims);
   }
 }

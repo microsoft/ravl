@@ -25,6 +25,26 @@ namespace ravl
     UNKNOWN = UINT8_MAX
   };
 
+  class Claims
+  {
+  public:
+    Claims() : source(Source::UNKNOWN) {}
+    Claims(const Claims&) = default;
+    Claims(Claims&&) = default;
+
+    Claims(Source source) : source(source) {}
+
+    virtual ~Claims() = default;
+
+    Source source;
+
+    Claims& operator=(const Claims&) = default;
+
+    /// Function to up-cast generic claims
+    template <typename T>
+    static std::shared_ptr<T> get(std::shared_ptr<ravl::Claims>& claims);
+  };
+
   class Attestation
   {
   public:
@@ -51,7 +71,7 @@ namespace ravl
 
     /// Function to verify the attestation (with all endorsements present either
     /// in the attestation object or in the url_response_set).
-    virtual bool verify(
+    virtual std::shared_ptr<Claims> verify(
       const Options& options,
       const std::optional<URLResponses>& url_response_set) const = 0;
 

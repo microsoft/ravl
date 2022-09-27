@@ -118,6 +118,19 @@ T from_hex_t(const std::string& s, bool little_endian = true)
   return r;
 }
 
+inline std::string to_hex(const std::span<uint8_t>& v)
+{
+  std::string r;
+  r.reserve(v.size() * 2);
+  for (const auto& b : v)
+  {
+    char buf[3];
+    snprintf(buf, sizeof(buf), "%02x", b);
+    r += buf;
+  }
+  return r;
+}
+
 inline void verify_within(const void* ptr, const std::span<const uint8_t>& vec)
 {
   if (!(vec.data() <= ptr && ptr < (vec.data() + vec.size())))

@@ -26,6 +26,9 @@ namespace ravl
     std::vector<uint8_t> get_header_data(
       const std::string& name, bool url_decoded = false) const;
 
+    std::string get_header_string(
+      const std::string& name, bool url_decoded = false) const;
+
     static std::vector<uint8_t> url_decode(const std::string& in);
   };
 

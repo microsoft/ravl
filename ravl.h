@@ -21,7 +21,6 @@ namespace ravl
     virtual ~AttestationRequestTracker();
 
     typedef size_t RequestID;
-    typedef bool Result;
 
     enum RequestState
     {
@@ -46,7 +45,7 @@ namespace ravl
     RequestState state(RequestID id) const;
     RequestID advance(RequestID id);
     bool finished(RequestID id) const;
-    Result result(RequestID id) const;
+    std::shared_ptr<Claims> result(RequestID id) const;
     void erase(RequestID id);
 
   private:
@@ -54,12 +53,12 @@ namespace ravl
   };
 
   /// Synchronized verification (including endorsement download).
-  bool verify(
+  std::shared_ptr<Claims> verify(
     std::shared_ptr<const Attestation> attestation,
     const Options& options,
     std::shared_ptr<URLRequestTracker> request_tracker = nullptr);
 
   /// Entirely synchronous verification (including endorsement download).
-  bool verify_sync(
+  std::shared_ptr<Claims> verify_sync(
     std::shared_ptr<const Attestation> attestation, const Options& options);
 }
