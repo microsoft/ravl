@@ -34,11 +34,6 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
-      std::shared_ptr<URLRequestTracker> url_request_tracker = nullptr);
-
-    RequestID submit(
-      const Options& options,
-      std::shared_ptr<const Attestation> attestation,
       std::shared_ptr<URLRequestTracker> url_request_tracker = nullptr,
       std::function<void(RequestID)>&& callback = nullptr);
 

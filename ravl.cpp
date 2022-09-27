@@ -405,15 +405,6 @@ namespace ravl
   AttestationRequestTracker::RequestID AttestationRequestTracker::submit(
     const Options& options,
     std::shared_ptr<const Attestation> attestation,
-    std::shared_ptr<URLRequestTracker> url_request_tracker)
-  {
-    return static_cast<AttestationRequestTrackerImpl*>(implementation)
-      ->submit(options, attestation, url_request_tracker, [](RequestID) {});
-  }
-
-  AttestationRequestTracker::RequestID AttestationRequestTracker::submit(
-    const Options& options,
-    std::shared_ptr<const Attestation> attestation,
     std::shared_ptr<URLRequestTracker> url_request_tracker,
     std::function<void(RequestID)>&& callback)
   {
