@@ -142,11 +142,13 @@ namespace ravl
         Options options,
         std::shared_ptr<const Attestation> attestation,
         std::shared_ptr<Claims> claims,
-        std::shared_ptr<URLRequestTracker> url_request_tracker) :
+        std::shared_ptr<URLRequestTracker> url_request_tracker,
+        std::function<void(RequestID)>&& callback) :
         state(state),
         options(options),
         attestation(attestation),
-        url_request_tracker(url_request_tracker)
+        url_request_tracker(url_request_tracker),
+        callback(callback)
       {}
 
       Request(const Request& other) = delete;
@@ -155,6 +157,7 @@ namespace ravl
       std::shared_ptr<const Attestation> attestation;
       std::shared_ptr<Claims> claims;
       std::shared_ptr<URLRequestTracker> url_request_tracker;
+      std::function<void(RequestID)> callback;
     };
 
     using Requests = std::map<AttestationRequestTracker::RequestID, Request>;
@@ -171,8 +174,8 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
-      std::function<void(RequestID)> callback,
-      std::shared_ptr<URLRequestTracker> request_tracker)
+      std::shared_ptr<URLRequestTracker> request_tracker,
+      std::function<void(RequestID)>&& callback)
     {
       RequestID request_id;
       Requests::iterator rit;
@@ -188,7 +191,8 @@ namespace ravl
           options,
           attestation,
           nullptr,
-          request_tracker);
+          request_tracker,
+          std::move(callback));
 
         if (!ok)
           throw std::bad_alloc();
@@ -232,6 +236,8 @@ namespace ravl
         case RequestState::HAVE_ENDORSEMENTS:
           verify(id, req);
           req.state = RequestState::FINISHED;
+          if (req.callback)
+            req.callback(id);
           break;
         case RequestState::FINISHED:
           break;
@@ -402,18 +408,17 @@ namespace ravl
     std::shared_ptr<URLRequestTracker> url_request_tracker)
   {
     return static_cast<AttestationRequestTrackerImpl*>(implementation)
-      ->submit(
-        options, attestation, [](RequestID) {}, url_request_tracker);
+      ->submit(options, attestation, url_request_tracker, [](RequestID) {});
   }
 
   AttestationRequestTracker::RequestID AttestationRequestTracker::submit(
     const Options& options,
     std::shared_ptr<const Attestation> attestation,
-    std::function<void(RequestID)> callback,
-    std::shared_ptr<URLRequestTracker> url_request_tracker)
+    std::shared_ptr<URLRequestTracker> url_request_tracker,
+    std::function<void(RequestID)>&& callback)
   {
     return static_cast<AttestationRequestTrackerImpl*>(implementation)
-      ->submit(options, attestation, callback, url_request_tracker);
+      ->submit(options, attestation, url_request_tracker, std::move(callback));
   }
 
   AttestationRequestTracker::RequestState AttestationRequestTracker::state(
@@ -474,10 +479,10 @@ namespace ravl
     auto id = attestation_request_tracker.submit(
       options,
       attestation,
+      url_request_tracker,
       [](AttestationRequestTracker::RequestID id) {
         attestation_request_tracker.advance(id);
-      },
-      url_request_tracker);
+      });
 
     auto state = attestation_request_tracker.state(id);
     while (state != AttestationRequestTracker::FINISHED &&

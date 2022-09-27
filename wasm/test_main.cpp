@@ -41,27 +41,25 @@ int main()
     //   "https://global.acccache.azure.net/sgx/certification/v3/"
     //   "{}?uri={}&clientid=production_client&api-version=2020-02-12-preview";
 
+    bool keep_waiting = true;
+
     auto id = att_tracker->submit(
       default_options,
       att_without,
-      [att_tracker](AttestationRequestTracker::RequestID id) {
-        // auto r = att_tracker->result(id);
-        // att_tracker->erase(id);
-        // printf("without endorsements: %d\n", r != nullptr);
-        printf("CALLBACK\n");
-      },
-      url_tracker);
+      url_tracker,
+      [att_tracker, &keep_waiting](AttestationRequestTracker::RequestID id) {
+        auto r = att_tracker->result(id);
+        att_tracker->erase(id);
+        printf("without endorsements: %d\n", r != nullptr);
+        keep_waiting = false;
+      });
 
     printf("\nwaiting for verification result...\n");
 
-    while (!att_tracker->finished(id))
+    while (keep_waiting)
     {
       emscripten_sleep(100);
     }
-
-    claims = att_tracker->result(id);
-
-    printf("\n\ndone: result=%d\n", claims != nullptr);
 
     return 0;
   }
