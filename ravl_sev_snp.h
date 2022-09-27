@@ -7,6 +7,7 @@
 #include "ravl_attestation.h"
 #include "ravl_url_requests.h"
 
+#include <array>
 #include <memory>
 #include <optional>
 
