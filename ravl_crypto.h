@@ -111,17 +111,25 @@ namespace ravl
         little_endian);
     }
 
-    inline std::string_view extract_pem(std::string_view& data)
+    inline std::string_view extract_pem_certificate(std::string_view& data)
     {
       static std::string begin = "-----BEGIN CERTIFICATE-----";
       static std::string end = "-----END CERTIFICATE-----";
 
+      if (data.empty())
+        return "";
       size_t from = data.find(begin);
       if (from == std::string::npos)
+      {
+        data.remove_prefix(data.size());
         return "";
-      size_t to = data.find(end, from);
+      }
+      size_t to = data.find(end, from + begin.size());
       if (to == std::string::npos)
+      {
+        data.remove_prefix(data.size());
         return "";
+      }
       to += end.size();
       auto pem = data.substr(from, to - from);
       from = data.find(begin, to);
@@ -129,13 +137,14 @@ namespace ravl
       return pem;
     }
 
-    inline std::string_view extract_pem(const std::span<const uint8_t>& data)
+    inline std::string_view extract_pem_certificate(
+      const std::span<const uint8_t>& data)
     {
       std::string_view sv((char*)data.data(), data.size());
-      return extract_pem(sv);
+      return extract_pem_certificate(sv);
     }
 
-    inline std::vector<std::string> extract_pems(
+    inline std::vector<std::string> extract_pem_certificates(
       const std::span<const uint8_t>& data)
     {
       std::vector<std::string> r;
@@ -143,7 +152,7 @@ namespace ravl
 
       while (!sv.empty())
       {
-        auto pem = extract_pem(sv);
+        auto pem = extract_pem_certificate(sv);
         if (!pem.empty())
           r.push_back(std::string(pem));
       }
@@ -358,7 +367,7 @@ namespace ravl
           throw std::runtime_error("certificate chain is too short");
 
         if (verbosity > 0)
-          log("- verification successful", indent);
+          log("- certificate chain verification successful", indent);
 
         return chain;
       }
@@ -382,7 +391,7 @@ namespace ravl
       uint8_t verbosity = 0,
       size_t indent = 0)
     {
-      std::vector<std::string> certificates = extract_pems(data);
+      std::vector<std::string> certificates = extract_pem_certificates(data);
       auto stack = load_certificates(store, certificates);
       return verify_certificate_chain(
         stack, store, options, trusted_root, verbosity, indent);

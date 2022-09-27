@@ -67,11 +67,11 @@ namespace ravl
 
   std::vector<uint8_t> URLResponse::url_decode(const std::string& in)
   {
-    int outsz = 0;
     char* decoded = ravl::url_decode(in.data(), in.size());
+    int len = strlen(decoded);
     if (!decoded)
       throw std::bad_alloc();
-    std::vector<uint8_t> r = {decoded, decoded + outsz};
+    std::vector<uint8_t> r = {decoded, decoded + len};
     free(decoded);
     return r;
   }
@@ -176,8 +176,6 @@ namespace ravl
 
       reqs.callback = callback;
 
-      printf("All submissions done.\n");
-
       return id;
     }
 
@@ -254,18 +252,11 @@ namespace ravl
           response.body.size(),
           id);
 
-        // printf("HDRS:\n");
-        // for (const auto& kv : response.headers)
-        //   printf("%s=%s\n", kv.first.c_str(), kv.second.c_str());
-        // printf("BODY: %s\n", response.body.c_str());
-
         treqs.fetches[i] = NULL;
       }
 
       if (treqs.callback && is_complete_unlocked(id))
       {
-        printf("All done\n");
-
         URLResponses rs;
         rs.swap(rsit->second);
         treqs.callback(std::move(rs));

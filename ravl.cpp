@@ -375,14 +375,12 @@ namespace ravl
       }
       catch (std::exception& ex)
       {
-        if (options.verbosity > 0)
-          log(fmt::format("  - verification failed: {}", ex.what()));
         throw std::runtime_error(
           fmt::format("attestation verification failed: {}", ex.what()));
       }
 
       if (options.verbosity > 0)
-        log(fmt::format("  - verification successful"));
+        log("  - verification successful");
 
       request.claims = claims;
     }
