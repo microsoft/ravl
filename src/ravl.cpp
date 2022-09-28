@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl.h"
+#include "ravl/ravl.h"
 
-#include "ravl_crypto.h"
-#include "ravl_sgx.h"
-#include "ravl_url_requests.h"
-#include "ravl_util.h"
+#include "ravl/crypto.h"
+#include "ravl/sgx.h"
+#include "ravl/url_requests.h"
+#include "ravl/util.h"
 
 #include <map>
 #include <mutex>
@@ -15,11 +15,11 @@
 #include <thread>
 
 #ifdef HAVE_OPEN_ENCLAVE
-#  include "ravl_oe.h"
+#  include "ravl/oe.h"
 #endif
 
 #ifdef HAVE_SEV_SNP
-#  include "ravl_sev_snp.h"
+#  include "ravl/sev_snp.h"
 #endif
 
 #ifdef HAVE_OPENSSL

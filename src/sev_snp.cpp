@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl_sev_snp.h"
+#include "ravl/sev_snp.h"
 
-#include "ravl.h"
-#include "ravl_crypto.h"
-#include "ravl_crypto_openssl.h"
-#include "ravl_url_requests.h"
+#include "ravl/crypto.h"
+#include "ravl/crypto_openssl.h"
+#include "ravl/ravl.h"
+#include "ravl/url_requests.h"
 
 #include <stdexcept>
 

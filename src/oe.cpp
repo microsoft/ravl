@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl_oe.h"
+#include "ravl/oe.h"
 
-#include "ravl_sgx.h"
-#include "ravl_sgx_defs.h"
-#include "ravl_url_requests.h"
-#include "ravl_util.h"
+#include "ravl/sgx.h"
+#include "ravl/sgx_defs.h"
+#include "ravl/url_requests.h"
+#include "ravl/util.h"
 
 #include <memory>
 #include <span>

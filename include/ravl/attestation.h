@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ravl_options.h"
-#include "ravl_url_requests.h"
+#include "options.h"
+#include "url_requests.h"
 
 #include <cstdint>
 #include <functional>

@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "attestation.h"
 #include "ravl.h"
-#include "ravl_attestation.h"
-#include "ravl_url_requests.h"
+#include "url_requests.h"
 
 #include <array>
 #include <memory>

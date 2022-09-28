@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ravl_attestation.h"
-#include "ravl_options.h"
+#include "attestation.h"
+#include "options.h"
 
 #include <map>
 #include <memory>
