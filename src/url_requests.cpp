@@ -13,8 +13,9 @@
 
 namespace ravl
 {
-  SynchronousURLRequestTracker::SynchronousURLRequestTracker(bool verbose) :
-    URLRequestTracker(verbose)
+  SynchronousURLRequestTracker::SynchronousURLRequestTracker(
+    size_t request_timeout, bool verbose) :
+    URLRequestTracker(request_timeout, verbose)
   {}
 
   URLRequestSetId SynchronousURLRequestTracker::submit(
@@ -33,7 +34,7 @@ namespace ravl
     for (size_t i = 0; i < rsit->second.size(); i++)
     {
       auto& request = rsit->second.at(i);
-      URLResponse response = request.execute(verbose);
+      URLResponse response = request.execute(request_timeout, verbose);
       response_sets[id][i] = response;
 
       if (response.status != 200)

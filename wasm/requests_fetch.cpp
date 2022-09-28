@@ -97,7 +97,7 @@ namespace ravl
     return std::string(t.begin(), t.end());
   }
 
-  URLResponse URLRequest::execute(bool verbose)
+  URLResponse URLRequest::execute(size_t request_timeout, bool verbose)
   {
     throw std::runtime_error("synchronous fetch not supported");
   }
@@ -105,7 +105,9 @@ namespace ravl
   class FetchTracker : public URLRequestTracker
   {
   public:
-    FetchTracker(bool verbose = false) : URLRequestTracker(verbose) {}
+    FetchTracker(size_t request_timeout = 0, bool verbose = false) :
+      URLRequestTracker(request_timeout, verbose)
+    {}
 
     struct UserData
     {
@@ -119,7 +121,8 @@ namespace ravl
       FetchTracker* tracker,
       size_t id,
       size_t i,
-      const std::string& url)
+      const std::string& url,
+      size_t timeout)
     {
       emscripten_fetch_attr_t* attr = new emscripten_fetch_attr_t();
       emscripten_fetch_attr_init(attr);
@@ -127,6 +130,7 @@ namespace ravl
       attr->attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
       // TODO: request headers into attr->requestHeaders
       // TODO: timeout into attr->timeoutMSecs
+      attr->timeoutMSecs = timeout * 1000;
 
       attr->userData = new UserData{tracker, id, i};
 
@@ -171,7 +175,8 @@ namespace ravl
       for (size_t i = 0; i < reqs.requests.size(); i++)
       {
         auto& request = reqs.requests.at(i);
-        reqs.fetches.push_back(make_fetch("GET", this, id, i, request.url));
+        reqs.fetches.push_back(
+          make_fetch("GET", this, id, i, request.url, request_timeout));
       }
 
       reqs.callback = callback;
@@ -223,7 +228,8 @@ namespace ravl
       URLResponse& response = rsit->second.at(i);
 
       if (must_retry(fetch, response, true))
-        treqs.fetches[i] = make_fetch("GET", this, id, i, fetch->url);
+        treqs.fetches[i] =
+          make_fetch("GET", this, id, i, fetch->url, request_timeout);
       else
       {
         response.status = fetch->status;
@@ -302,9 +308,10 @@ namespace ravl
     std::unordered_map<URLRequestSetId, URLResponses> responses;
   };
 
-  AsynchronousURLRequestTracker::AsynchronousURLRequestTracker(bool verbose)
+  AsynchronousURLRequestTracker::AsynchronousURLRequestTracker(
+    size_t request_timeout, bool verbose)
   {
-    implementation = new FetchTracker(verbose);
+    implementation = new FetchTracker(request_timeout, verbose);
   }
 
   AsynchronousURLRequestTracker::~AsynchronousURLRequestTracker()

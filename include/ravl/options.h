@@ -36,5 +36,8 @@ namespace ravl
     /// Optional URL template for cached AMD SEV/SNP endorsements
     std::optional<std::string> sev_snp_endorsement_cache_url_template =
       std::nullopt;
+
+    /// Timeout for HTTP requests (in seconds; 0 = no limit)
+    size_t http_timeout = 90;
   };
 }

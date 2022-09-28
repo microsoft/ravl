@@ -53,6 +53,7 @@ namespace ravl
     const std::string& url,
     const std::string& body,
     URLResponse& r,
+    size_t timeout,
     bool verbose)
   {
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -60,6 +61,12 @@ namespace ravl
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_write_fun);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &r);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_write_fun);
+
+    if (timeout != 0)
+    {
+      curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+      curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    }
 
     if (verbose)
       curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
@@ -90,7 +97,7 @@ namespace ravl
       return false;
   }
 
-  URLResponse URLRequest::execute(bool verbose)
+  URLResponse URLRequest::execute(size_t timeout, bool verbose)
   {
     if (!initialized)
     {
@@ -110,7 +117,7 @@ namespace ravl
 
     while (max_attempts > 0)
     {
-      easy_setup(curl, url, body, response, verbose);
+      easy_setup(curl, url, body, response, timeout, verbose);
 
       CURLcode curl_code = curl_easy_perform(curl);
 
@@ -172,7 +179,9 @@ namespace ravl
   class CurlTracker : public URLRequestTracker
   {
   public:
-    CurlTracker(bool verbose) : URLRequestTracker(verbose) {}
+    CurlTracker(size_t request_timeout, bool verbose) :
+      URLRequestTracker(request_timeout, verbose)
+    {}
 
     class MonitorThread
     {
@@ -307,7 +316,8 @@ namespace ravl
         if (!easy)
           throw std::bad_alloc();
         URLResponse& response = rsps_it->second[i];
-        easy_setup(easy, request.url, request.body, response, verbose);
+        easy_setup(
+          easy, request.url, request.body, response, request_timeout, verbose);
         curl_easy_setopt(easy, CURLOPT_PRIVATE, i);
         curl_multi_add_handle(multi, easy);
         easies.push_back(easy);
@@ -399,6 +409,7 @@ namespace ravl
       URLRequests requests = {};
       CURLM* multi = NULL;
       std::function<void(URLResponses&&)> callback = nullptr;
+      size_t timeout = 0;
     };
 
     typedef std::unordered_map<URLRequestSetId, std::shared_ptr<MonitorThread>>
@@ -412,9 +423,10 @@ namespace ravl
     std::unordered_map<URLRequestSetId, URLResponses> responses;
   };
 
-  AsynchronousURLRequestTracker::AsynchronousURLRequestTracker(bool verbose)
+  AsynchronousURLRequestTracker::AsynchronousURLRequestTracker(
+    size_t request_timeout, bool verbose)
   {
-    implementation = new CurlTracker(verbose);
+    implementation = new CurlTracker(request_timeout, verbose);
   }
 
   AsynchronousURLRequestTracker::~AsynchronousURLRequestTracker()
