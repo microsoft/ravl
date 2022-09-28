@@ -43,7 +43,8 @@ namespace ravl
     std::string body = "";
     size_t max_attempts = 5;
 
-    URLResponse execute(bool verbose = false); /// synchronous
+    URLResponse execute(
+      size_t timeout = 0, bool verbose = false); /// synchronous
   };
 
   typedef std::vector<URLRequest> URLRequests;
@@ -52,7 +53,10 @@ namespace ravl
   class URLRequestTracker
   {
   public:
-    URLRequestTracker(bool verbose = false) : verbose(verbose) {}
+    URLRequestTracker(size_t request_timeout = 0, bool verbose = false) :
+      request_timeout(request_timeout),
+      verbose(verbose)
+    {}
     virtual ~URLRequestTracker() = default;
 
     virtual URLRequestSetId submit(
@@ -61,13 +65,15 @@ namespace ravl
     virtual bool is_complete(const URLRequestSetId& id) const = 0;
 
   protected:
+    size_t request_timeout = 0;
     bool verbose = false;
   };
 
   class SynchronousURLRequestTracker : public URLRequestTracker
   {
   public:
-    SynchronousURLRequestTracker(bool verbose = false);
+    SynchronousURLRequestTracker(
+      size_t request_timeout = 0, bool verbose = false);
     virtual ~SynchronousURLRequestTracker() = default;
 
     virtual URLRequestSetId submit(
@@ -84,7 +90,8 @@ namespace ravl
   class AsynchronousURLRequestTracker : public URLRequestTracker
   {
   public:
-    AsynchronousURLRequestTracker(bool verbose = false);
+    AsynchronousURLRequestTracker(
+      size_t request_timeout = 0, bool verbose = false);
     virtual ~AsynchronousURLRequestTracker();
 
     virtual URLRequestSetId submit(
