@@ -35,6 +35,9 @@ function(add_ravl_test target source)
   if (WIN32)
     target_compile_definitions(${RAVL_TEST_PREFIX}${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
   endif()
+  target_include_directories(
+      ${RAVL_TEST_PREFIX}${target} PRIVATE ${RAVL_INCLUDE}
+    )
   target_compile_definitions(${RAVL_TEST_PREFIX}${target} PRIVATE ${RAVL_DEFS})
   target_link_libraries(${RAVL_TEST_PREFIX}${target} PRIVATE pthread)
 endfunction()

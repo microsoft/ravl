@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl_sgx.h"
+#include "ravl/sgx.h"
 
-#include "fmt/core.h"
-#include "ravl_crypto.h"
-#include "ravl_sgx_defs.h"
-#include "ravl_url_requests.h"
-#include "ravl_util.h"
+#include "ravl/crypto.h"
+#include "ravl/sgx_defs.h"
+#include "ravl/url_requests.h"
+#include "ravl/util.h"
 
 #include <dlfcn.h>
+#include <fmt/core.h>
 #include <iostream>
 #include <memory>
 #include <nlohmann/json.hpp>

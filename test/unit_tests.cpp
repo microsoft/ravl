@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl_attestation.h"
-#include "ravl_util.h"
-
 #include <chrono>
-#include <ravl.h>
-#include <ravl_oe.h>
-#include <ravl_sev_snp.h>
-#include <ravl_sgx.h>
-#include <ravl_url_requests.h>
+#include <ravl/attestation.h>
+#include <ravl/oe.h>
+#include <ravl/ravl.h>
+#include <ravl/sev_snp.h>
+#include <ravl/sgx.h>
+#include <ravl/url_requests.h>
+#include <ravl/util.h>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>

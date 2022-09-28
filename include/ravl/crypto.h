@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ravl_crypto_options.h"
-#include "ravl_util.h"
+#include "crypto_options.h"
+#include "util.h"
 
 #include <chrono>
 #include <cstring>
@@ -20,7 +20,7 @@
 #include <fmt/format.h>
 
 #ifdef HAVE_OPENSSL
-#  include "ravl_crypto_openssl.h"
+#  include "crypto_openssl.h"
 #else
 #  error No crypto library available.
 #endif

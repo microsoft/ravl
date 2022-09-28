@@ -4,8 +4,8 @@
 #pragma once
 
 #include "ravl.h"
-#include "ravl_sgx.h"
-#include "ravl_url_requests.h"
+#include "sgx.h"
+#include "url_requests.h"
 
 #include <memory>
 
