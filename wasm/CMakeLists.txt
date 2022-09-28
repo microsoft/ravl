@@ -18,8 +18,16 @@ option(SEV_SNP "enable SEV/SNP" ON)
 option(TESTS "enable testing" ON)
 option(PROFILE "enable profiling" OFF)
 
+if(NOT DEFINED ENV{EMSDK})
+  message(FATAL_ERROR "This build requires empscripten, but the EMSDK environment variable is not defined.")
+endif()
+
+if (NOT EXISTS ${CMAKE_BINARY_DIR}/openssl)
+  message(FATAL_ERROR "This build requires an emscripten build of OpenSSL, see ../openssl.sh")
+endif()
+
 set(RAVL_SRC ${RAVL_SRC_DIR}/ravl.cpp)
-set(RAVL_INCLUDE ${RAVL_DIR}/3rdparty ${RAVL_DIR}/include ${RAVL_SRC_DIR} /data/cwinter/emsdk/upstream/emscripten/cache/sysroot/include)
+set(RAVL_INCLUDE ${RAVL_DIR}/3rdparty ${RAVL_DIR}/include ${RAVL_SRC_DIR})
 set(RAVL_DEFS)
 set(RAVL_LIB_DEPS)
 set(RAVL_LIB_DIRS)
