@@ -261,6 +261,8 @@ namespace ravl
       if (rit->second.state != RequestState::FINISHED)
         throw std::runtime_error(
           "attestation verification request not finished");
+      if (!rit->second.claims)
+        throw std::runtime_error("claim extraction failed");
       return rit->second.claims;
     }
 
