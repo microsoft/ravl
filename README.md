@@ -4,9 +4,20 @@ RAVL is a library of remote attestation verification procedures.
 
 # Dependencies
 
+For clang++:
+
 ```
-sudo apt install libstdc++-10-dev libssl-dev
-sudo apt install libcurl4-openssl-dev
+sudo apt install libstdc++-10-dev
+```
+
+For g++, use at least version 11:
+
+```
+sudo apt install g++-11
+```
+
+```
+sudo apt install libcurl4-openssl-dev libssl-dev
 ```
 
 Optional:

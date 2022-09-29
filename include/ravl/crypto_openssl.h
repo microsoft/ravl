@@ -410,7 +410,7 @@ namespace OpenSSL
     }
   };
 
-  class Unique_EVP_PKEY;
+  struct Unique_EVP_PKEY;
 
   struct Unique_X509_EXTENSION : public Unique_SSL_OBJECT<
                                    X509_EXTENSION,
@@ -920,6 +920,7 @@ namespace OpenSSL
                                   sk_ASN1_TYPE_free>
   {
     using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+
     Unique_ASN1_SEQUENCE(const ASN1_OCTET_STRING* os) :
       Unique_SSL_OBJECT(
         [&os]() {
@@ -929,7 +930,7 @@ namespace OpenSSL
           return seq;
         }(),
         [](STACK_OF(ASN1_TYPE) * p) {
-          for (size_t i = 0; i < sk_ASN1_TYPE_num(p); i++)
+          for (size_t i = 0; i < (size_t)sk_ASN1_TYPE_num(p); i++)
             ASN1_TYPE_free(sk_ASN1_TYPE_value(p, i));
           sk_ASN1_TYPE_free(p);
         })

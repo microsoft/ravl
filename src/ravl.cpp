@@ -141,7 +141,6 @@ namespace ravl
         AttestationRequestTracker::RequestState state,
         Options options,
         std::shared_ptr<const Attestation> attestation,
-        std::shared_ptr<Claims> claims,
         std::shared_ptr<URLRequestTracker> url_request_tracker,
         std::function<void(RequestID)>&& callback) :
         state(state),
@@ -190,7 +189,6 @@ namespace ravl
           RequestState::SUBMITTED,
           options,
           attestation,
-          nullptr,
           request_tracker,
           std::move(callback));
 
