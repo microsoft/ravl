@@ -238,8 +238,7 @@ namespace ravl
     static const std::string qe_identity_url = api_base_url + "/qe/identity";
     static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
-    URLRequests download_root_ca_pem(
-      const Options& options, std::shared_ptr<URLRequestTracker> tracker)
+    URLRequests download_root_ca_pem()
     {
       URLRequests requests;
       requests.emplace_back(root_ca_url);
@@ -250,8 +249,7 @@ namespace ravl
       const std::string& ca,
       const std::string& fmspc,
       const Options& options,
-      bool qve = false,
-      std::shared_ptr<URLRequestTracker> tracker = nullptr)
+      bool qve = false)
     {
       auto r = std::make_shared<QL_QVE_Collateral>();
 
@@ -314,10 +312,6 @@ namespace ravl
             tmpl, fmt::make_format_args("qve/identity", qve_identity_url)));
       }
 
-      if (!tracker)
-        tracker =
-          std::make_shared<SynchronousURLRequestTracker>(options.verbosity > 0);
-
       return requests;
     }
 
@@ -356,7 +350,7 @@ namespace ravl
 
         Unique_ASN1_SEQUENCE seq(X509_EXTENSION_get_data(sgx_ext));
 
-        int seq_sz = seq.size();
+        unsigned seq_sz = seq.size();
         if (
           seq_sz != processor_num_extensions &&
           seq_sz != platform_num_extensions)
@@ -434,19 +428,19 @@ namespace ravl
 
         auto sss = seq.get_seq(index, expected_oid);
 
-        int n = sss.size();
+        unsigned int n = sss.size();
         if (n != x509_tcb_seq_size)
           throw std::runtime_error(
             "SGX X509 TCB extension: sequence of invalid length");
 
         size_t num_comp_svns = r.comp_svn.size();
 
-        for (int i = 0; i < n; i++)
+        for (size_t i = 0; i < n; i++)
         {
           std::string expected_oid_i =
             std::string(sgx_ext_tcb_oid) + "." + std::to_string(i + 1);
 
-          if (i < num_comp_svns)
+          if ((size_t)i < num_comp_svns)
             r.comp_svn[i] = sss.get_uint8(i, expected_oid_i);
           else if (i == num_comp_svns)
             r.pce_svn = sss.get_uint16(i, expected_oid_i);
@@ -543,11 +537,6 @@ namespace ravl
         uint64_t tcb_type = tcbinfo_j["tcbType"].get<uint64_t>();
         if (tcb_type != 0)
           throw std::runtime_error("tcbType not supported");
-
-        // This is the TCB recovery event number, monotinically increasing.
-        // Report as result?
-        uint64_t tcb_eval_data_number =
-          tcbinfo_j["tcbEvaluationDataNumber"].get<uint64_t>();
 
         for (const auto& tcb_level_j : tcbinfo_j["tcbLevels"])
         {
@@ -665,8 +654,6 @@ namespace ravl
       const std::string& qe_identity_issuer_chain,
       const std::string& qe_identity,
       const std::span<const uint8_t>& qe_report_body_s,
-      const TCBLevel& platform_tcb_level,
-      const CertificateExtension& pck_ext,
       const Unique_X509_STORE& store,
       const Options& options,
       size_t indent = 0)
@@ -946,7 +933,6 @@ namespace ravl
         !options.fresh_root_ca_certificate)
         return std::nullopt;
 
-      size_t indent = 0;
       std::span quote = parse_quote(*this);
       SignatureData signature_data(quote, *this);
 
@@ -955,7 +941,7 @@ namespace ravl
       if (!this->endorsements.empty() && !options.fresh_endorsements)
       {
         if (!options.root_ca_certificate)
-          r = download_root_ca_pem(options, tracker);
+          r = download_root_ca_pem();
       }
       else
       {
@@ -970,7 +956,7 @@ namespace ravl
           !is_all_zero(*pck_ext.platform_instance_id);
         auto ca_type = have_pid ? "platform" : "processor";
         auto fmspc_hex = fmt::format("{:02x}", fmt::join(pck_ext.fmspc, ""));
-        r = download_collateral(ca_type, fmspc_hex, options, false, tracker);
+        r = download_collateral(ca_type, fmspc_hex, options, false);
       }
 
       return r;
@@ -1243,8 +1229,6 @@ namespace ravl
         collateral->qe_identity_issuer_chain,
         collateral->qe_identity,
         signature_data.report,
-        platform_tcb_level,
-        pck_x509_ext,
         store,
         options,
         indent + 2);

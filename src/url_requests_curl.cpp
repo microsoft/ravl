@@ -146,36 +146,6 @@ namespace ravl
     throw std::runtime_error("maxmimum number of URL request retries exceeded");
   }
 
-  std::vector<uint8_t> URLResponse::url_decode(const std::string& in)
-  {
-    int outsz = 0;
-    char* decoded = curl_easy_unescape(NULL, in.c_str(), in.size(), &outsz);
-    if (!decoded)
-      throw std::bad_alloc();
-    std::vector<uint8_t> r = {decoded, decoded + outsz};
-    free(decoded);
-    return r;
-  }
-
-  std::vector<uint8_t> URLResponse::get_header_data(
-    const std::string& name, bool url_decoded) const
-  {
-    auto hit = headers.find(name);
-    if (hit == headers.end())
-      throw std::runtime_error("missing response header '" + name + "'");
-    if (url_decoded)
-      return url_decode(hit->second);
-    else
-      return {hit->second.data(), hit->second.data() + hit->second.size()};
-  }
-
-  std::string URLResponse::get_header_string(
-    const std::string& name, bool url_decoded) const
-  {
-    auto t = get_header_data(name, url_decoded);
-    return std::string(t.begin(), t.end());
-  }
-
   class CurlTracker : public URLRequestTracker
   {
   public:
@@ -352,8 +322,6 @@ namespace ravl
         return;
 
       auto multi = rqit->second.multi;
-
-      auto& req = rqit->second.requests.at(i);
 
       auto rsit = responses.find(id);
       if (rsit == responses.end())

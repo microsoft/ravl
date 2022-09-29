@@ -163,8 +163,7 @@ namespace ravl
     inline bool verify_certificate(
       const Unique_X509_STORE& store,
       const Unique_X509& certificate,
-      const CertificateValidationOptions& options,
-      size_t indent = 0)
+      const CertificateValidationOptions& options)
     {
       Unique_X509_STORE_CTX store_ctx;
       CHECK1(X509_STORE_CTX_init(store_ctx, store, certificate, NULL));
@@ -209,8 +208,7 @@ namespace ravl
       const Unique_X509_STORE& store,
       const Unique_STACK_OF_X509& stack,
       const CertificateValidationOptions& options,
-      bool trusted_root = false,
-      size_t indent = 0)
+      bool trusted_root = false)
     {
       if (stack.size() <= 1)
         throw std::runtime_error("certificate stack too small");
@@ -259,7 +257,6 @@ namespace ravl
     }
 
     inline Unique_STACK_OF_X509 load_certificates(
-      const Unique_X509_STORE& store,
       const std::vector<std::string>& certificates)
     {
       // Leaf tracking/searching may be unnecessary as the chains should
@@ -361,7 +358,7 @@ namespace ravl
       try
       {
         auto chain =
-          verify_certificate_chain(store, stack, options, trusted_root, indent);
+          verify_certificate_chain(store, stack, options, trusted_root);
 
         if (chain.size() < 2)
           throw std::runtime_error("certificate chain is too short");
@@ -392,7 +389,7 @@ namespace ravl
       size_t indent = 0)
     {
       std::vector<std::string> certificates = extract_pem_certificates(data);
-      auto stack = load_certificates(store, certificates);
+      auto stack = load_certificates(certificates);
       return verify_certificate_chain(
         stack, store, options, trusted_root, verbosity, indent);
     }

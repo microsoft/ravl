@@ -158,10 +158,15 @@ namespace ravl
 #ifdef _MSC_VER
 #  pragma warning(push)
 #  pragma warning(disable : 4200)
+#else
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wpedantic"
 #endif
       uint8_t auth_certification_data[];
 #ifdef _MSC_VER
 #  pragma warning(pop)
+#else
+#  pragma GCC diagnostic pop
 #endif
     };
     EXPECT_SIZE(sgx_ql_ecdsa_sig_data_t, 576);

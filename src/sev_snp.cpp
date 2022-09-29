@@ -180,9 +180,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         MSG_VMRK_RSP,
         MSG_TYPE_MAX
       };
-
-      // Changes on 5.19+ kernel
-      constexpr auto DEVICE = "/dev/sev";
     }
 
 #define SEV_GUEST_IOC_TYPE 'S'
@@ -190,7 +187,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
   _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct snp::GuestRequest)
 
     Unique_X509 parse_root_cert(
-      const Options& options, const std::vector<URLResponse>& url_response_set)
+      const std::vector<URLResponse>& url_response_set)
     {
       if (url_response_set.size() != 1)
         throw std::runtime_error("collateral download request set failed");
@@ -201,10 +198,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return stack.at(1).pem();
     }
 
-    URLRequests download_root_ca_pem(
-      const std::string& product_name,
-      const Options& options,
-      std::shared_ptr<URLRequestTracker> tracker)
+    URLRequests download_root_ca_pem(const std::string& product_name)
     {
       std::string r;
 
@@ -324,7 +318,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         throw std::runtime_error("no URL request tracker");
 
       URLRequests requests;
-      bool tr = false;
 
       auto hwid = fmt::format("{:02x}", fmt::join(chip_id, ""));
       auto vcek_issuer_crl_url =
@@ -397,8 +390,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
 
-      size_t indent = 0;
-
       const auto& snp_att =
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
           evidence.data());
@@ -414,7 +405,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (!endorsements.empty() && !options.fresh_endorsements)
       {
         if (!options.root_ca_certificate && options.fresh_root_ca_certificate)
-          r = download_root_ca_pem(product_name, options, tracker);
+          r = download_root_ca_pem(product_name);
       }
       else
       {
@@ -506,7 +497,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
             Unique_X509(*options.root_ca_certificate);
         else if (options.fresh_root_ca_certificate)
           endorsements_etc.root_ca_certificate =
-            parse_root_cert(options, *url_response_set);
+            parse_root_cert(*url_response_set);
       }
       else
       {

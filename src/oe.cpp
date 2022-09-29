@@ -174,7 +174,7 @@ namespace ravl
     };
 
     std::pair<std::shared_ptr<sgx::Attestation>, std::vector<uint8_t>>
-    extract_sgx_attestation(const Attestation& a, const Options& options)
+    extract_sgx_attestation(const Attestation& a)
     {
       if (a.evidence.empty())
         throw std::runtime_error("No evidence to verify");
@@ -397,7 +397,7 @@ namespace ravl
 #ifdef USE_OE_VERIFIER
       return std::nullopt;
 #else
-      auto [sgx_att, cc] = extract_sgx_attestation(*this, options);
+      auto [sgx_att, cc] = extract_sgx_attestation(*this);
       sgx_attestation = sgx_att;
       custom_claims = cc;
       return sgx_attestation->prepare_endorsements(options, tracker);
