@@ -8,6 +8,7 @@
 #include "ravl/url_requests.h"
 #include "ravl/util.h"
 
+#include <cstdint>
 #include <memory>
 #include <span>
 #include <vector>
@@ -391,6 +392,73 @@ namespace ravl
     }
 #endif
 
+    struct oe_claim_t
+    {
+      char* name;
+      uint8_t* value;
+      size_t value_size;
+    };
+
+    struct oe_custom_claims_header_t
+    {
+      uint64_t version;
+      uint64_t num_claims;
+    };
+
+    struct oe_custom_claims_entry_t
+    {
+      uint64_t name_size;
+      uint64_t value_size;
+      uint8_t name[];
+      // name_size bytes follow.
+      // value_size_bytes follow.
+    };
+
+    static void extract_custom_claims(
+      const std::vector<uint8_t>& custom_claims,
+      std::map<std::string, std::vector<uint8_t>>& claims_map)
+    {
+      if (custom_claims.size() < sizeof(oe_custom_claims_header_t))
+        return;
+
+      oe_custom_claims_header_t* claims_header =
+        (oe_custom_claims_header_t*)custom_claims.data();
+
+      if (claims_header == NULL)
+        throw std::runtime_error("empty custom claims header");
+      if (claims_header->version != 1)
+        throw std::runtime_error("unsupported custom claims version");
+
+      size_t num_claims = claims_header->num_claims;
+      if (num_claims == 0)
+        return;
+
+      for (uint64_t i = 0; i < num_claims; i++)
+      {
+        const oe_custom_claims_entry_t* ei =
+          (oe_custom_claims_entry_t*)(custom_claims.data() + sizeof(*claims_header) + i * sizeof(oe_custom_claims_entry_t));
+
+        verify_within(
+          {(uint8_t*)ei, sizeof(oe_custom_claims_entry_t)}, custom_claims);
+
+        verify_within({(uint8_t*)ei->name, ei->name_size}, custom_claims);
+
+        verify_within(
+          {(uint8_t*)ei->name + ei->name_size,
+           ei->name + ei->name_size + ei->value_size},
+          custom_claims);
+
+        if (ei->name_size == 0 || ei->name[ei->name_size - 1] != 0)
+          throw std::runtime_error(
+            "custom claim name is an unterminated string");
+
+        std::string name((char*)ei->name, ei->name_size - 1);
+        std::vector value(
+          ei->name + ei->name_size, ei->name + ei->name_size + ei->value_size);
+        claims_map.emplace(std::move(name), std::move(value));
+      }
+    }
+
     std::optional<URLRequests> Attestation::prepare_endorsements(
       const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
     {
@@ -492,8 +560,9 @@ namespace ravl
         else if (strcmp(claim.name, "sgx_pce_svn") == 0)
           rclaims->sgx_claims->pce_svn = *(uint16_t*)claim.value;
         else if (strcmp(claim.name, "custom_claims_buffer") == 0)
-          rclaims->custom_claims =
-            std::vector(claim.value, claim.value + claim.value_size);
+          extract_custom_claims(
+            std::vector(claim.value, claim.value + claim.value_size),
+            rclaims->custom_claims);
         else
           log(fmt::format("  - ignoring OE claim '{}'", claim.name));
       }
@@ -517,7 +586,7 @@ namespace ravl
       auto claims = std::make_shared<Claims>();
       claims->sgx_claims = static_pointer_cast<sgx::Claims>(
         sgx_attestation->verify(options, url_response_set));
-      claims->custom_claims = custom_claims;
+      extract_custom_claims(custom_claims, claims->custom_claims);
       return claims;
 #endif
     }

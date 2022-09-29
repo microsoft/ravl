@@ -7,7 +7,10 @@
 #include "sgx.h"
 #include "url_requests.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace ravl
 {
@@ -23,7 +26,7 @@ namespace ravl
       virtual ~Claims() = default;
 
       std::shared_ptr<sgx::Claims> sgx_claims;
-      std::vector<uint8_t> custom_claims;
+      std::map<std::string, std::vector<uint8_t>> custom_claims;
     };
 
     class Attestation : public ravl::Attestation
