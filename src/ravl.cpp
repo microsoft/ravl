@@ -4,8 +4,8 @@
 #include "ravl/ravl.h"
 
 #include "ravl/crypto.h"
+#include "ravl/http_client.h"
 #include "ravl/sgx.h"
-#include "ravl/url_requests.h"
 #include "ravl/util.h"
 
 #include <map>
@@ -141,12 +141,12 @@ namespace ravl
         AttestationRequestTracker::RequestState state,
         Options options,
         std::shared_ptr<const Attestation> attestation,
-        std::shared_ptr<URLRequestTracker> url_request_tracker,
+        std::shared_ptr<HTTPClient> http_client,
         std::function<void(RequestID)>&& callback) :
         state(state),
         options(options),
         attestation(attestation),
-        url_request_tracker(url_request_tracker),
+        http_client(http_client),
         callback(callback)
       {}
 
@@ -155,17 +155,17 @@ namespace ravl
       Options options;
       std::shared_ptr<const Attestation> attestation;
       std::shared_ptr<Claims> claims;
-      std::shared_ptr<URLRequestTracker> url_request_tracker;
+      std::shared_ptr<HTTPClient> http_client;
       std::function<void(RequestID)> callback;
     };
 
     using Requests = std::map<AttestationRequestTracker::RequestID, Request>;
     using URLResponseMap =
-      std::map<AttestationRequestTracker::RequestID, URLResponses>;
+      std::map<AttestationRequestTracker::RequestID, HTTPResponses>;
 
     mutable std::mutex requests_mtx;
     Requests requests;
-    std::shared_ptr<URLRequestTracker> url_request_tracker;
+    std::shared_ptr<HTTPClient> http_client;
     AttestationRequestTracker::RequestID next_request_id = 0;
     mutable std::mutex responses_mtx;
     URLResponseMap url_responses;
@@ -173,7 +173,7 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
-      std::shared_ptr<URLRequestTracker> request_tracker,
+      std::shared_ptr<HTTPClient> http_client,
       std::function<void(RequestID)>&& callback)
     {
       RequestID request_id;
@@ -189,7 +189,7 @@ namespace ravl
           RequestState::SUBMITTED,
           options,
           attestation,
-          request_tracker,
+          http_client,
           std::move(callback));
 
         if (!ok)
@@ -296,7 +296,7 @@ namespace ravl
 
       const auto& attestation = *request.attestation;
       const auto& options = request.options;
-      auto request_tracker = request.url_request_tracker;
+      auto http_client = request.http_client;
 
       if (options.verbosity > 0)
       {
@@ -325,11 +325,10 @@ namespace ravl
 
       try
       {
-        auto url_requests =
-          request.attestation->prepare_endorsements(options, request_tracker);
+        auto url_requests = request.attestation->prepare_endorsements(options);
         if (url_requests)
         {
-          auto callback = [this, id](URLResponses&& r) {
+          auto callback = [this, id](HTTPResponses&& r) {
             {
               std::lock_guard<std::mutex> guard(responses_mtx);
               auto [it, ok] = url_responses.emplace(id, r);
@@ -339,7 +338,7 @@ namespace ravl
             advance(id);
             advance(id);
           };
-          request_tracker->submit(std::move(*url_requests), callback);
+          http_client->submit(std::move(*url_requests), callback);
           return true;
         }
       }
@@ -361,14 +360,14 @@ namespace ravl
 
       auto& attestation = *request.attestation;
       const auto& options = request.options;
-      auto request_tracker = request.url_request_tracker;
+      auto http_client = request.http_client;
 
       std::shared_ptr<Claims> claims;
 
       try
       {
         std::lock_guard<std::mutex> guard(responses_mtx);
-        std::vector<URLResponse> responses;
+        std::vector<HTTPResponse> responses;
 
         auto rit = url_responses.find(id);
         if (rit != url_responses.end())
@@ -405,11 +404,11 @@ namespace ravl
   AttestationRequestTracker::RequestID AttestationRequestTracker::submit(
     const Options& options,
     std::shared_ptr<const Attestation> attestation,
-    std::shared_ptr<URLRequestTracker> url_request_tracker,
+    std::shared_ptr<HTTPClient> http_client,
     std::function<void(RequestID)>&& callback)
   {
     return static_cast<AttestationRequestTrackerImpl*>(implementation)
-      ->submit(options, attestation, url_request_tracker, std::move(callback));
+      ->submit(options, attestation, http_client, std::move(callback));
   }
 
   AttestationRequestTracker::RequestState AttestationRequestTracker::state(
@@ -446,31 +445,31 @@ namespace ravl
   std::shared_ptr<Claims> verify(
     std::shared_ptr<const Attestation> attestation,
     const Options& options,
-    std::shared_ptr<URLRequestTracker> url_request_tracker)
+    std::shared_ptr<HTTPClient> http_client)
   {
 #ifndef HAVE_SGX
-    if (attestation.source == Source::SGX)
+    if (attestation->source == Source::SGX)
       throw std::runtime_error(
         "ravl was compiled without support for SGX attestations");
 #endif
 #ifndef HAVE_SEV_SNP
-    if (attestation.source == Source::SEV_SNP)
+    if (attestation->source == Source::SEV_SNP)
       throw std::runtime_error(
         "ravl was compiled without support for SEV/SNP attestations");
 #endif
 #ifndef HAVE_OPEN_ENCLAVE
-    if (attestation.source == Source::OPEN_ENCLAVE)
+    if (attestation->source == Source::OPEN_ENCLAVE)
       throw std::runtime_error(
         "ravl was compiled without support for Open Enclave attestations");
 #endif
 
-    if (!url_request_tracker)
-      url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
+    if (!http_client)
+      http_client = std::make_shared<SynchronousHTTPClient>();
 
     auto id = attestation_request_tracker.submit(
       options,
       attestation,
-      url_request_tracker,
+      http_client,
       [](AttestationRequestTracker::RequestID id) {
         attestation_request_tracker.advance(id);
       });
@@ -495,28 +494,27 @@ namespace ravl
     std::shared_ptr<const Attestation> attestation, const Options& options)
   {
 #ifndef HAVE_SGX
-    if (attestation.source == Source::SGX)
+    if (attestation->source == Source::SGX)
       throw std::runtime_error(
         "ravl was compiled without support for SGX attestations");
 #endif
 #ifndef HAVE_SEV_SNP
-    if (attestation.source == Source::SEV_SNP)
+    if (attestation->source == Source::SEV_SNP)
       throw std::runtime_error(
         "ravl was compiled without support for SEV/SNP attestations");
 #endif
 #ifndef HAVE_OPEN_ENCLAVE
-    if (attestation.source == Source::OPEN_ENCLAVE)
+    if (attestation->source == Source::OPEN_ENCLAVE)
       throw std::runtime_error(
         "ravl was compiled without support for Open Enclave attestations");
 #endif
 
-    auto url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
-    auto requests =
-      attestation->prepare_endorsements(options, url_request_tracker);
-    std::optional<URLResponses> url_response_set = std::nullopt;
+    auto http_client = std::make_shared<SynchronousHTTPClient>();
+    auto requests = attestation->prepare_endorsements(options);
+    std::optional<HTTPResponses> url_response_set = std::nullopt;
     if (requests)
-      url_request_tracker->submit(
-        std::move(*requests), [&url_response_set](URLResponses&& r) {
+      http_client->submit(
+        std::move(*requests), [&url_response_set](HTTPResponses&& r) {
           url_response_set = std::move(r);
         });
     return attestation->verify(options, url_response_set);

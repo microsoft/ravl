@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl/url_requests.h"
+#include "ravl/http_client.h"
 
 #include <chrono>
 #include <cstring>
@@ -26,7 +26,7 @@ namespace ravl
   static size_t body_write_fun(
     char* ptr, size_t size, size_t nmemb, void* userdata)
   {
-    URLResponse* r = static_cast<URLResponse*>(userdata);
+    HTTPResponse* r = static_cast<HTTPResponse*>(userdata);
     size_t real_size = nmemb * size;
     r->body += std::string(ptr, real_size);
     return real_size;
@@ -35,7 +35,7 @@ namespace ravl
   static size_t header_write_fun(
     char* buffer, size_t size, size_t nitems, void* userdata)
   {
-    URLResponse* r = static_cast<URLResponse*>(userdata);
+    HTTPResponse* r = static_cast<HTTPResponse*>(userdata);
     size_t real_size = nitems * size;
     std::string h = std::string(buffer, real_size);
     char* colon = std::strchr(buffer, ':');
@@ -52,7 +52,7 @@ namespace ravl
     CURL* curl,
     const std::string& url,
     const std::string& body,
-    URLResponse& r,
+    HTTPResponse& r,
     size_t timeout,
     bool verbose)
   {
@@ -77,7 +77,7 @@ namespace ravl
     return curl;
   }
 
-  static bool must_retry(CURL* curl, URLResponse& response, bool verbose)
+  static bool must_retry(CURL* curl, HTTPResponse& response, bool verbose)
   {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.status);
 
@@ -97,7 +97,7 @@ namespace ravl
       return false;
   }
 
-  URLResponse URLRequest::execute(size_t timeout, bool verbose)
+  HTTPResponse HTTPRequest::execute(size_t timeout, bool verbose)
   {
     if (!initialized)
     {
@@ -111,7 +111,7 @@ namespace ravl
     if (!curl)
       throw std::runtime_error("libcurl initialization failed");
 
-    URLResponse response;
+    HTTPResponse response;
 
     // printf("Sync: %s\n", url.c_str());
 
@@ -146,23 +146,23 @@ namespace ravl
     throw std::runtime_error("maxmimum number of URL request retries exceeded");
   }
 
-  class CurlTracker : public URLRequestTracker
+  class CurlClient : public HTTPClient
   {
   public:
-    CurlTracker(size_t request_timeout, bool verbose) :
-      URLRequestTracker(request_timeout, verbose)
+    CurlClient(size_t request_timeout, bool verbose) :
+      HTTPClient(request_timeout, verbose)
     {}
 
     class MonitorThread
     {
     public:
       MonitorThread(
-        CurlTracker* tracker,
-        URLRequestSetId id,
+        CurlClient* client,
+        HTTPRequestSetId id,
         CURLM* multi,
-        std::function<void(URLResponses&&)> callback) :
+        std::function<void(HTTPResponses&&)> callback) :
         keep_going(true),
-        tracker(tracker),
+        client(client),
         id(id),
         multi(multi),
         callback(callback)
@@ -182,23 +182,23 @@ namespace ravl
       void run()
       {
         while (keep_going)
-          keep_going &= tracker->poll(id, multi, callback);
+          keep_going &= client->poll(id, multi, callback);
       }
 
     protected:
       bool keep_going = true;
       std::thread t;
 
-      CurlTracker* tracker;
-      URLRequestSetId id;
+      CurlClient* client;
+      HTTPRequestSetId id;
       CURLM* multi;
-      std::function<void(URLResponses&&)> callback;
+      std::function<void(HTTPResponses&&)> callback;
     };
 
     bool poll(
-      URLRequestSetId id,
+      HTTPRequestSetId id,
       CURLM* multi,
-      std::function<void(URLResponses&&)>& callback)
+      std::function<void(HTTPResponses&&)>& callback)
     {
       auto consume_msgs = [this, id, multi]() {
         struct CURLMsg* m;
@@ -233,7 +233,7 @@ namespace ravl
         auto rsps_it = responses.find(id);
         if (rsps_it == responses.end())
           throw std::runtime_error("could not find url responses");
-        URLResponses rs;
+        HTTPResponses rs;
         rs.swap(rsps_it->second);
         callback(std::move(rs));
         responses.erase(rsps_it);
@@ -245,8 +245,8 @@ namespace ravl
       return false;
     }
 
-    URLRequestSetId submit(
-      URLRequests&& rs, std::function<void(URLResponses&&)>&& callback)
+    HTTPRequestSetId submit(
+      HTTPRequests&& rs, std::function<void(HTTPResponses&&)>&& callback)
     {
       std::lock_guard<std::mutex> guard(mtx);
 
@@ -257,7 +257,7 @@ namespace ravl
         initialized = true;
       }
 
-      URLRequestSetId id = requests.size();
+      HTTPRequestSetId id = requests.size();
       auto [it, ok] = requests.emplace(id, TrackedRequests{std::move(rs)});
       if (!ok)
         throw std::bad_alloc();
@@ -272,7 +272,7 @@ namespace ravl
       reqs.multi = multi;
 
       auto [rsps_it, rsps_ok] =
-        responses.emplace(id, URLResponses(reqs.requests.size()));
+        responses.emplace(id, HTTPResponses(reqs.requests.size()));
       if (!rsps_ok)
         throw std::bad_alloc();
 
@@ -285,7 +285,7 @@ namespace ravl
         CURL* easy = curl_easy_init();
         if (!easy)
           throw std::bad_alloc();
-        URLResponse& response = rsps_it->second[i];
+        HTTPResponse& response = rsps_it->second[i];
         easy_setup(
           easy, request.url, request.body, response, request_timeout, verbose);
         curl_easy_setopt(easy, CURLOPT_PRIVATE, i);
@@ -333,7 +333,7 @@ namespace ravl
       if (i >= rsit->second.size())
         throw std::runtime_error("request index too large");
 
-      URLResponse& response = rsit->second.at(i);
+      HTTPResponse& response = rsit->second.at(i);
 
       curl_multi_remove_handle(multi, easy);
       if (must_retry(easy, response, true))
@@ -350,7 +350,7 @@ namespace ravl
       }
     }
 
-    bool is_complete(const URLRequestSetId& id) const
+    bool is_complete(const HTTPRequestSetId& id) const
     {
       Requests::const_iterator rit = requests.end();
       CURLMcode mc = CURLM_OK;
@@ -374,44 +374,43 @@ namespace ravl
 
     struct TrackedRequests
     {
-      URLRequests requests = {};
+      HTTPRequests requests = {};
       CURLM* multi = NULL;
-      std::function<void(URLResponses&&)> callback = nullptr;
+      std::function<void(HTTPResponses&&)> callback = nullptr;
       size_t timeout = 0;
     };
 
-    typedef std::unordered_map<URLRequestSetId, std::shared_ptr<MonitorThread>>
+    typedef std::unordered_map<HTTPRequestSetId, std::shared_ptr<MonitorThread>>
       MonitorThreads;
 
     MonitorThreads monitor_threads;
 
-    typedef std::unordered_map<URLRequestSetId, TrackedRequests> Requests;
+    typedef std::unordered_map<HTTPRequestSetId, TrackedRequests> Requests;
     Requests requests;
 
-    std::unordered_map<URLRequestSetId, URLResponses> responses;
+    std::unordered_map<HTTPRequestSetId, HTTPResponses> responses;
   };
 
-  AsynchronousURLRequestTracker::AsynchronousURLRequestTracker(
+  AsynchronousHTTPClient::AsynchronousHTTPClient(
     size_t request_timeout, bool verbose)
   {
-    implementation = new CurlTracker(request_timeout, verbose);
+    implementation = new CurlClient(request_timeout, verbose);
   }
 
-  AsynchronousURLRequestTracker::~AsynchronousURLRequestTracker()
+  AsynchronousHTTPClient::~AsynchronousHTTPClient()
   {
-    delete static_cast<CurlTracker*>(implementation);
+    delete static_cast<CurlClient*>(implementation);
   }
 
-  URLRequestSetId AsynchronousURLRequestTracker::submit(
-    URLRequests&& rs, std::function<void(URLResponses&&)>&& callback)
+  HTTPRequestSetId AsynchronousHTTPClient::submit(
+    HTTPRequests&& rs, std::function<void(HTTPResponses&&)>&& callback)
   {
-    return static_cast<CurlTracker*>(implementation)
+    return static_cast<CurlClient*>(implementation)
       ->submit(std::move(rs), std::move(callback));
   }
 
-  bool AsynchronousURLRequestTracker::is_complete(
-    const URLRequestSetId& id) const
+  bool AsynchronousHTTPClient::is_complete(const HTTPRequestSetId& id) const
   {
-    return static_cast<CurlTracker*>(implementation)->is_complete(id);
+    return static_cast<CurlClient*>(implementation)->is_complete(id);
   }
 }

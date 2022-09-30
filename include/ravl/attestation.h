@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "http_client.h"
 #include "options.h"
-#include "url_requests.h"
 
 #include <cstdint>
 #include <functional>
@@ -15,8 +15,6 @@
 
 namespace ravl
 {
-  class URLRequestTracker;
-
   enum class Source : uint8_t
   {
     SGX = 0,
@@ -65,15 +63,14 @@ namespace ravl
     std::vector<uint8_t> endorsements;
 
     /// Function to prepare network requests for endorsements
-    virtual std::optional<URLRequests> prepare_endorsements(
-      const Options& options,
-      std::shared_ptr<URLRequestTracker> request_tracker) const = 0;
+    virtual std::optional<HTTPRequests> prepare_endorsements(
+      const Options& options) const = 0;
 
     /// Function to verify the attestation (with all endorsements present either
     /// in the attestation object or in the url_response_set).
     virtual std::shared_ptr<Claims> verify(
       const Options& options,
-      const std::optional<URLResponses>& url_response_set) const = 0;
+      const std::optional<HTTPResponses>& http_response_set) const = 0;
 
     operator std::string() const;
 

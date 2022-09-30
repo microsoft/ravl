@@ -3,9 +3,9 @@
 
 #include "ravl/oe.h"
 
+#include "ravl/http_client.h"
 #include "ravl/sgx.h"
 #include "ravl/sgx_defs.h"
-#include "ravl/url_requests.h"
 #include "ravl/util.h"
 
 #include <cstdint>
@@ -459,8 +459,8 @@ namespace ravl
       }
     }
 
-    std::optional<URLRequests> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
+    std::optional<HTTPRequests> Attestation::prepare_endorsements(
+      const Options& options) const
     {
 #ifdef USE_OE_VERIFIER
       return std::nullopt;
@@ -468,13 +468,13 @@ namespace ravl
       auto [sgx_att, cc] = extract_sgx_attestation(*this);
       sgx_attestation = sgx_att;
       custom_claims = cc;
-      return sgx_attestation->prepare_endorsements(options, tracker);
+      return sgx_attestation->prepare_endorsements(options);
 #endif
     }
 
     std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
-      const std::optional<std::vector<URLResponse>>& url_response_set) const
+      const std::optional<std::vector<HTTPResponse>>& url_response_set) const
     {
 #ifdef USE_OE_VERIFIER
       if (oe_verifier_initialize() != OE_OK)

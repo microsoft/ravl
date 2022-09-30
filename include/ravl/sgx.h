@@ -4,7 +4,6 @@
 #pragma once
 
 #include "attestation.h"
-#include "url_requests.h"
 
 #include <array>
 #include <memory>
@@ -12,7 +11,7 @@
 
 namespace ravl
 {
-  class URLRequestTracker;
+  class HTTPClient;
 
   namespace sgx
   {
@@ -93,13 +92,12 @@ namespace ravl
 
       virtual ~Attestation() = default;
 
-      virtual std::optional<URLRequests> prepare_endorsements(
-        const Options& options,
-        std::shared_ptr<URLRequestTracker> request_tracker) const override;
+      virtual std::optional<HTTPRequests> prepare_endorsements(
+        const Options& options) const override;
 
       virtual std::shared_ptr<ravl::Claims> verify(
         const Options& options,
-        const std::optional<URLResponses>& url_response_set) const override;
+        const std::optional<HTTPResponses>& url_response_set) const override;
     };
   }
 }

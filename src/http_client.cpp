@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl/url_requests.h"
+#include "ravl/http_client.h"
 
 #include <chrono>
 #include <stdexcept>
@@ -54,7 +54,7 @@ namespace ravl
     }
   }
 
-  std::vector<uint8_t> URLResponse::url_decode(const std::string& in)
+  std::vector<uint8_t> HTTPResponse::url_decode(const std::string& in)
   {
     char* decoded = ravl::url_decode(in.data(), in.size());
     int len = strlen(decoded);
@@ -65,7 +65,7 @@ namespace ravl
     return r;
   }
 
-  std::vector<uint8_t> URLResponse::get_header_data(
+  std::vector<uint8_t> HTTPResponse::get_header_data(
     const std::string& name, bool url_decoded) const
   {
     auto hit = headers.find(name);
@@ -83,26 +83,26 @@ namespace ravl
       return {hit->second.data(), hit->second.data() + hit->second.size()};
   }
 
-  std::string URLResponse::get_header_string(
+  std::string HTTPResponse::get_header_string(
     const std::string& name, bool url_decoded) const
   {
     auto t = get_header_data(name, url_decoded);
     return std::string(t.begin(), t.end());
   }
 
-  SynchronousURLRequestTracker::SynchronousURLRequestTracker(
+  SynchronousHTTPClient::SynchronousHTTPClient(
     size_t request_timeout, bool verbose) :
-    URLRequestTracker(request_timeout, verbose)
+    HTTPClient(request_timeout, verbose)
   {}
 
-  URLRequestSetId SynchronousURLRequestTracker::submit(
-    URLRequests&& rs, std::function<void(URLResponses&&)>&& callback)
+  HTTPRequestSetId SynchronousHTTPClient::submit(
+    HTTPRequests&& rs, std::function<void(HTTPResponses&&)>&& callback)
   {
-    URLRequestSetId id = request_sets.size();
+    HTTPRequestSetId id = request_sets.size();
     size_t sz = rs.size();
 
     request_sets.emplace(id, std::move(rs));
-    auto [rit, ok] = response_sets.emplace(id, URLResponses(sz));
+    auto [rit, ok] = response_sets.emplace(id, HTTPResponses(sz));
 
     if (!ok)
       throw std::bad_alloc();
@@ -111,7 +111,7 @@ namespace ravl
     for (size_t i = 0; i < rsit->second.size(); i++)
     {
       auto& request = rsit->second.at(i);
-      URLResponse response = request.execute(request_timeout, verbose);
+      HTTPResponse response = request.execute(request_timeout, verbose);
       response_sets[id][i] = response;
 
       if (response.status != 200)
@@ -119,7 +119,7 @@ namespace ravl
           fmt::format("unexpected HTTP status {}", response.status));
     }
 
-    URLResponses r;
+    HTTPResponses r;
     r.swap(rit->second);
     callback(std::move(r));
     response_sets.erase(rit);
@@ -127,7 +127,7 @@ namespace ravl
     return id;
   }
 
-  bool SynchronousURLRequestTracker::is_complete(const URLRequestSetId&) const
+  bool SynchronousHTTPClient::is_complete(const HTTPRequestSetId&) const
   {
     return true;
   }

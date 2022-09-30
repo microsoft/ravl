@@ -5,8 +5,8 @@
 
 #include "ravl/crypto.h"
 #include "ravl/crypto_openssl.h"
+#include "ravl/http_client.h"
 #include "ravl/ravl.h"
-#include "ravl/url_requests.h"
 
 #include <stdexcept>
 
@@ -187,7 +187,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
   _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct snp::GuestRequest)
 
     Unique_X509 parse_root_cert(
-      const std::vector<URLResponse>& url_response_set)
+      const std::vector<HTTPResponse>& url_response_set)
     {
       if (url_response_set.size() != 1)
         throw std::runtime_error("collateral download request set failed");
@@ -198,11 +198,11 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return stack.at(1).pem();
     }
 
-    URLRequests download_root_ca_pem(const std::string& product_name)
+    HTTPRequests download_root_ca_pem(const std::string& product_name)
     {
       std::string r;
 
-      URLRequests requests;
+      HTTPRequests requests;
 
       auto vcek_issuer_chain_url =
         fmt::format("{}/vcek/v1/{}/cert_chain", kds_url, product_name);
@@ -249,7 +249,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     };
 
     static EndorsementsEtc parse_url_responses(
-      const Options& options, const std::vector<URLResponse>& url_response_set)
+      const Options& options, const std::vector<HTTPResponse>& url_response_set)
     {
       EndorsementsEtc r;
 
@@ -307,17 +307,13 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return r;
     }
 
-    URLRequests download_endorsements(
+    HTTPRequests download_endorsements(
       const std::string& product_name,
       const std::span<const uint8_t>& chip_id,
       const snp::TcbVersion& tcb_version,
-      const Options& options,
-      std::shared_ptr<URLRequestTracker> tracker)
+      const Options& options)
     {
-      if (!tracker)
-        throw std::runtime_error("no URL request tracker");
-
-      URLRequests requests;
+      HTTPRequests requests;
 
       auto hwid = fmt::format("{:02x}", fmt::join(chip_id, ""));
       auto vcek_issuer_crl_url =
@@ -384,12 +380,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return rc == 1;
     }
 
-    std::optional<URLRequests> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
+    std::optional<HTTPRequests> Attestation::prepare_endorsements(
+      const Options& options) const
     {
-      if (!tracker)
-        throw std::runtime_error("no URL request tracker");
-
       const auto& snp_att =
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
           evidence.data());
@@ -400,7 +393,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       std::string product_name =
         "Milan"; // TODO: How can we determine that from snp_att?
 
-      std::optional<URLRequests> r = std::nullopt;
+      std::optional<HTTPRequests> r = std::nullopt;
 
       if (!endorsements.empty() && !options.fresh_endorsements)
       {
@@ -410,11 +403,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       else
       {
         r = download_endorsements(
-          product_name,
-          snp_att.chip_id,
-          snp_att.reported_tcb,
-          options,
-          tracker);
+          product_name, snp_att.chip_id, snp_att.reported_tcb, options);
       }
 
       return r;
@@ -472,7 +461,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
     std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
-      const std::optional<std::vector<URLResponse>>& url_response_set) const
+      const std::optional<std::vector<HTTPResponse>>& url_response_set) const
     {
       if (
         endorsements.empty() &&
