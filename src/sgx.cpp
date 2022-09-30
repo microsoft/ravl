@@ -4,8 +4,8 @@
 #include "ravl/sgx.h"
 
 #include "ravl/crypto.h"
+#include "ravl/http_client.h"
 #include "ravl/sgx_defs.h"
-#include "ravl/url_requests.h"
 #include "ravl/util.h"
 
 #include <dlfcn.h>
@@ -238,14 +238,14 @@ namespace ravl
     static const std::string qe_identity_url = api_base_url + "/qe/identity";
     static const std::string qve_identity_url = api_base_url + "/qve/identity";
 
-    URLRequests download_root_ca_pem()
+    HTTPRequests download_root_ca_pem()
     {
-      URLRequests requests;
+      HTTPRequests requests;
       requests.emplace_back(root_ca_url);
       return requests;
     }
 
-    URLRequests download_collateral(
+    HTTPRequests download_collateral(
       const std::string& ca,
       const std::string& fmspc,
       const Options& options,
@@ -257,7 +257,7 @@ namespace ravl
       r->minor_version = 1;
       r->tee_type = 0;
 
-      URLRequests requests;
+      HTTPRequests requests;
 
       if (!options.sgx_endorsement_cache_url_template)
       {
@@ -922,8 +922,8 @@ namespace ravl
       std::span<const uint8_t> certification_data;
     };
 
-    std::optional<URLRequests> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<URLRequestTracker> tracker) const
+    std::optional<HTTPRequests> Attestation::prepare_endorsements(
+      const Options& options, std::shared_ptr<HTTPClient> tracker) const
     {
       if (!tracker)
         throw std::runtime_error("no URL request tracker");
@@ -936,7 +936,7 @@ namespace ravl
       std::span quote = parse_quote(*this);
       SignatureData signature_data(quote, *this);
 
-      std::optional<URLRequests> r = std::nullopt;
+      std::optional<HTTPRequests> r = std::nullopt;
 
       if (!this->endorsements.empty() && !options.fresh_endorsements)
       {
@@ -963,7 +963,7 @@ namespace ravl
     }
 
     static void check_http_200(
-      const URLResponse& response, const std::string& name)
+      const HTTPResponse& response, const std::string& name)
     {
       if (response.status != 200)
         throw std::runtime_error(fmt::format("download of {} failed", name));
@@ -971,7 +971,7 @@ namespace ravl
 
     static std::shared_ptr<QL_QVE_Collateral> consume_url_responses(
       const Options& options,
-      const std::vector<URLResponse>& url_response_set,
+      const std::vector<HTTPResponse>& url_response_set,
       bool qve = false)
     {
       size_t expected_responses = 4;
@@ -1097,7 +1097,7 @@ namespace ravl
 
     std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
-      const std::optional<std::vector<URLResponse>>& url_response_set) const
+      const std::optional<std::vector<HTTPResponse>>& url_response_set) const
     {
       if (
         this->endorsements.empty() &&

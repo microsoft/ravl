@@ -4,8 +4,8 @@
 #include "ravl/ravl.h"
 
 #include "ravl/crypto.h"
+#include "ravl/http_client.h"
 #include "ravl/sgx.h"
-#include "ravl/url_requests.h"
 #include "ravl/util.h"
 
 #include <map>
@@ -141,7 +141,7 @@ namespace ravl
         AttestationRequestTracker::RequestState state,
         Options options,
         std::shared_ptr<const Attestation> attestation,
-        std::shared_ptr<URLRequestTracker> url_request_tracker,
+        std::shared_ptr<HTTPClient> url_request_tracker,
         std::function<void(RequestID)>&& callback) :
         state(state),
         options(options),
@@ -155,17 +155,17 @@ namespace ravl
       Options options;
       std::shared_ptr<const Attestation> attestation;
       std::shared_ptr<Claims> claims;
-      std::shared_ptr<URLRequestTracker> url_request_tracker;
+      std::shared_ptr<HTTPClient> url_request_tracker;
       std::function<void(RequestID)> callback;
     };
 
     using Requests = std::map<AttestationRequestTracker::RequestID, Request>;
     using URLResponseMap =
-      std::map<AttestationRequestTracker::RequestID, URLResponses>;
+      std::map<AttestationRequestTracker::RequestID, HTTPResponses>;
 
     mutable std::mutex requests_mtx;
     Requests requests;
-    std::shared_ptr<URLRequestTracker> url_request_tracker;
+    std::shared_ptr<HTTPClient> url_request_tracker;
     AttestationRequestTracker::RequestID next_request_id = 0;
     mutable std::mutex responses_mtx;
     URLResponseMap url_responses;
@@ -173,7 +173,7 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
-      std::shared_ptr<URLRequestTracker> request_tracker,
+      std::shared_ptr<HTTPClient> request_tracker,
       std::function<void(RequestID)>&& callback)
     {
       RequestID request_id;
@@ -329,7 +329,7 @@ namespace ravl
           request.attestation->prepare_endorsements(options, request_tracker);
         if (url_requests)
         {
-          auto callback = [this, id](URLResponses&& r) {
+          auto callback = [this, id](HTTPResponses&& r) {
             {
               std::lock_guard<std::mutex> guard(responses_mtx);
               auto [it, ok] = url_responses.emplace(id, r);
@@ -368,7 +368,7 @@ namespace ravl
       try
       {
         std::lock_guard<std::mutex> guard(responses_mtx);
-        std::vector<URLResponse> responses;
+        std::vector<HTTPResponse> responses;
 
         auto rit = url_responses.find(id);
         if (rit != url_responses.end())
@@ -405,7 +405,7 @@ namespace ravl
   AttestationRequestTracker::RequestID AttestationRequestTracker::submit(
     const Options& options,
     std::shared_ptr<const Attestation> attestation,
-    std::shared_ptr<URLRequestTracker> url_request_tracker,
+    std::shared_ptr<HTTPClient> url_request_tracker,
     std::function<void(RequestID)>&& callback)
   {
     return static_cast<AttestationRequestTrackerImpl*>(implementation)
@@ -446,7 +446,7 @@ namespace ravl
   std::shared_ptr<Claims> verify(
     std::shared_ptr<const Attestation> attestation,
     const Options& options,
-    std::shared_ptr<URLRequestTracker> url_request_tracker)
+    std::shared_ptr<HTTPClient> url_request_tracker)
   {
 #ifndef HAVE_SGX
     if (attestation.source == Source::SGX)
@@ -465,7 +465,7 @@ namespace ravl
 #endif
 
     if (!url_request_tracker)
-      url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
+      url_request_tracker = std::make_shared<SynchronousHTTPClient>();
 
     auto id = attestation_request_tracker.submit(
       options,
@@ -510,13 +510,13 @@ namespace ravl
         "ravl was compiled without support for Open Enclave attestations");
 #endif
 
-    auto url_request_tracker = std::make_shared<SynchronousURLRequestTracker>();
+    auto url_request_tracker = std::make_shared<SynchronousHTTPClient>();
     auto requests =
       attestation->prepare_endorsements(options, url_request_tracker);
-    std::optional<URLResponses> url_response_set = std::nullopt;
+    std::optional<HTTPResponses> url_response_set = std::nullopt;
     if (requests)
       url_request_tracker->submit(
-        std::move(*requests), [&url_response_set](URLResponses&& r) {
+        std::move(*requests), [&url_response_set](HTTPResponses&& r) {
           url_response_set = std::move(r);
         });
     return attestation->verify(options, url_response_set);

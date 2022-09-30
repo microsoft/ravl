@@ -5,7 +5,6 @@
 
 #include "ravl.h"
 #include "sgx.h"
-#include "url_requests.h"
 
 #include <cstdint>
 #include <memory>
@@ -14,7 +13,7 @@
 
 namespace ravl
 {
-  class URLRequestTracker;
+  class HTTPClient;
 
   namespace oe
   {
@@ -38,14 +37,13 @@ namespace ravl
         ravl::Attestation(Source::OPEN_ENCLAVE, evidence, endorsements)
       {}
 
-      virtual std::optional<URLRequests> prepare_endorsements(
+      virtual std::optional<HTTPRequests> prepare_endorsements(
         const Options& options,
-        std::shared_ptr<URLRequestTracker> request_tracker =
-          nullptr) const override;
+        std::shared_ptr<HTTPClient> request_tracker = nullptr) const override;
 
       virtual std::shared_ptr<ravl::Claims> verify(
         const Options& options,
-        const std::optional<URLResponses>& url_response_set) const override;
+        const std::optional<HTTPResponses>& url_response_set) const override;
 
     protected:
       mutable std::shared_ptr<ravl::Attestation> sgx_attestation;

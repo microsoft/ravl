@@ -3,11 +3,11 @@
 
 #include <chrono>
 #include <ravl/attestation.h>
+#include <ravl/http_client.h>
 #include <ravl/oe.h>
 #include <ravl/ravl.h>
 #include <ravl/sev_snp.h>
 #include <ravl/sgx.h>
-#include <ravl/url_requests.h>
 #include <ravl/util.h>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -69,8 +69,8 @@ std::string ccf_quote = R"({
 
 /* clang-format on */
 
-std::shared_ptr<URLRequestTracker> request_tracker =
-  std::make_shared<AsynchronousURLRequestTracker>(
+std::shared_ptr<HTTPClient> request_tracker =
+  std::make_shared<AsynchronousHTTPClient>(
     /*request_timeout*/ 0, /*verbose=*/false);
 
 #ifndef USE_OE_VERIFIER
@@ -257,7 +257,7 @@ TEST_CASE("SGX CoffeeLake asynchronous")
   {
     AttestationRequestTracker tracker;
     auto id = tracker.submit(
-      default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
+      default_options, att, std::make_shared<AsynchronousHTTPClient>());
 
     std::thread t([&tracker, id, &claims]() {
       while (!tracker.finished(id))
@@ -293,7 +293,7 @@ TEST_CASE("SEV/SNP asynchronous")
   {
     AttestationRequestTracker tracker;
     auto id = tracker.submit(
-      default_options, att, std::make_shared<AsynchronousURLRequestTracker>());
+      default_options, att, std::make_shared<AsynchronousHTTPClient>());
 
     std::thread t([&tracker, id, &claims]() {
       while (!tracker.finished(id))
