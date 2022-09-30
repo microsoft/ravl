@@ -1,14 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl/http_client.h"
-
 #include <chrono>
 #include <emscripten.h>
 #include <ostream>
 #include <ravl/attestation.h>
+#include <ravl/http_client.h>
 #include <ravl/ravl.h>
-#include <ravl/url_requests.h>
 #include <thread>
 
 using namespace ravl;
