@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include "ravl/http_client.h"
+
 #include <chrono>
 #include <emscripten.h>
 #include <ostream>
@@ -28,7 +30,7 @@ Options default_options = {
 
 void test_without_endorsements(const std::string& json_att)
 {
-  auto url_tracker = std::make_shared<AsynchronousURLRequestTracker>();
+  auto http_client = std::make_shared<AsynchronousHTTPClient>();
   auto att_tracker = std::make_shared<AttestationRequestTracker>();
 
   auto att_without = parse_attestation(json_att);
@@ -40,7 +42,7 @@ void test_without_endorsements(const std::string& json_att)
   auto id = att_tracker->submit(
     default_options,
     att_without,
-    url_tracker,
+    http_client,
     [att_tracker, &keep_waiting, &claims](
       AttestationRequestTracker::RequestID id) {
       claims = att_tracker->result(id);
@@ -59,10 +61,10 @@ void test_without_endorsements(const std::string& json_att)
 
 void test_synchronized(const std::string& json_att)
 {
-  auto url_tracker = std::make_shared<AsynchronousURLRequestTracker>();
+  auto http_client = std::make_shared<AsynchronousHTTPClient>();
   auto att_tracker = std::make_shared<AttestationRequestTracker>();
   auto att = parse_attestation(json_att);
-  auto claims = verify(att, default_options, url_tracker);
+  auto claims = verify(att, default_options, http_client);
   printf("with endorsements: %d\n", claims != nullptr);
 }
 

@@ -38,8 +38,7 @@ namespace ravl
       {}
 
       virtual std::optional<HTTPRequests> prepare_endorsements(
-        const Options& options,
-        std::shared_ptr<HTTPClient> request_tracker = nullptr) const override;
+        const Options& options) const override;
 
       virtual std::shared_ptr<ravl::Claims> verify(
         const Options& options,

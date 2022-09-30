@@ -923,11 +923,8 @@ namespace ravl
     };
 
     std::optional<HTTPRequests> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<HTTPClient> tracker) const
+      const Options& options) const
     {
-      if (!tracker)
-        throw std::runtime_error("no URL request tracker");
-
       if (
         !this->endorsements.empty() && !options.fresh_endorsements &&
         !options.fresh_root_ca_certificate)

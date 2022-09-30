@@ -157,12 +157,12 @@ namespace ravl
     {
     public:
       MonitorThread(
-        CurlClient* tracker,
+        CurlClient* client,
         HTTPRequestSetId id,
         CURLM* multi,
         std::function<void(HTTPResponses&&)> callback) :
         keep_going(true),
-        tracker(tracker),
+        client(client),
         id(id),
         multi(multi),
         callback(callback)
@@ -182,14 +182,14 @@ namespace ravl
       void run()
       {
         while (keep_going)
-          keep_going &= tracker->poll(id, multi, callback);
+          keep_going &= client->poll(id, multi, callback);
       }
 
     protected:
       bool keep_going = true;
       std::thread t;
 
-      CurlClient* tracker;
+      CurlClient* client;
       HTTPRequestSetId id;
       CURLM* multi;
       std::function<void(HTTPResponses&&)> callback;

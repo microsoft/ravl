@@ -93,8 +93,7 @@ namespace ravl
       virtual ~Attestation() = default;
 
       virtual std::optional<HTTPRequests> prepare_endorsements(
-        const Options& options,
-        std::shared_ptr<HTTPClient> request_tracker) const override;
+        const Options& options) const override;
 
       virtual std::shared_ptr<ravl::Claims> verify(
         const Options& options,

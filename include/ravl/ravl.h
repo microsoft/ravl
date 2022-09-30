@@ -34,7 +34,7 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
-      std::shared_ptr<HTTPClient> url_request_tracker = nullptr,
+      std::shared_ptr<HTTPClient> http_client = nullptr,
       std::function<void(RequestID)>&& callback = nullptr);
 
     RequestState state(RequestID id) const;
@@ -51,7 +51,7 @@ namespace ravl
   std::shared_ptr<Claims> verify(
     std::shared_ptr<const Attestation> attestation,
     const Options& options = Options(),
-    std::shared_ptr<HTTPClient> request_tracker = nullptr);
+    std::shared_ptr<HTTPClient> http_client = nullptr);
 
   /// Entirely synchronous verification (including endorsement download).
   std::shared_ptr<Claims> verify_sync(

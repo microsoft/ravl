@@ -311,12 +311,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       const std::string& product_name,
       const std::span<const uint8_t>& chip_id,
       const snp::TcbVersion& tcb_version,
-      const Options& options,
-      std::shared_ptr<HTTPClient> tracker)
+      const Options& options)
     {
-      if (!tracker)
-        throw std::runtime_error("no URL request tracker");
-
       HTTPRequests requests;
 
       auto hwid = fmt::format("{:02x}", fmt::join(chip_id, ""));
@@ -385,11 +381,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     }
 
     std::optional<HTTPRequests> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<HTTPClient> tracker) const
+      const Options& options) const
     {
-      if (!tracker)
-        throw std::runtime_error("no URL request tracker");
-
       const auto& snp_att =
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
           evidence.data());
@@ -410,11 +403,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       else
       {
         r = download_endorsements(
-          product_name,
-          snp_att.chip_id,
-          snp_att.reported_tcb,
-          options,
-          tracker);
+          product_name, snp_att.chip_id, snp_att.reported_tcb, options);
       }
 
       return r;

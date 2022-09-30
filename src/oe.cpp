@@ -460,7 +460,7 @@ namespace ravl
     }
 
     std::optional<HTTPRequests> Attestation::prepare_endorsements(
-      const Options& options, std::shared_ptr<HTTPClient> tracker) const
+      const Options& options) const
     {
 #ifdef USE_OE_VERIFIER
       return std::nullopt;
@@ -468,7 +468,7 @@ namespace ravl
       auto [sgx_att, cc] = extract_sgx_attestation(*this);
       sgx_attestation = sgx_att;
       custom_claims = cc;
-      return sgx_attestation->prepare_endorsements(options, tracker);
+      return sgx_attestation->prepare_endorsements(options);
 #endif
     }
 
