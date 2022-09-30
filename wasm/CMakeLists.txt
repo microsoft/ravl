@@ -57,7 +57,7 @@ if (SEV_SNP)
   list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/sev_snp.cpp)
 endif()
 
-list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/url_requests.cpp requests_fetch.cpp)
+list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/http_client.cpp http_client_fetch.cpp)
 
 
 set(CMAKE_EXECUTABLE_SUFFIX_CXX .html)

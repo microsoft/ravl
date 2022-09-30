@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "ravl/url_requests.h"
+#include "ravl/http_client.h"
 
 #include <cstring>
 #include <emscripten/fetch.h>
@@ -17,16 +17,16 @@
 
 namespace ravl
 {
-  URLResponse URLRequest::execute(size_t request_timeout, bool verbose)
+  HTTPResponse HTTPRequest::execute(size_t request_timeout, bool verbose)
   {
     throw std::runtime_error("synchronous fetch not supported");
   }
 
-  class FetchTracker : public URLRequestTracker
+  class FetchTracker : public HTTPClient
   {
   public:
     FetchTracker(size_t request_timeout = 0, bool verbose = false) :
-      URLRequestTracker(request_timeout, verbose)
+      HTTPClient(request_timeout, verbose)
     {}
 
     struct UserData
@@ -75,12 +75,12 @@ namespace ravl
       return emscripten_fetch(attr, url.c_str());
     }
 
-    URLRequestSetId submit(
-      URLRequests&& rs, std::function<void(URLResponses&&)>&& callback)
+    HTTPRequestSetId submit(
+      HTTPRequests&& rs, std::function<void(HTTPResponses&&)>&& callback)
     {
       std::lock_guard<std::mutex> guard(mtx);
 
-      URLRequestSetId id = requests.size();
+      HTTPRequestSetId id = requests.size();
       auto [it, ok] = requests.emplace(id, TrackedRequests{std::move(rs)});
       if (!ok)
         throw std::bad_alloc();
@@ -88,7 +88,7 @@ namespace ravl
       TrackedRequests& reqs = it->second;
 
       auto [rsps_it, rsps_ok] =
-        responses.emplace(id, URLResponses(reqs.requests.size()));
+        responses.emplace(id, HTTPResponses(reqs.requests.size()));
       if (!rsps_ok)
         throw std::bad_alloc();
 
@@ -105,7 +105,7 @@ namespace ravl
     }
 
     static bool must_retry(
-      emscripten_fetch_t* fetch, URLResponse& response, bool verbose)
+      emscripten_fetch_t* fetch, HTTPResponse& response, bool verbose)
     {
       if (fetch->status == 429)
       {
@@ -145,7 +145,7 @@ namespace ravl
       if (i >= rsit->second.size())
         throw std::runtime_error("request index too large");
 
-      URLResponse& response = rsit->second.at(i);
+      HTTPResponse& response = rsit->second.at(i);
 
       if (must_retry(fetch, response, true))
         treqs.fetches[i] =
@@ -183,7 +183,7 @@ namespace ravl
 
       if (treqs.callback && is_complete_unlocked(id))
       {
-        URLResponses rs;
+        HTTPResponses rs;
         rs.swap(rsit->second);
         treqs.callback(std::move(rs));
         requests.erase(id);
@@ -191,7 +191,7 @@ namespace ravl
       }
     }
 
-    bool is_complete_unlocked(const URLRequestSetId& id) const
+    bool is_complete_unlocked(const HTTPRequestSetId& id) const
     {
       auto rqit = requests.find(id);
       if (rqit == requests.end())
@@ -206,7 +206,7 @@ namespace ravl
       return true;
     }
 
-    bool is_complete(const URLRequestSetId& id) const
+    bool is_complete(const HTTPRequestSetId& id) const
     {
       std::lock_guard<std::mutex> guard(mtx);
       return is_complete_unlocked(id);
@@ -217,37 +217,36 @@ namespace ravl
 
     struct TrackedRequests
     {
-      URLRequests requests = {};
+      HTTPRequests requests = {};
       std::vector<emscripten_fetch_t*> fetches;
-      std::function<void(URLResponses&&)> callback = nullptr;
+      std::function<void(HTTPResponses&&)> callback = nullptr;
     };
 
-    typedef std::unordered_map<URLRequestSetId, TrackedRequests> Requests;
+    typedef std::unordered_map<HTTPRequestSetId, TrackedRequests> Requests;
     Requests requests;
 
-    std::unordered_map<URLRequestSetId, URLResponses> responses;
+    std::unordered_map<HTTPRequestSetId, HTTPResponses> responses;
   };
 
-  AsynchronousURLRequestTracker::AsynchronousURLRequestTracker(
+  AsynchronousHTTPClient::AsynchronousHTTPClient(
     size_t request_timeout, bool verbose)
   {
     implementation = new FetchTracker(request_timeout, verbose);
   }
 
-  AsynchronousURLRequestTracker::~AsynchronousURLRequestTracker()
+  AsynchronousHTTPClient::~AsynchronousHTTPClient()
   {
     delete static_cast<FetchTracker*>(implementation);
   }
 
-  URLRequestSetId AsynchronousURLRequestTracker::submit(
-    URLRequests&& rs, std::function<void(URLResponses&&)>&& callback)
+  HTTPRequestSetId AsynchronousHTTPClient::submit(
+    HTTPRequests&& rs, std::function<void(HTTPResponses&&)>&& callback)
   {
     return static_cast<FetchTracker*>(implementation)
       ->submit(std::move(rs), std::move(callback));
   }
 
-  bool AsynchronousURLRequestTracker::is_complete(
-    const URLRequestSetId& id) const
+  bool AsynchronousHTTPClient::is_complete(const HTTPRequestSetId& id) const
   {
     return static_cast<FetchTracker*>(implementation)->is_complete(id);
   }

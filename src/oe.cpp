@@ -441,7 +441,10 @@ namespace ravl
         verify_within(
           {(uint8_t*)ei, sizeof(oe_custom_claims_entry_t)}, custom_claims);
 
-        verify_within({(uint8_t*)ei->name, ei->name_size}, custom_claims);
+        verify_within(
+          {(uint8_t*)ei->name,
+           static_cast<size_t>(ei->name_size)}, // TODO: unsafe cast
+          custom_claims);
 
         verify_within(
           {(uint8_t*)ei->name + ei->name_size,
