@@ -34,7 +34,7 @@ jobs:
 
     steps:
     - name: Install packages
-      run: doctest-dev libcurl4-openssl-dev libssl-dev
+      run: sudo apt install doctest-dev libcurl4-openssl-dev libssl-dev
 
     - name: Install Clang 10, 12, GCC 11
       if: matrix.os == 'ubuntu-latest'
