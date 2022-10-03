@@ -214,7 +214,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
     struct EndorsementsEtc
     {
-      std::optional<Unique_X509> root_ca_certificate;
+      Unique_X509 root_ca_certificate;
       Unique_STACK_OF_X509 vcek_certificate_chain;
       std::optional<Unique_X509_CRL> vcek_issuer_chain_crl;
 
@@ -430,7 +430,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     }
 
     static std::shared_ptr<Claims> make_claims(
-      const ravl::sev_snp::snp::Attestation& a)
+      const ravl::sev_snp::snp::Attestation& a, const EndorsementsEtc& e)
     {
       auto r = std::make_shared<Claims>();
 
@@ -463,6 +463,11 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       set_tcb_version(r->launch_tcb, a.launch_tcb);
       SET_ARRAY(r->signature.r, a.signature.r);
       SET_ARRAY(r->signature.s, a.signature.s);
+
+      r->endorsements.root_ca_certificate = e.root_ca_certificate.pem();
+      r->endorsements.vcek_certificate_chain = e.vcek_certificate_chain.pem();
+      if (r->endorsements.vcek_issuer_chain_crl)
+        r->endorsements.vcek_issuer_chain_crl = e.vcek_issuer_chain_crl->pem();
 
       return r;
     }
@@ -512,7 +517,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       bool trusted_root = false;
 
       if (endorsements_etc.root_ca_certificate)
-        store.add(*endorsements_etc.root_ca_certificate);
+        store.add(endorsements_etc.root_ca_certificate);
       else
         trusted_root = true;
 
@@ -552,7 +557,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (!verify_signature(vcek_pk, msg, snp_att.signature))
         throw std::runtime_error("invalid VCEK signature");
 
-      return make_claims(snp_att);
+      return make_claims(snp_att, endorsements_etc);
     }
   }
 
