@@ -1,0 +1,11 @@
+sphinx >= 3.0
+sphinx_rtd_theme
+sphinx-autobuild
+sphinxcontrib-mermaid
+sphinx-multiversion
+sphinx-copybutton
+sphinxcontrib.openapi
+sphinx-panels
+breathe
+bottle
+pydata-sphinx-theme

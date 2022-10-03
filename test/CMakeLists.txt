@@ -45,8 +45,11 @@ endfunction()
 find_path(DOCTEST_DIR "doctest.h" PATH 3rdparty/doctest)
 
 if(DOCTEST_DIR)
-  add_ravl_test(unit_tests unit_tests.cpp)
+  add_ravl_test(unit_tests unit_tests.cpp)  
 endif()
+
+add_executable(demo demo.cpp)
+target_link_libraries(demo ravl pthread)
 
 add_subdirectory(oe-enclave)
 add_subdirectory(intel-enclave)
