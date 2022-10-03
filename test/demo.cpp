@@ -14,7 +14,7 @@ int main()
 {
   /// SNIPPET_START: BASIC_USAGE
   auto att = parse_attestation(sev_snp_quote);
-  std::shared_ptr<Claims> claims = verify(att);
+  std::shared_ptr<Claims> claims = verify_synchronous(att);
   auto sc = Claims::get<sev_snp::Claims>(claims);
 
   // Check, e.g., sc->measurement

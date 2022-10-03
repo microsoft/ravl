@@ -34,7 +34,7 @@ int main(int argc, const char** argv)
 
         try
         {
-          auto claims = verify(attestation, options);
+          auto claims = verify_synchronized(attestation, options);
         }
         catch (const std::exception& ex)
         {
