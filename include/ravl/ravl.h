@@ -48,13 +48,13 @@ namespace ravl
   };
 
   /// Synchronized verification (including endorsement download).
-  std::shared_ptr<Claims> verify(
+  std::shared_ptr<Claims> verify_synchronized(
     std::shared_ptr<const Attestation> attestation,
     const Options& options = Options(),
     std::shared_ptr<HTTPClient> http_client = nullptr);
 
   /// Entirely synchronous verification (including endorsement download).
-  std::shared_ptr<Claims> verify_sync(
+  std::shared_ptr<Claims> verify_synchronous(
     std::shared_ptr<const Attestation> attestation,
     const Options& options = Options());
 }

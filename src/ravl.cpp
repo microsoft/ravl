@@ -442,7 +442,7 @@ namespace ravl
       ->advance(id);
   }
 
-  std::shared_ptr<Claims> verify(
+  std::shared_ptr<Claims> verify_synchronized(
     std::shared_ptr<const Attestation> attestation,
     const Options& options,
     std::shared_ptr<HTTPClient> http_client)
@@ -490,7 +490,7 @@ namespace ravl
     return r;
   }
 
-  std::shared_ptr<Claims> verify_sync(
+  std::shared_ptr<Claims> verify_synchronous(
     std::shared_ptr<const Attestation> attestation, const Options& options)
   {
 #ifndef HAVE_SGX
