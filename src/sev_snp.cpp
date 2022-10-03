@@ -214,7 +214,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
     struct EndorsementsEtc
     {
-      Unique_X509 root_ca_certificate;
+      std::optional<Unique_X509> root_ca_certificate;
       Unique_STACK_OF_X509 vcek_certificate_chain;
       std::optional<Unique_X509_CRL> vcek_issuer_chain_crl;
 
@@ -289,9 +289,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       {
         if (http_response_set.size() != 3)
           throw std::runtime_error("unexpected number of URL responses");
-
-        // TODO: wait/retry if rate limits are hit (should be a HTTP 429
-        // with retry-after header)
 
         auto issuer_chain = http_response_set[1].body;
 
@@ -388,6 +385,13 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return rc == 1;
     }
 
+    Attestation::Attestation(
+      const std::vector<uint8_t>& evidence, const Endorsements& endorsements) :
+      ravl::Attestation(Source::SEV_SNP, evidence, {})
+    {
+      // TODO
+    }
+
     std::optional<HTTPRequests> Attestation::prepare_endorsements(
       const Options& options) const
     {
@@ -464,7 +468,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       SET_ARRAY(r->signature.r, a.signature.r);
       SET_ARRAY(r->signature.s, a.signature.s);
 
-      r->endorsements.root_ca_certificate = e.root_ca_certificate.pem();
+      if (!e.root_ca_certificate)
+        throw std::runtime_error("Root CA certificate not saved");
+      r->endorsements.root_ca_certificate = e.root_ca_certificate->pem();
       r->endorsements.vcek_certificate_chain = e.vcek_certificate_chain.pem();
       if (r->endorsements.vcek_issuer_chain_crl)
         r->endorsements.vcek_issuer_chain_crl = e.vcek_issuer_chain_crl->pem();
@@ -474,11 +480,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
     std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
-      const std::optional<std::vector<HTTPResponse>>& url_response_set) const
+      const std::optional<std::vector<HTTPResponse>>& http_responses) const
     {
-      if (
-        endorsements.empty() &&
-        (!url_response_set || url_response_set->empty()))
+      if (endorsements.empty() && (!http_responses || http_responses->empty()))
         throw std::runtime_error("missing endorsements");
 
       size_t indent = 0;
@@ -499,13 +503,13 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
             Unique_X509(*options.root_ca_certificate);
         else if (options.fresh_root_ca_certificate)
           endorsements_etc.root_ca_certificate =
-            parse_root_cert(*url_response_set);
+            parse_root_cert(*http_responses);
       }
       else
       {
-        if (!url_response_set)
+        if (!http_responses)
           throw std::runtime_error("missing endorsements");
-        endorsements_etc = parse_url_responses(options, *url_response_set);
+        endorsements_etc = parse_url_responses(options, *http_responses);
       }
 
       if (options.verbosity > 0)
@@ -517,7 +521,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       bool trusted_root = false;
 
       if (endorsements_etc.root_ca_certificate)
-        store.add(endorsements_etc.root_ca_certificate);
+        store.add(*endorsements_etc.root_ca_certificate);
       else
         trusted_root = true;
 
@@ -556,6 +560,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       Unique_EVP_PKEY vcek_pk(vcek_certificate);
       if (!verify_signature(vcek_pk, msg, snp_att.signature))
         throw std::runtime_error("invalid VCEK signature");
+
+      if (trusted_root)
+        endorsements_etc.root_ca_certificate = chain.at(2);
 
       return make_claims(snp_att, endorsements_etc);
     }
