@@ -1,10 +1,26 @@
 # RAVL
 
-RAVL is a library of remote attestation verification procedures.
+RAVL is a library of remote attestation verification procedures that enables clients of confidential services to verify the remote attestation of a service. It currently supports Intel SGX ECDSA and AMD SEV/SNP attestations. 
+
+Usage:
+
+```
+#include <ravl/ravl.h>
+
+std::string attestation = R"({
+  "source": "sgx",
+  "evidence": "...",
+  "endorsements": "...})";
+
+auto att = parse_attestation(attestation);
+std::shared_ptr<ravl::Claims> claims = verify(att);
+```
+
+See [`test/unit_test.cpp`](test/unit_tests.cpp) for complete examples of simple invocations.
 
 # Dependencies
 
-For clang++:
+For clang++ (our primary toolchain):
 
 ```
 sudo apt install libstdc++-10-dev
@@ -16,19 +32,21 @@ For g++, use at least version 11:
 sudo apt install g++-11
 ```
 
+Currently, the only supported crypto library is OpenSSL and the default build depends on [libcurl](https://curl.se/libcurl/):
+
 ```
 sudo apt install libcurl4-openssl-dev libssl-dev
 ```
 
 Optional:
 
-Add Intel APT repo as described in the [SGX Installation Guide](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf)
+For the demo enclave in test/intel-enclave: Add Intel APT repo as described in the [SGX Installation Guide](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf)
 
 ```
 sudo apt-get install libsgx-epid libsgx-quote-ex libsgx-dcap-ql
 ```
 
-Also https://github.com/openenclave/openenclave/blob/master/docs/GettingStartedDocs/install_oe_sdk-Ubuntu_20.04.md
+For the Open Enclave SDK demo enclave in test/oe-enclave, see https://github.com/openenclave/openenclave/blob/master/docs/GettingStartedDocs/install_oe_sdk-Ubuntu_20.04.md
 
 ```
 sudo apt-get install open-enclave
