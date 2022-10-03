@@ -85,7 +85,19 @@ namespace ravl
     if (response.status == 429)
     {
       long retry_after = 0;
-      curl_easy_getinfo(curl, CURLINFO_RETRY_AFTER, &retry_after);
+      try
+      {
+#ifdef CURLINFO_RETRY_AFTER
+        curl_easy_getinfo(curl, CURLINFO_RETRY_AFTER, &retry_after);
+#else
+        auto ra = response.get_header_string("Retry-After");
+        retry_after = std::atol(ra.c_str());
+#endif
+      }
+      catch (...)
+      {
+        return false;
+      }
       if (verbose)
         printf(
           "Request %zu:%zu: HTTP 429; RETRY after %lds\n", id, i, retry_after);
