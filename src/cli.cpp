@@ -6,8 +6,6 @@
 
 int main(int argc, const char** argv)
 {
-  std::cout << argc << std::endl;
-
   try
   {
     if (argc == 1)
