@@ -43,6 +43,9 @@ Verification
    :project: ravl
    :members:
 
+.. doxygenfunction:: ravl::verify_sync
+   :project: ravl   
+
 
 Indices and tables
 ==================
