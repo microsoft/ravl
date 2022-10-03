@@ -92,6 +92,9 @@ namespace ravl
 #else
         auto ra = response.get_header_string("Retry-After");
         retry_after = std::atol(ra.c_str());
+        if (retry_after == 0)
+          throw std::runtime_error(
+            "could not convert retry-after header value");
 #endif
       }
       catch (...)
