@@ -38,7 +38,7 @@ jobs:
 
     - name: Install clang 12
       if: matrix.compiler == 'clang++-12'
-      run: sudo apt install clang-12 libc++-12-dev
+      run: sudo apt install clang-12 libc++-12-dev libc++1-12
 
     - name: Install GCC 11
       if: matrix.compiler == 'g++-11'
