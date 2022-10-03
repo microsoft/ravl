@@ -19,18 +19,18 @@ jobs:
         os: [ubuntu-latest, ubuntu-18.04]
         build_type: [Debug, Release]
         compiler: [clang++-10, clang++-12, g++-11]
-        include:
-          - os: windows-latest
-            build_type: Debug
-            compiler: msvc
-          - os: windows-latest
-            build_type: Release
-            compiler: msvc
+        # include:
+        #   - os: windows-latest
+        #     build_type: Debug
+        #     compiler: msvc
+        #   - os: windows-latest
+        #     build_type: Release
+        #     compiler: msvc
         exclude:
           - os: ubuntu-18.04
             compiler: clang++-12
           - os: ubuntu-18.04
-            compiler: clang++-12
+            compiler: g++-11
 
     steps:
     - name: Install packages
