@@ -16,6 +16,12 @@ namespace ravl
 
   namespace sev_snp
   {
+    struct Endorsements
+    {
+      std::string root_ca_certificate;
+      std::string vcek_certificate_chain;
+      std::optional<std::string> vcek_issuer_chain_crl;
+    };
 
     class Claims : public ravl::Claims
     {
@@ -66,6 +72,8 @@ namespace ravl
       uint8_t committed_major;
       TCBVersion launch_tcb;
       Signature signature;
+
+      Endorsements endorsements;
     };
 
     class Attestation : public ravl::Attestation
