@@ -1,3 +1,6 @@
+[![Continuous Integration](https://github.com/microsoft/ravl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/microsoft/ravl/actions/workflows/ci.yml)
+[![Documentation](https://github.com/microsoft/ravl/actions/workflows/build-docs.yml/badge.svg?branch=main)](https://github.com/microsoft/ravl/actions/workflows/build-docs.yml)
+
 # RAVL
 
 RAVL is a library of remote attestation verification procedures that enables clients of confidential services to verify the remote attestation of the service. 
