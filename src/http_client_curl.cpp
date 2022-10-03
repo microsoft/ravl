@@ -77,7 +77,8 @@ namespace ravl
     return curl;
   }
 
-  static bool must_retry(CURL* curl, HTTPResponse& response, bool verbose)
+  static bool must_retry(
+    CURL* curl, size_t id, size_t i, HTTPResponse& response, bool verbose)
   {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.status);
 
@@ -86,7 +87,8 @@ namespace ravl
       long retry_after = 0;
       curl_easy_getinfo(curl, CURLINFO_RETRY_AFTER, &retry_after);
       if (verbose)
-        printf("HTTP 429; RETRY after %lds\n", retry_after);
+        printf(
+          "Request %zu:%zu: HTTP 429; RETRY after %lds\n", id, i, retry_after);
       std::this_thread::sleep_for(std::chrono::seconds(retry_after));
       response.body = "";
       response.headers.clear();
@@ -130,7 +132,7 @@ namespace ravl
       {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.status);
 
-        if (must_retry(curl, response, verbose))
+        if (must_retry(curl, 0, 0, response, verbose))
           max_attempts--;
         else
         {
@@ -195,27 +197,28 @@ namespace ravl
       std::function<void(HTTPResponses&&)> callback;
     };
 
+    void consume_msgs(HTTPRequestSetId id, CURLM* multi)
+    {
+      struct CURLMsg* m;
+      do
+      {
+        int msgq = 0;
+        m = curl_multi_info_read(multi, &msgq);
+        if (m && m->msg == CURLMSG_DONE)
+        {
+          size_t i = 0;
+          if (
+            curl_easy_getinfo(m->easy_handle, CURLINFO_PRIVATE, &i) == CURLE_OK)
+            complete(id, i, m->easy_handle);
+        }
+      } while (m);
+    }
+
     bool poll(
       HTTPRequestSetId id,
       CURLM* multi,
       std::function<void(HTTPResponses&&)>& callback)
     {
-      auto consume_msgs = [this, id, multi]() {
-        struct CURLMsg* m;
-        do
-        {
-          int msgq = 0;
-          m = curl_multi_info_read(multi, &msgq);
-          if (m && m->msg == CURLMSG_DONE)
-          {
-            size_t i = 0;
-            auto cc = curl_easy_getinfo(m->easy_handle, CURLINFO_PRIVATE, &i);
-            if (cc == CURLE_OK)
-              complete(id, i, m->easy_handle);
-          }
-        } while (m);
-      };
-
       if (!is_complete(id))
       {
         std::lock_guard<std::mutex> guard(mtx);
@@ -223,13 +226,13 @@ namespace ravl
         CURLMcode mc = curl_multi_poll(multi, NULL, 0, 100, &num_active_fds);
         if (mc != CURLM_OK)
           throw std::runtime_error("curl_multi_poll failed");
-        consume_msgs();
+        consume_msgs(id, multi);
         return true;
       }
       else if (callback)
       {
         std::lock_guard<std::mutex> guard(mtx);
-        consume_msgs();
+        consume_msgs(id, multi);
         auto rsps_it = responses.find(id);
         if (rsps_it == responses.end())
           throw std::runtime_error("could not find url responses");
@@ -316,7 +319,6 @@ namespace ravl
     void complete(size_t id, size_t i, CURL* easy)
     {
       // Lock held by the monitor thread
-
       auto rqit = requests.find(id);
       if (rqit == requests.end())
         return;
@@ -336,17 +338,17 @@ namespace ravl
       HTTPResponse& response = rsit->second.at(i);
 
       curl_multi_remove_handle(multi, easy);
-      if (must_retry(easy, response, true))
+      if (must_retry(easy, id, i, response, true))
         curl_multi_add_handle(multi, easy);
       else
       {
         curl_easy_cleanup(easy);
         // printf(
-        //   "Complete %zu: %u size %zu (req. %zu)\n",
+        //   "Request %zu:%zu: complete: %u size %zu\n",
+        //   id,
         //   i,
         //   response.status,
-        //   response.body.size(),
-        //   id);
+        //   response.body.size());
       }
     }
 
@@ -359,13 +361,29 @@ namespace ravl
 
       {
         std::lock_guard<std::mutex> guard(mtx);
+
         rit = requests.find(id);
         if (rit == requests.end())
           throw std::runtime_error("no such request set");
 
         multi = rit->second.multi;
         mc = curl_multi_perform(multi, &still_running);
-        return mc != CURLM_OK || still_running == 0;
+
+        if (mc != CURLM_OK)
+          return true;
+
+        if (still_running > 0)
+          return false;
+
+        auto rsit = responses.find(id);
+        if (rsit == responses.end())
+          return false;
+
+        for (size_t i = 0; i < rsit->second.size(); i++)
+          if (rsit->second[i].status == 0)
+            return false;
+
+        return true;
       }
     }
 

@@ -71,7 +71,7 @@ std::string ccf_quote = R"({
 
 std::shared_ptr<HTTPClient> http_client =
   std::make_shared<AsynchronousHTTPClient>(
-    /*request_timeout*/ 0, /*verbose=*/true);
+    /*request_timeout*/ 0, /*verbose=*/false);
 
 #ifndef USE_OE_VERIFIER
 // These attestations contain expired endorsements and the OE verifier doesn't

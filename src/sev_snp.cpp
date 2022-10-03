@@ -249,19 +249,27 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     };
 
     static EndorsementsEtc parse_url_responses(
-      const Options& options, const std::vector<HTTPResponse>& url_response_set)
+      const Options& options,
+      const std::vector<HTTPResponse>& http_response_set)
     {
       EndorsementsEtc r;
+
+      for (size_t i = 0; i < http_response_set.size(); i++)
+        if (http_response_set[i].status != 200)
+          throw std::runtime_error(fmt::format(
+            "endorsement download failed (request index {}: {})",
+            i,
+            http_response_set[i].status));
 
       if (options.root_ca_certificate)
         r.root_ca_certificate = *options.root_ca_certificate;
 
       if (options.sev_snp_endorsement_cache_url_template)
       {
-        if (url_response_set.size() != 2)
+        if (http_response_set.size() != 2)
           throw std::runtime_error("unexpected number of URL responses");
 
-        auto issuer_chain = url_response_set[0].body;
+        auto issuer_chain = http_response_set[0].body;
         Unique_STACK_OF_X509 stack(issuer_chain);
 
         if (stack.size() != 3)
@@ -272,20 +280,20 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         r.vcek_certificate_chain = std::move(stack);
 
         auto issuer_crl_der = std::span<const uint8_t>(
-          (uint8_t*)url_response_set[1].body.data(),
-          url_response_set[1].body.size());
+          (uint8_t*)http_response_set[1].body.data(),
+          http_response_set[1].body.size());
         auto q = Unique_X509_CRL(issuer_crl_der, false);
         r.vcek_issuer_chain_crl = std::move(q);
       }
       else
       {
-        if (url_response_set.size() != 3)
+        if (http_response_set.size() != 3)
           throw std::runtime_error("unexpected number of URL responses");
 
         // TODO: wait/retry if rate limits are hit (should be a HTTP 429
         // with retry-after header)
 
-        auto issuer_chain = url_response_set[1].body;
+        auto issuer_chain = http_response_set[1].body;
 
         Unique_STACK_OF_X509 stack(issuer_chain);
         if (stack.size() != 2)
@@ -294,13 +302,13 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
         r.root_ca_certificate = stack.at(1);
 
-        auto vcek_cert = url_response_set[0].body;
+        auto vcek_cert = http_response_set[0].body;
         stack.insert(0, Unique_X509(Unique_BIO(vcek_cert), false));
         r.vcek_certificate_chain = std::move(stack);
 
         auto issuer_crl_der = std::span<const uint8_t>(
-          (uint8_t*)url_response_set[2].body.data(),
-          url_response_set[2].body.size());
+          (uint8_t*)http_response_set[2].body.data(),
+          http_response_set[2].body.size());
         r.vcek_issuer_chain_crl = Unique_X509_CRL(issuer_crl_der, false);
       }
 
