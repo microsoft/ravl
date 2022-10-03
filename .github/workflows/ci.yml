@@ -36,16 +36,16 @@ jobs:
     - name: Install packages
       run: sudo apt install doctest-dev libcurl4-openssl-dev libssl-dev
 
-    - name: Install Clang 12
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt install clang-12 libstdc++-10-dev
+    - name: Install clang 12
+      if: matrix.compiler == 'clang++-12'
+      run: sudo apt install clang-12 libc++-12-dev
 
     - name: Install GCC 11
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.compiler == 'g++-11'
       run: sudo apt install g++-11 libstdc++-10-dev
 
-    - name: Install Clang 10
-      if: matrix.os == 'ubuntu-18.04'
+    - name: Install clang 10
+      if: matrix.compiler == 'clang++-10'
       run: sudo apt install clang-10 libc++-10-dev
 
     - uses: actions/checkout@v2
