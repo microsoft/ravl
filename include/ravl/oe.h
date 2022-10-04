@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "ravl.h"
 #include "sgx.h"
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -42,7 +42,7 @@ namespace ravl
 
       virtual std::shared_ptr<ravl::Claims> verify(
         const Options& options,
-        const std::optional<HTTPResponses>& url_response_set) const override;
+        const std::optional<HTTPResponses>& http_responses) const override;
 
     protected:
       mutable std::shared_ptr<ravl::Attestation> sgx_attestation;

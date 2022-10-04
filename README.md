@@ -3,10 +3,10 @@
 
 # RAVL
 
-RAVL is a library of remote attestation verification procedures that enables clients of confidential services to verify the remote attestation of the service. 
+RAVL is a library of remote attestation verification procedures that enables clients of confidential services to verify the remote attestation of the service.
 
 Currently supported attestation platforms:
-  - Intel SGX ECDSA 
+  - Intel SGX ECDSA
   - AMD SEV/SNP
   - Open Enclave (wrapped Intel SGX ECDSA only)
 

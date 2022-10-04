@@ -47,7 +47,8 @@ namespace ravl
     void* implementation;
   };
 
-  /// Synchronized verification (including endorsement download).
+  /// Synchronized verification (awaited async).
+  /// Note: this uses std::this_thread::sleep_for.
   std::shared_ptr<Claims> verify_synchronized(
     std::shared_ptr<const Attestation> attestation,
     const Options& options = Options(),

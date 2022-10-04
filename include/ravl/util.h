@@ -168,3 +168,9 @@ inline std::chrono::system_clock::time_point parse_time_point(
   idr -= std::chrono::seconds(stm.tm_gmtoff);
   return idr;
 }
+
+template <size_t sz, typename FROM_TYPE>
+inline void copy(std::array<uint8_t, sz>& to, const FROM_TYPE& from)
+{
+  std::copy(std::begin(from), std::end(from), std::begin(to));
+}
