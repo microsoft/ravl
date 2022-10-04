@@ -4,7 +4,6 @@
 #pragma once
 
 #include "attestation.h"
-#include "ravl.h"
 
 #include <array>
 #include <memory>
@@ -93,7 +92,7 @@ namespace ravl
 
       virtual std::shared_ptr<ravl::Claims> verify(
         const Options& options,
-        const std::optional<HTTPResponses>& url_response_set) const override;
+        const std::optional<HTTPResponses>& http_responses) const override;
     };
   }
 }

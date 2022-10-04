@@ -24,6 +24,8 @@ namespace ravl
     UNKNOWN = UINT8_MAX
   };
 
+  std::string to_string(Source src);
+
   /// Claims class
   class Claims
   {
@@ -90,10 +92,10 @@ namespace ravl
       const Options& options) const = 0;
 
     /// Function to verify the attestation (with all endorsements present either
-    /// in the attestation object or in the url_response_set).
+    /// in the attestation object or in the http_responses).
     virtual std::shared_ptr<Claims> verify(
       const Options& options,
-      const std::optional<HTTPResponses>& http_response_set) const = 0;
+      const std::optional<HTTPResponses>& http_responses) const = 0;
 
     /// String representation
     operator std::string() const;
