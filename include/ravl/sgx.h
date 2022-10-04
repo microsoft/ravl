@@ -15,6 +15,23 @@ namespace ravl
 
   namespace sgx
   {
+    struct Endorsements
+    {
+      uint16_t major_version;
+      uint16_t minor_version;
+      uint32_t tee_type;
+
+      // All in PEM format
+      std::string root_ca;
+      std::string pck_crl_issuer_chain;
+      std::string root_ca_crl;
+      std::string pck_crl;
+      std::string tcb_info_issuer_chain;
+      std::string tcb_info;
+      std::string qe_identity_issuer_chain;
+      std::string qe_identity;
+    };
+
     class Claims : public ravl::Claims
     {
     public:
@@ -62,23 +79,7 @@ namespace ravl
         std::vector<uint8_t> auth_data;
       } signature_data;
 
-      // Collateral
-      struct
-      {
-        uint16_t major_version;
-        uint16_t minor_version;
-        uint32_t tee_type;
-
-        // All in PEM format
-        std::string root_ca;
-        std::string pck_crl_issuer_chain;
-        std::string root_ca_crl;
-        std::string pck_crl;
-        std::string tcb_info_issuer_chain;
-        std::string tcb_info;
-        std::string qe_identity_issuer_chain;
-        std::string qe_identity;
-      } collateral;
+      Endorsements endorsements;
     };
 
     class Attestation : public ravl::Attestation
