@@ -91,8 +91,8 @@ namespace ravl
         const Options& options) const override;
 
       virtual std::shared_ptr<ravl::Claims> verify(
-        const Options& options,
-        const std::optional<HTTPResponses>& http_responses) const override;
+        const Options& options = {},
+        const std::optional<HTTPResponses>& http_responses = {}) const override;
     };
   }
 }

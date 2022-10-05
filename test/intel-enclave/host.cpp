@@ -47,8 +47,8 @@ sgx_status_t make_quote(
   sgx_target_info_t* target_info, const sgx_report_t* report)
 {
   sgx_status_t status = SGX_ERROR_UNEXPECTED;
-  sgx_epid_group_id_t gid = {0};
-  sgx_att_key_id_t att_key_id = {0};
+  sgx_epid_group_id_t gid = {};
+  sgx_att_key_id_t att_key_id = {};
 
   // uint32_t num_key_ids = 0;
   // status = sgx_get_supported_att_key_id_num(&num_key_ids);
@@ -99,7 +99,7 @@ sgx_status_t make_quote(
   //   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
   uint8_t* quote_buffer = (uint8_t*)calloc(1, quote_size);
-  sgx_qe_report_info_t qe_report_info = {0};
+  sgx_qe_report_info_t qe_report_info = {};
 
   status =
     sgx_get_quote_ex(report, &att_key_id, NULL, quote_buffer, quote_size);
@@ -151,21 +151,9 @@ sgx_status_t attest(sgx_enclave_id_t enclave_id)
 {
   sgx_status_t status = SGX_ERROR_UNEXPECTED;
   int ret = 1;
-  //   optional_parameters_t optional_parameters = {0};
   uint8_t data[] = {0, 1, 2, 3};
   uint8_t evidence[1024];
   uint8_t endorsements[1024];
-  //   data_t data = {0};
-
-  // sgx_status_t status = get_evidence_with_data(
-  //   enclave_id,
-  //   &ret,
-  //   data,
-  //   sizeof(data),
-  //   evidence,
-  //   sizeof(evidence),
-  //   endorsements,
-  //   sizeof(endorsements));
 
   uint8_t report_buffer[1024];
   sgx_status_t ret_status;
@@ -176,8 +164,8 @@ sgx_status_t attest(sgx_enclave_id_t enclave_id)
   if (qe_error != quote3_error_t::SGX_QL_SUCCESS)
     return SGX_ERROR_UNEXPECTED;
 
-  sgx_report_data_t report_data = {0};
-  sgx_report_t report = {0};
+  sgx_report_data_t report_data = {};
+  sgx_report_t report = {};
 
   status =
     get_report(enclave_id, &ret_status, &target_info, &report_data, &report);

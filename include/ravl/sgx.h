@@ -97,17 +97,8 @@ namespace ravl
         const Options& options) const override;
 
       virtual std::shared_ptr<ravl::Claims> verify(
-        const Options& options,
-        const std::optional<HTTPResponses>& http_responses) const override;
+        const Options& options = {},
+        const std::optional<HTTPResponses>& http_responses = {}) const override;
     };
-  }
-
-  template <>
-  inline std::shared_ptr<sgx::Claims> Claims::get(
-    std::shared_ptr<ravl::Claims>& claims)
-  {
-    if (claims->source != Source::SGX)
-      throw std::runtime_error("invalid request for SGX claims conversion");
-    return static_pointer_cast<sgx::Claims>(claims);
   }
 }

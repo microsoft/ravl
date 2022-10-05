@@ -23,6 +23,16 @@ cmake_minimum_required(VERSION 3.14)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_VISIBILITY_PRESET default)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 0)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  list(APPEND RAVL_FLAGS -Wall -pedantic)
+endif()
 
 set(RAVL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(RAVL_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -43,35 +53,30 @@ option(OPENSSL "use OpenSSL" ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
-set(RAVL_SRC ${RAVL_SRC_DIR}/http_client.cpp ${RAVL_SRC_DIR}/ravl.cpp ${RAVL_SRC_DIR}/attestation.cpp)
+set(RAVL_SRC
+  ${RAVL_SRC_DIR}/http_client.cpp
+  ${RAVL_SRC_DIR}/ravl.cpp
+  ${RAVL_SRC_DIR}/attestation.cpp
+  ${RAVL_SRC_DIR}/request_tracker.cpp)
 set(RAVL_INCLUDE 3rdparty ${RAVL_DIR}/include)
-set(RAVL_DEFS)
-set(RAVL_LIB_DEPS)
+set(RAVL_DEFS RAVL_LIBRARY_BUILD)
+set(RAVL_LIB_DEPS pthread)
 set(RAVL_LIB_DIRS)
 
 if(OPENSSL)
   find_package(OpenSSL REQUIRED)
-  list(APPEND RAVL_DEFS HAVE_OPENSSL)
+  list(APPEND RAVL_DEFS RAVL_HAVE_OPENSSL)
   list(APPEND RAVL_LIB_DEPS crypto)
 endif()
 
-list(APPEND RAVL_DEFS HAVE_SGX)
-list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/sgx.cpp)
-
-list(APPEND RAVL_DEFS HAVE_OPEN_ENCLAVE)
-list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/oe.cpp)
-
 if(USE_OE_VERIFIER)
   find_package(OpenEnclave REQUIRED)
-  find_library(hostverify oehostverify PATHS ${OpenEnclave_DIR}/../host REQUIRED)
+  find_library(hostverify oehostverify PATHS ${OpenEnclave_DIR}/../host REQUIRED)  
   list(APPEND RAVL_INCLUDE ${OE_INCLUDEDIR})
   list(APPEND RAVL_LIB_DIRS ${hostverify_DIR})
   list(APPEND RAVL_LIB_DEPS ${hostverify})
-  list(APPEND RAVL_DEFS USE_OE_VERIFIER)
+  list(APPEND RAVL_DEFS RAVL_USE_OE_VERIFIER)
 endif()
-
-list(APPEND RAVL_DEFS HAVE_SEV_SNP)
-list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/sev_snp.cpp)
 
 if(CURL)
   find_package(CURL REQUIRED)

@@ -12,13 +12,28 @@ std::string sev_snp_quote = R"({
 
 int main()
 {
-  /// SNIPPET_START: BASIC_USAGE
-  auto att = parse_attestation(sev_snp_quote);
-  std::shared_ptr<Claims> claims = verify_synchronous(att);
-  auto sc = Claims::get<sev_snp::Claims>(claims);
+  try
+  {
+    /// SNIPPET_START: BASIC_USAGE
+    auto att = parse_attestation(sev_snp_quote);
+    std::shared_ptr<Claims> claims = verify_synchronous(att);
+    auto sc = Claims::get<sev_snp::Claims>(claims);
 
-  // Check, e.g., sc->measurement
-  /// SNIPPET_END: BASIC_USAGE
+    // Check, e.g., sc->measurement
+    /// SNIPPET_END: BASIC_USAGE
+
+    if (!sc)
+      throw std::runtime_error(
+        "unreachable: ravl should have thrown if it is unable to extract "
+        "claims");
+
+    std::cout << "verification passed: version=" << sc->version << std::endl;
+  }
+  catch (...)
+  {
+    std::cout << "error: verification failed" << std::endl;
+    return 1;
+  }
 
   return 0;
 }

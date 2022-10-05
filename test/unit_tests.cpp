@@ -6,6 +6,7 @@
 #include <ravl/http_client.h>
 #include <ravl/oe.h>
 #include <ravl/ravl.h>
+#include <ravl/request_tracker.h>
 #include <ravl/sev_snp.h>
 #include <ravl/sgx.h>
 #include <ravl/util.h>
@@ -73,7 +74,7 @@ std::shared_ptr<HTTPClient> http_client =
   std::make_shared<AsynchronousHTTPClient>(
     /*request_timeout*/ 0, /*verbose=*/false);
 
-#ifndef USE_OE_VERIFIER
+#ifndef RAVL_USE_OE_VERIFIER
 // These attestations contain expired endorsements and the OE verifier doesn't
 // seem to have a flag to disable expiry checks.
 
