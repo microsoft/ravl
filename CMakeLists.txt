@@ -47,8 +47,8 @@ option(USE_OE_VERIFIER "use the Open Enclave verifier directly (requires Open En
 
 option(OE_TEST_ENCLAVE "enable Open Enclave test enclave (requires Open Enclave SDK)" OFF)
 option(SGX_TEST_ENCLAVE "enable SGX test enclave (requires Intel SGX SDK)" OFF)
-option(CURL "include CURL based URL request" ON)
-option(OPENSSL "use OpenSSL" ON)
+option(CURL "use libCURL for HTTP requests" ON)
+option(OPENSSL "use OpenSSL as the crypto library" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
