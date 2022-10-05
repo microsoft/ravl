@@ -28,17 +28,21 @@ See [`test/unit_test.cpp`](test/unit_tests.cpp) for complete examples of simple 
 
 # Dependencies
 
-For clang++ (our primary toolchain):
+## clang++ (primary toolchain):
 
 ```
 sudo apt install libstdc++-10-dev
 ```
 
-For g++, use at least version 11:
+## g++
+
+Use at least version 11:
 
 ```
 sudo apt install g++-11
 ```
+
+## Libraries
 
 Currently, the only supported crypto library is OpenSSL and the default build depends on [libcurl](https://curl.se/libcurl/):
 
@@ -46,7 +50,7 @@ Currently, the only supported crypto library is OpenSSL and the default build de
 sudo apt install libcurl4-openssl-dev libssl-dev
 ```
 
-Optional:
+## Optional
 
 For the demo enclave in test/intel-enclave: Add Intel APT repo as described in the [SGX Installation Guide](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf)
 
@@ -60,6 +64,14 @@ For the Open Enclave SDK demo enclave in test/oe-enclave, see https://github.com
 sudo apt-get install open-enclave
 ```
 
+# Build
+
+```
+mkdir build 
+cd build
+cmake -GNinja ..
+ninja
+```
 
 ## Contributing
 
