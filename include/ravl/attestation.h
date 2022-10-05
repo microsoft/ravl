@@ -67,7 +67,9 @@ namespace ravl
     Attestation(
       Source source,
       const std::vector<uint8_t>& evidence,
-      const std::vector<uint8_t>& endorsements);
+      const std::vector<uint8_t>& endorsements) :
+      source(source), evidence(evidence), endorsements(endorsements)
+    {}
 
     /// Copy constructor
     Attestation(const Attestation&) = default;
@@ -94,8 +96,8 @@ namespace ravl
     /// Function to verify the attestation (with all endorsements present either
     /// in the attestation object or in the http_responses).
     virtual std::shared_ptr<Claims> verify(
-      const Options& options,
-      const std::optional<HTTPResponses>& http_responses) const = 0;
+      const Options& options = {},
+      const std::optional<HTTPResponses>& http_responses = {}) const = 0;
 
     /// String representation
     operator std::string() const;

@@ -49,7 +49,11 @@ if(DOCTEST_DIR)
 endif()
 
 add_executable(demo demo.cpp)
-target_link_libraries(demo ravl pthread)
+if(SHARED)
+  target_link_libraries(demo ravl-shared)
+elseif(STATIC)
+  target_link_libraries(demo ravl)
+endif()
 
 add_subdirectory(oe-enclave)
 add_subdirectory(intel-enclave)

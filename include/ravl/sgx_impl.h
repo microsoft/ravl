@@ -8,6 +8,7 @@
 #include "sgx.h"
 #include "sgx_defs.h"
 #include "util.h"
+#include "visibility.h"
 
 #include <nlohmann/json.hpp>
 
@@ -185,7 +186,7 @@ namespace ravl
         return rc == 1;
       }
 
-      inline bool verify_signature(
+      RAVL_VISIBILITY bool verify_signature(
         const crypto::Unique_EC_KEY& eckey,
         const std::span<const uint8_t>& message,
         const std::span<const uint8_t>& signature)
@@ -194,7 +195,7 @@ namespace ravl
           crypto::Unique_EVP_PKEY(eckey), message, signature);
       }
 
-      inline bool verify_signature(
+      RAVL_VISIBILITY bool verify_signature(
         const std::span<const uint8_t>& public_key,
         const std::span<const uint8_t>& message,
         const std::span<const uint8_t>& signature)
@@ -203,7 +204,7 @@ namespace ravl
           crypto::Unique_EC_KEY_P256(public_key), message, signature);
       }
 
-      inline bool verify_hash_match(
+      RAVL_VISIBILITY bool verify_hash_match(
         const std::vector<std::span<const uint8_t>>& inputs,
         const std::span<const uint8_t>& expected)
       {
@@ -238,14 +239,14 @@ namespace ravl
       static const std::string qve_identity_url =
         api_base_url + "/qve/identity";
 
-      inline HTTPRequests download_root_ca_pem()
+      RAVL_VISIBILITY HTTPRequests download_root_ca_pem()
       {
         HTTPRequests requests;
         requests.emplace_back(root_ca_url);
         return requests;
       }
 
-      inline HTTPRequests download_collateral(
+      RAVL_VISIBILITY HTTPRequests download_collateral(
         const std::string& ca,
         const std::string& fmspc,
         const Options& options,
@@ -315,7 +316,7 @@ namespace ravl
         return requests;
       }
 
-      inline bool json_vector_eq(
+      RAVL_VISIBILITY bool json_vector_eq(
         const nlohmann::json& tcbinfo_j,
         const std::string& key,
         const std::vector<uint8_t>& ref,
@@ -334,7 +335,7 @@ namespace ravl
         return from_hex(vv) == ref;
       }
 
-      inline void check_datetime(
+      RAVL_VISIBILITY void check_datetime(
         const std::string& date_s, const std::string& name)
       {
         auto earliest_permitted =
@@ -344,14 +345,14 @@ namespace ravl
           throw std::runtime_error(name + " earlier than permitted");
       }
 
-      inline void check_http_200(
+      RAVL_VISIBILITY void check_http_200(
         const HTTPResponse& response, const std::string& name)
       {
         if (response.status != 200)
           throw std::runtime_error(fmt::format("download of {} failed", name));
       }
 
-      inline std::shared_ptr<QL_QVE_Collateral> consume_url_responses(
+      RAVL_VISIBILITY std::shared_ptr<QL_QVE_Collateral> consume_url_responses(
         const Options& options,
         const std::vector<HTTPResponse>& http_responses,
         bool qve = false)
@@ -561,19 +562,19 @@ namespace ravl
 
     struct TCBLevel
     {
-      std::array<uint8_t, 16> comp_svn = {0};
+      std::array<uint8_t, 16> comp_svn = {};
       uint16_t pce_svn = 0;
       std::string status = "";
       std::string date = "";
       std::vector<std::string> advisory_ids = {};
     };
 
-    inline TCBLevel verify_tcb_json(
+    RAVL_VISIBILITY TCBLevel verify_tcb_json(
       const std::string& tcb_info,
       const CertificateExtension& pck_ext,
       const crypto::Unique_EVP_PKEY& signer_pubkey)
     {
-      TCBLevel platform_tcb_level = {0};
+      TCBLevel platform_tcb_level = {};
 
       std::vector<uint8_t> signature;
 
@@ -685,7 +686,7 @@ namespace ravl
       return platform_tcb_level;
     }
 
-    inline TCBLevel verify_tcb(
+    RAVL_VISIBILITY TCBLevel verify_tcb(
       const std::string& tcb_info_issuer_chain,
       const std::string& tcb_info,
       const CertificateExtension& pck_ext,
@@ -721,7 +722,7 @@ namespace ravl
       return verify_tcb_json(tcb_info, pck_ext, tcb_issuer_leaf_pubkey);
     }
 
-    inline bool verify_qe_id(
+    RAVL_VISIBILITY bool verify_qe_id(
       const std::string& qe_identity_issuer_chain,
       const std::string& qe_identity,
       const std::span<const uint8_t>& qe_report_body_s,
@@ -897,7 +898,7 @@ namespace ravl
       return true;
     }
 
-    inline std::span<const uint8_t> parse_quote(const Attestation& a)
+    RAVL_VISIBILITY std::span<const uint8_t> parse_quote(const Attestation& a)
     {
       static constexpr size_t sgx_quote_t_signed_size =
         sizeof(sgx_quote_t) - sizeof(uint32_t); // (minus signature_len)
@@ -995,8 +996,8 @@ namespace ravl
       std::span<const uint8_t> certification_data;
     };
 
-    inline std::optional<HTTPRequests> Attestation::prepare_endorsements(
-      const Options& options) const
+    RAVL_VISIBILITY std::optional<HTTPRequests> Attestation::
+      prepare_endorsements(const Options& options) const
     {
       if (
         !this->endorsements.empty() && !options.fresh_endorsements &&
@@ -1052,7 +1053,7 @@ namespace ravl
       copy(to.report_data, from.report_data.d);
     };
 
-    inline std::shared_ptr<Claims> make_claims(
+    RAVL_VISIBILITY std::shared_ptr<Claims> make_claims(
       const sgx_quote_t& raw,
       const SignatureData& signature_data,
       const QL_QVE_Collateral& collateral)
@@ -1080,7 +1081,7 @@ namespace ravl
       claims->signature_data.auth_data.assign(
         signature_data.auth_data.begin(), signature_data.auth_data.end());
 
-      claims->collateral = {
+      claims->endorsements = {
         .major_version = collateral.major_version,
         .minor_version = collateral.minor_version,
         .tee_type = collateral.tee_type,
@@ -1096,7 +1097,7 @@ namespace ravl
       return claims;
     }
 
-    inline std::shared_ptr<ravl::Claims> Attestation::verify(
+    RAVL_VISIBILITY std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
       const std::optional<std::vector<HTTPResponse>>& http_responses) const
     {
@@ -1244,5 +1245,14 @@ namespace ravl
       return make_claims(
         *(const sgx_quote_t*)quote.data(), signature_data, *collateral);
     }
+  }
+
+  template <>
+  RAVL_VISIBILITY std::shared_ptr<sgx::Claims> Claims::get(
+    std::shared_ptr<ravl::Claims>& claims)
+  {
+    if (claims->source != Source::SGX)
+      throw std::runtime_error("invalid request for SGX claims conversion");
+    return static_pointer_cast<sgx::Claims>(claims);
   }
 }

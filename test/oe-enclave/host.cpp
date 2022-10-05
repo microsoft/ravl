@@ -41,10 +41,10 @@ int attest(const oe_uuid_t* format_id, oe_enclave_t* enclave)
 {
   oe_result_t result = OE_OK;
   int ret = 1;
-  optional_parameters_t optional_parameters = {0};
-  evidence_t evidence = {0};
-  endorsements_t endorsements = {0};
-  data_t data = {0};
+  optional_parameters_t optional_parameters = {};
+  evidence_t evidence = {};
+  endorsements_t endorsements = {};
+  data_t data = {};
 
   result =
     get_optional_parameters(enclave, &ret, format_id, &optional_parameters);

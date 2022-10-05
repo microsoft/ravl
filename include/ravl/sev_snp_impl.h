@@ -7,6 +7,7 @@
 #include "http_client.h"
 #include "sev_snp.h"
 #include "util.h"
+#include "visibility.h"
 
 #include <span>
 
@@ -184,7 +185,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 #define SEV_SNP_GUEST_MSG_REPORT \
   _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct snp::GuestRequest)
 
-    crypto::Unique_X509 parse_root_cert(
+    RAVL_VISIBILITY crypto::Unique_X509 parse_root_cert(
       const std::vector<HTTPResponse>& url_responses)
     {
       using namespace crypto;
@@ -198,7 +199,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return stack.at(1).pem();
     }
 
-    HTTPRequests download_root_ca_pem(const std::string& product_name)
+    RAVL_VISIBILITY HTTPRequests
+    download_root_ca_pem(const std::string& product_name)
     {
       std::string r;
 
@@ -250,7 +252,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       }
     };
 
-    static EndorsementsEtc parse_url_responses(
+    RAVL_VISIBILITY EndorsementsEtc parse_url_responses(
       const Options& options, const std::vector<HTTPResponse>& http_responses)
     {
       using namespace crypto;
@@ -315,7 +317,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return r;
     }
 
-    HTTPRequests download_endorsements(
+    RAVL_VISIBILITY HTTPRequests download_endorsements(
       const std::string& product_name,
       const std::span<const uint8_t>& chip_id,
       const snp::TcbVersion& tcb_version,
@@ -362,7 +364,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return requests;
     }
 
-    static bool verify_signature(
+    RAVL_VISIBILITY bool verify_signature(
       const crypto::Unique_EVP_PKEY& pkey,
       const std::span<const uint8_t>& message,
       const snp::Signature& signature)
@@ -390,15 +392,15 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return rc == 1;
     }
 
-    Attestation::Attestation(
+    RAVL_VISIBILITY Attestation::Attestation(
       const std::vector<uint8_t>& evidence, const Endorsements& endorsements) :
       ravl::Attestation(Source::SEV_SNP, evidence, {})
     {
       // TODO
     }
 
-    std::optional<HTTPRequests> Attestation::prepare_endorsements(
-      const Options& options) const
+    RAVL_VISIBILITY std::optional<HTTPRequests> Attestation::
+      prepare_endorsements(const Options& options) const
     {
       const auto& snp_att =
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
@@ -426,7 +428,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return r;
     }
 
-    static void set_tcb_version(
+    RAVL_VISIBILITY void set_tcb_version(
       Claims::TCBVersion& to, const struct snp::TcbVersion& from)
     {
       to.boot_loader = from.boot_loader;
@@ -435,7 +437,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       to.microcode = from.microcode;
     }
 
-    static std::shared_ptr<Claims> make_claims(
+    RAVL_VISIBILITY std::shared_ptr<Claims> make_claims(
       const ravl::sev_snp::snp::Attestation& a, const EndorsementsEtc& e)
     {
       auto r = std::make_shared<Claims>();
@@ -480,7 +482,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       return r;
     }
 
-    std::shared_ptr<ravl::Claims> Attestation::verify(
+    RAVL_VISIBILITY std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
       const std::optional<std::vector<HTTPResponse>>& http_responses) const
     {
@@ -573,7 +575,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
   }
 
   template <>
-  std::shared_ptr<sev_snp::Claims> Claims::get(std::shared_ptr<Claims>& claims)
+  RAVL_VISIBILITY std::shared_ptr<sev_snp::Claims> Claims::get(
+    std::shared_ptr<Claims>& claims)
   {
     if (claims->source != Source::SEV_SNP)
       throw std::runtime_error("invalid request for SEV/SNP claims conversion");

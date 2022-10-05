@@ -31,13 +31,6 @@ namespace ravl
     return j.dump();
   }
 
-  Attestation::Attestation(
-    Source source,
-    const std::vector<uint8_t>& evidence,
-    const std::vector<uint8_t>& endorsements) :
-    source(source), evidence(evidence), endorsements(endorsements)
-  {}
-
   Attestation::operator std::string() const
   {
     nlohmann::json j;
