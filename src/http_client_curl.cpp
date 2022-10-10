@@ -237,9 +237,9 @@ namespace ravl
       {
         std::lock_guard<std::mutex> guard(mtx);
         int num_active_fds = 0;
-        CURLMcode mc = curl_multi_poll(multi, NULL, 0, 100, &num_active_fds);
+        CURLMcode mc = curl_multi_wait(multi, NULL, 0, 100, &num_active_fds);
         if (mc != CURLM_OK)
-          throw std::runtime_error("curl_multi_poll failed");
+          throw std::runtime_error("curl_multi_wait failed");
         consume_msgs(id, multi);
         return true;
       }
