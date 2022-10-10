@@ -102,8 +102,8 @@ namespace ravl
         return false;
       }
       if (verbose)
-        printf(
-          "Request %zu:%zu: HTTP 429; RETRY after %lds\n", id, i, retry_after);
+        log(fmt::format(
+          "Request {}:{}: HTTP 429; RETRY after {}s", id, i, retry_after));
       std::this_thread::sleep_for(std::chrono::seconds(retry_after));
       response.body = "";
       response.headers.clear();
@@ -129,8 +129,6 @@ namespace ravl
       throw std::runtime_error("libcurl initialization failed");
 
     HTTPResponse response;
-
-    // printf("Sync: %s\n", url.c_str());
 
     while (max_attempts > 0)
     {
@@ -160,7 +158,8 @@ namespace ravl
     if (curl)
       curl_easy_cleanup(curl);
 
-    throw std::runtime_error("maxmimum number of URL request retries exceeded");
+    throw std::runtime_error(fmt::format(
+      "maxmimum number of URL request retries exceeded for {}", url));
   }
 
   class CurlClient : public HTTPClient
