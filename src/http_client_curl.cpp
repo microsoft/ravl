@@ -114,7 +114,11 @@ namespace ravl
       return false;
   }
 
-  HTTPResponse HTTPRequest::execute(size_t timeout, bool verbose)
+  HTTPResponse SynchronousHTTPClient::execute_synchronous(
+    const HTTPRequest& request,
+    size_t timeout,
+    size_t max_attempts,
+    bool verbose)
   {
     if (!initialized)
     {
@@ -132,7 +136,7 @@ namespace ravl
 
     while (max_attempts > 0)
     {
-      easy_setup(curl, url, body, response, timeout, verbose);
+      easy_setup(curl, request.url, request.body, response, timeout, verbose);
 
       CURLcode curl_code = curl_easy_perform(curl);
 
@@ -159,14 +163,14 @@ namespace ravl
       curl_easy_cleanup(curl);
 
     throw std::runtime_error(fmt::format(
-      "maxmimum number of URL request retries exceeded for {}", url));
+      "maxmimum number of URL request retries exceeded for {}", request.url));
   }
 
   class CurlClient : public HTTPClient
   {
   public:
-    CurlClient(size_t request_timeout, bool verbose) :
-      HTTPClient(request_timeout, verbose)
+    CurlClient(size_t request_timeout, size_t max_attempts, bool verbose) :
+      HTTPClient(request_timeout, max_attempts, verbose)
     {}
 
     class MonitorThread
@@ -424,9 +428,9 @@ namespace ravl
   };
 
   AsynchronousHTTPClient::AsynchronousHTTPClient(
-    size_t request_timeout, bool verbose)
+    size_t request_timeout, size_t max_attempts, bool verbose)
   {
-    implementation = new CurlClient(request_timeout, verbose);
+    implementation = new CurlClient(request_timeout, max_attempts, verbose);
   }
 
   AsynchronousHTTPClient::~AsynchronousHTTPClient()

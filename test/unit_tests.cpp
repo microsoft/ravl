@@ -18,7 +18,9 @@
 using namespace ravl;
 
 Options default_options = {
-  .verbosity = 0, .certificate_verification = {.ignore_time = true}};
+  .verbosity = 0,
+  .certificate_verification = {.ignore_time = true},
+  .http_max_attempts = 25};
 
 /* clang-format off */
 std::string oe_coffeelake_attestation = R"({
