@@ -357,12 +357,13 @@ namespace ravl
       else
       {
         curl_easy_cleanup(easy);
-        // printf(
-        //   "Request %zu:%zu: complete: %u size %zu\n",
-        //   id,
-        //   i,
-        //   response.status,
-        //   response.body.size());
+        if (verbose)
+          log(fmt::format(
+            "Request {}:{}: complete: {} size {}",
+            id,
+            i,
+            response.status,
+            response.body.size()));
       }
     }
 
