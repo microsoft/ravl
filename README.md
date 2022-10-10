@@ -31,7 +31,7 @@ See [`test/unit_test.cpp`](test/unit_tests.cpp) for complete examples of simple 
 ## clang++ (primary toolchain):
 
 ```
-sudo apt install libstdc++-10-dev
+sudo apt install clang-10 libstdc++-10-dev
 ```
 
 ## g++
@@ -39,7 +39,7 @@ sudo apt install libstdc++-10-dev
 Use at least version 11:
 
 ```
-sudo apt install g++-11
+sudo apt install g++-11 libc++-10-dev
 ```
 
 ## Libraries
