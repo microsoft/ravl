@@ -193,8 +193,12 @@ namespace ravl
       if (rc == 1)
         return true;
       else if (rc == 0)
-        throw std::runtime_error(
-          "certificate not self-signed or signature invalid");
+      {
+        int err_code = X509_STORE_CTX_get_error(store_ctx);
+        const char* err_str = X509_verify_cert_error_string(err_code);
+        throw std::runtime_error(fmt::format(
+          "certificate not self-signed or signature invalid: {}", err_str));
+      }
       else
       {
         unsigned long openssl_err = ERR_get_error();
@@ -241,12 +245,34 @@ namespace ravl
 
       X509_STORE_CTX_set0_param(store_ctx, param);
 
+      X509_STORE_CTX_set_verify_cb(
+        store_ctx, [](int ok, X509_STORE_CTX* store_ctx) {
+          int ec = X509_STORE_CTX_get_error(store_ctx);
+          if (ec == X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER)
+          {
+            // OpenSSL 3.0 with X509_V_FLAG_X509_STRICT requires an authority
+            // key id, but, for instance, AMD SEV/SNP VCEK certificates don't
+            // come with one, so we skip this check.
+            return 1;
+          }
+          return ok;
+        });
+
       int rc = X509_verify_cert(store_ctx);
 
       if (rc == 1)
         return Unique_STACK_OF_X509(store_ctx);
       else if (rc == 0)
+      {
+        int err_code = X509_STORE_CTX_get_error(store_ctx);
+        int depth = X509_STORE_CTX_get_error_depth(store_ctx);
+        const char* err_str = X509_verify_cert_error_string(err_code);
+        throw std::runtime_error(fmt::format(
+          "certificate chain verification failed: {} (depth: {})",
+          err_str,
+          depth));
         throw std::runtime_error("no chain or signature invalid");
+      }
       else
       {
         unsigned long openssl_err = ERR_get_error();
@@ -370,13 +396,15 @@ namespace ravl
       }
       catch (std::exception& ex)
       {
-        log(fmt::format("- verification failed: {}", ex.what()), indent);
-        throw std::runtime_error("certificate chain verification failed");
+        if (verbosity > 0)
+          log(fmt::format("- failed: {}", ex.what()), indent);
+        throw std::runtime_error(ex.what());
       }
       catch (...)
       {
-        log("- verification failed with unknown exception", indent);
-        throw std::runtime_error("certificate chain verification failed");
+        if (verbosity > 0)
+          log(fmt::format("- failed: unknown exception"), indent);
+        throw std::runtime_error("unknown exception");
       }
     }
 

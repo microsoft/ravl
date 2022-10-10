@@ -38,8 +38,7 @@ int main(int argc, const char** argv)
         }
         catch (const std::exception& ex)
         {
-          std::cout << "Error: verification of '" << argv[i]
-                    << "' failed: " << ex.what();
+          std::cout << "Error: " << ex.what() << std::endl;
         }
       }
     }
