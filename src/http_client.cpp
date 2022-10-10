@@ -14,8 +14,8 @@
 namespace ravl
 {
   SynchronousHTTPClient::SynchronousHTTPClient(
-    size_t request_timeout, bool verbose) :
-    HTTPClient(request_timeout, verbose)
+    size_t request_timeout, size_t max_attempts, bool verbose) :
+    HTTPClient(request_timeout, max_attempts, verbose)
   {}
 
   HTTPRequestSetId SynchronousHTTPClient::submit(
@@ -34,7 +34,8 @@ namespace ravl
     for (size_t i = 0; i < rsit->second.size(); i++)
     {
       auto& request = rsit->second.at(i);
-      HTTPResponse response = request.execute(request_timeout, verbose);
+      HTTPResponse response =
+        execute_synchronous(request, request_timeout, max_attempts, verbose);
       response_sets[id][i] = response;
 
       if (response.status != 200)
