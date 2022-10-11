@@ -80,7 +80,9 @@ std::string ccf_quote2 = R"({
 
 std::shared_ptr<HTTPClient> http_client =
   std::make_shared<AsynchronousHTTPClient>(
-    /*request_timeout*/ 0, /*verbose=*/true);
+    default_options.http_timeout,
+    default_options.http_max_attempts,
+    default_options.verbosity > 0);
 
 #ifndef RAVL_USE_OE_VERIFIER
 // These attestations contain expired endorsements and the OE verifier doesn't
@@ -279,6 +281,7 @@ TEST_CASE("CCF quote 2")
 
 TEST_CASE("SGX CoffeeLake asynchronous")
 {
+  const auto& opts = default_options;
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
 
@@ -288,7 +291,10 @@ TEST_CASE("SGX CoffeeLake asynchronous")
   {
     AttestationRequestTracker tracker;
     auto id = tracker.submit(
-      default_options, att, std::make_shared<AsynchronousHTTPClient>());
+      default_options,
+      att,
+      std::make_shared<AsynchronousHTTPClient>(
+        opts.http_timeout, opts.http_max_attempts, opts.verbosity > 0));
 
     std::thread t([&tracker, id, &claims]() {
       while (!tracker.finished(id))
@@ -315,16 +321,19 @@ TEST_CASE("SGX CoffeeLake asynchronous")
 
 TEST_CASE("SEV/SNP asynchronous")
 {
+  const auto& opts = default_options;
   auto att = parse_attestation(sev_snp_quote);
   att->endorsements = {};
 
   std::shared_ptr<ravl::Claims> claims;
-
   try
   {
     AttestationRequestTracker tracker;
     auto id = tracker.submit(
-      default_options, att, std::make_shared<AsynchronousHTTPClient>());
+      default_options,
+      att,
+      std::make_shared<AsynchronousHTTPClient>(
+        opts.http_timeout, opts.http_max_attempts, opts.verbosity > 0));
 
     std::thread t([&tracker, id, &claims]() {
       while (!tracker.finished(id))

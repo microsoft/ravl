@@ -139,10 +139,6 @@ namespace ravl
 
     while (max_attempts > 0)
     {
-      auto tme = std::chrono::system_clock::now();
-      std::time_t ttme = std::chrono::system_clock::to_time_t(tme);
-      std::cout << "@ " << std::ctime(&ttme);
-
       easy_setup(curl, request.url, request.body, response, timeout, verbose);
 
       CURLcode curl_code = curl_easy_perform(curl);
@@ -308,7 +304,6 @@ namespace ravl
       for (size_t i = 0; i < reqs.requests.size(); i++)
       {
         auto& request = reqs.requests.at(i);
-        // printf("Submit   %zu: %s\n", i, request.url.c_str());
         CURL* easy = curl_easy_init();
         if (!easy)
           throw std::bad_alloc();
