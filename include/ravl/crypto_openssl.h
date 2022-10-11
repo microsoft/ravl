@@ -702,6 +702,7 @@ namespace ravl
           EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
           CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
           CHECK1(EVP_PKEY_set1_EC_KEY(p.get(), ec_key));
+          EC_KEY_free(ec_key);
         }
       };
 
