@@ -371,11 +371,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     {
       using namespace crypto;
 
-      SHA512_CTX ctx;
-      SHA384_Init(&ctx);
-      SHA384_Update(&ctx, message.data(), message.size());
-      std::vector<uint8_t> hash(ctx.md_len, 0);
-      SHA384_Final(hash.data(), &ctx);
+      auto hash = crypto::sha384(message);
 
       auto signature_der =
         convert_signature_to_der(signature.r, signature.s, true);
@@ -390,13 +386,6 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         hash.size());
 
       return rc == 1;
-    }
-
-    RAVL_VISIBILITY Attestation::Attestation(
-      const std::vector<uint8_t>& evidence, const Endorsements& endorsements) :
-      ravl::Attestation(Source::SEV_SNP, evidence, {})
-    {
-      // TODO
     }
 
     RAVL_VISIBILITY std::optional<HTTPRequests> Attestation::

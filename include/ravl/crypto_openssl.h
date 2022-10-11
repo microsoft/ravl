@@ -19,10 +19,12 @@
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
+#include <optional>
 #include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace ravl
@@ -207,19 +209,6 @@ namespace ravl
         }
       };
 
-      struct Unique_EC_KEY : public Unique_SSL_OBJECT<EC_KEY, nullptr, nullptr>
-      {
-        Unique_EC_KEY(int nid) :
-          Unique_SSL_OBJECT(
-            EC_KEY_new_by_curve_name(nid), EC_KEY_free, /*check_null=*/true)
-        {}
-        Unique_EC_KEY(const Unique_EC_KEY& other) :
-          Unique_SSL_OBJECT(other, EC_KEY_free, /*check_null=*/true)
-        {
-          EC_KEY_up_ref(p.get());
-        }
-      };
-
       struct Unique_BIGNUM : public Unique_SSL_OBJECT<BIGNUM, BN_new, BN_free>
       {
         using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
@@ -227,19 +216,6 @@ namespace ravl
           Unique_SSL_OBJECT(
             BN_bin2bn(buf, sz, NULL), BN_free, /*check_null=*/false)
         {}
-      };
-
-      struct Unique_EC_KEY_P256 : public Unique_EC_KEY
-      {
-        Unique_EC_KEY_P256(const std::span<const uint8_t>& coordinates) :
-          Unique_EC_KEY(NID_X9_62_prime256v1)
-        {
-          EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-          Unique_BIGNUM x(&coordinates[0], 32);
-          Unique_BIGNUM y(&coordinates[32], 32);
-          CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
-          p.reset(ec_key);
-        }
       };
 
       struct Unique_X509_REVOKED : public Unique_SSL_OBJECT<
@@ -670,27 +646,27 @@ namespace ravl
                   d2i_PUBKEY_bio(mem, NULL),
             EVP_PKEY_free)
         {}
-        Unique_EVP_PKEY(const Unique_EC_KEY& ec_key) :
-          Unique_SSL_OBJECT(EVP_PKEY_new(), EVP_PKEY_free)
-        {
-          EVP_PKEY_set1_EC_KEY(p.get(), ec_key);
-        }
         Unique_EVP_PKEY(const Unique_X509& x509) :
           Unique_SSL_OBJECT(X509_get_pubkey(x509), EVP_PKEY_free)
         {}
 
         bool operator==(const Unique_EVP_PKEY& other) const
         {
-          // TODO: Do the parameters need to match? (They don't match for the
-          // SEV/SNP root CA.)
-          return // EVP_PKEY_cmp_parameters((*this), other) == 1 &&
-            EVP_PKEY_cmp((*this), other) == 1;
+#if OPENSSL_VERSION_MAJOR >= 3
+          return EVP_PKEY_eq(*this, other) == 1;
+#else
+          return EVP_PKEY_cmp(*this, other) == 1;
+#endif
         }
 
         bool operator!=(const Unique_EVP_PKEY& other) const
         {
           return !(*this == other);
         }
+
+        bool verify_signature(
+          const std::span<const uint8_t>& message,
+          const std::span<const uint8_t>& signature) const;
       };
 
       struct Unique_EVP_PKEY_CTX
@@ -704,6 +680,42 @@ namespace ravl
             EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL), EVP_PKEY_CTX_free)
         {}
       };
+
+      struct Unique_EVP_PKEY_P256 : public Unique_EVP_PKEY
+      {
+        Unique_EVP_PKEY_P256(const std::span<const uint8_t>& coordinates) :
+          Unique_EVP_PKEY()
+        {
+          Unique_BIGNUM x(&coordinates[0], 32);
+          Unique_BIGNUM y(&coordinates[32], 32);
+
+          // The following is deprecated in OpenSSL 3.0.
+          // Use EC_POINT_set_affine_coordinates?
+          // Use EVP_PKEY_fromdata?
+
+          EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+          CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
+          CHECK1(EVP_PKEY_set1_EC_KEY(p.get(), ec_key));
+        }
+      };
+
+      inline bool Unique_EVP_PKEY::verify_signature(
+        const std::span<const uint8_t>& message,
+        const std::span<const uint8_t>& signature) const
+      {
+        Unique_EVP_PKEY_CTX pctx(*this);
+
+        CHECK1(EVP_PKEY_verify_init(pctx));
+
+        int rc = EVP_PKEY_verify(
+          pctx,
+          signature.data(),
+          signature.size(),
+          message.data(),
+          message.size());
+
+        return rc == 1;
+      }
 
       inline bool Unique_X509::has_public_key(
         const Unique_EVP_PKEY& target) const
@@ -1055,35 +1067,61 @@ namespace ravl
           return v->value.boolean;
         }
       };
+
+      struct Unique_EVP_MD_CTX
+        : public Unique_SSL_OBJECT<EVP_MD_CTX, EVP_MD_CTX_new, EVP_MD_CTX_free>
+      {
+        using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+
+        void init(const EVP_MD* md)
+        {
+          this->md = md;
+          CHECK1(EVP_DigestInit_ex(p.get(), md, NULL));
+        }
+
+        void update(const std::span<const uint8_t>& message)
+        {
+          CHECK1(EVP_DigestUpdate(p.get(), message.data(), message.size()));
+        }
+
+        std::vector<uint8_t> final()
+        {
+          std::vector<uint8_t> r(EVP_MD_size(md));
+          unsigned sz = r.size();
+          CHECK1(EVP_DigestFinal_ex(p.get(), r.data(), &sz));
+          return r;
+        }
+
+      protected:
+        const EVP_MD* md = NULL;
+      };
+
+      inline std::vector<uint8_t> sha256(
+        const std::span<const uint8_t>& message)
+      {
+        Unique_EVP_MD_CTX ctx;
+        ctx.init(EVP_sha256());
+        ctx.update(message);
+        return ctx.final();
+      }
+
+      inline std::vector<uint8_t> sha384(
+        const std::span<const uint8_t>& message)
+      {
+        Unique_EVP_MD_CTX ctx;
+        ctx.init(EVP_sha384());
+        ctx.update(message);
+        return ctx.final();
+      }
+
+      inline std::vector<uint8_t> sha512(
+        const std::span<const uint8_t>& message)
+      {
+        Unique_EVP_MD_CTX ctx;
+        ctx.init(EVP_sha512());
+        ctx.update(message);
+        return ctx.final();
+      }
     }
-
-    struct Unique_EVP_MD_CTX : public Unique_SSL_OBJECT<
-                                 EVP_MD_CTX,
-                                 EVP_MD_CTX_create,
-                                 EVP_MD_CTX_destroy>
-    {
-      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-
-      void init(const EVP_MD* md)
-      {
-        this->md = md;
-        CHECK1(EVP_DigestInit_ex(p, md, NULL));
-      }
-
-      void update(const std::vector<uint8_t>& message)
-      {
-        CHECK1(EVP_DigestUpdate(p, message.data(), message.size()));
-      }
-
-      std::vector<uint8_t> final()
-      {
-        std::vector<uint8_t> r(EVP_MD_size(md));
-        CHECK1(EVP_DigestFinal_ex(p, r.data(), r.size()));
-        return r;
-      }
-
-    protected:
-      EVP_MD* md = NULL;
-    };
   }
 }

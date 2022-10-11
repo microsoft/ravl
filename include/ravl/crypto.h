@@ -434,5 +434,20 @@ namespace ravl
       return verify_certificate_chain(
         span, store, options, trusted_root, verbosity, indent);
     }
+
+    inline std::vector<uint8_t> sha256(const std::span<const uint8_t>& message)
+    {
+      return OpenSSL::sha256(message);
+    }
+
+    inline std::vector<uint8_t> sha384(const std::span<const uint8_t>& message)
+    {
+      return OpenSSL::sha384(message);
+    }
+
+    inline std::vector<uint8_t> sha512(const std::span<const uint8_t>& message)
+    {
+      return OpenSSL::sha512(message);
+    }
   }
 }
