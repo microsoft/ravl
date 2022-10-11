@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "crypto_options.h"
+
 #include <cstring>
 #include <memory>
 #include <openssl/asn1.h>
@@ -26,6 +28,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
+#if OPENSSL_VERSION_MAJOR >= 3
+#  include <openssl/types.h>
+#endif
 
 namespace ravl
 {
@@ -1121,6 +1127,130 @@ namespace ravl
         ctx.init(EVP_sha512());
         ctx.update(message);
         return ctx.final();
+      }
+
+      inline bool verify_certificate(
+        const Unique_X509_STORE& store,
+        const Unique_X509& certificate,
+        const CertificateValidationOptions& options)
+      {
+        Unique_X509_STORE_CTX store_ctx;
+        CHECK1(X509_STORE_CTX_init(store_ctx, store, certificate, NULL));
+
+        X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
+        X509_VERIFY_PARAM_set_depth(param, INT_MAX);
+        X509_VERIFY_PARAM_set_auth_level(param, 0);
+
+        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
+        CHECK1(
+          X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
+
+        if (options.ignore_time)
+        {
+          CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
+        }
+
+        if (options.verification_time)
+        {
+          X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
+        }
+
+        X509_STORE_CTX_set0_param(store_ctx, param);
+
+        int rc = X509_verify_cert(store_ctx);
+
+        if (rc == 1)
+          return true;
+        else if (rc == 0)
+        {
+          int err_code = X509_STORE_CTX_get_error(store_ctx);
+          const char* err_str = X509_verify_cert_error_string(err_code);
+          throw std::runtime_error(fmt::format(
+            "certificate not self-signed or signature invalid: {}", err_str));
+        }
+        else
+        {
+          unsigned long openssl_err = ERR_get_error();
+          char buf[4096];
+          ERR_error_string(openssl_err, buf);
+          throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
+        }
+      }
+
+      inline Unique_STACK_OF_X509 verify_certificate_chain(
+        const Unique_X509_STORE& store,
+        const Unique_STACK_OF_X509& stack,
+        const CertificateValidationOptions& options,
+        bool trusted_root = false)
+      {
+        if (stack.size() <= 1)
+          throw std::runtime_error("certificate stack too small");
+
+        if (trusted_root)
+          CHECK1(X509_STORE_add_cert(store, stack.back()));
+
+        auto target = stack.at(0);
+
+        Unique_X509_STORE_CTX store_ctx;
+        CHECK1(X509_STORE_CTX_init(store_ctx, store, target, stack));
+
+        X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
+        X509_VERIFY_PARAM_set_depth(param, INT_MAX);
+        X509_VERIFY_PARAM_set_auth_level(param, 0);
+
+        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
+        CHECK1(
+          X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
+
+        if (options.ignore_time)
+        {
+          CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
+        }
+
+        if (options.verification_time)
+        {
+          X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
+        }
+
+        X509_STORE_CTX_set0_param(store_ctx, param);
+
+#if OPENSSL_VERSION_MAJOR >= 3
+        X509_STORE_CTX_set_verify_cb(
+          store_ctx, [](int ok, X509_STORE_CTX* store_ctx) {
+            int ec = X509_STORE_CTX_get_error(store_ctx);
+            if (ec == X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER)
+            {
+              // OpenSSL 3.0 with X509_V_FLAG_X509_STRICT requires an authority
+              // key id, but, for instance, AMD SEV/SNP VCEK certificates don't
+              // come with one, so we skip this check.
+              return 1;
+            }
+            return ok;
+          });
+#endif
+
+        int rc = X509_verify_cert(store_ctx);
+
+        if (rc == 1)
+          return Unique_STACK_OF_X509(store_ctx);
+        else if (rc == 0)
+        {
+          int err_code = X509_STORE_CTX_get_error(store_ctx);
+          int depth = X509_STORE_CTX_get_error_depth(store_ctx);
+          const char* err_str = X509_verify_cert_error_string(err_code);
+          throw std::runtime_error(fmt::format(
+            "certificate chain verification failed: {} (depth: {})",
+            err_str,
+            depth));
+          throw std::runtime_error("no chain or signature invalid");
+        }
+        else
+        {
+          unsigned long openssl_err = ERR_get_error();
+          char buf[4096];
+          ERR_error_string(openssl_err, buf);
+          throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
+        }
       }
     }
   }
