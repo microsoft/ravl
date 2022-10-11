@@ -1056,5 +1056,34 @@ namespace ravl
         }
       };
     }
+
+    struct Unique_EVP_MD_CTX : public Unique_SSL_OBJECT<
+                                 EVP_MD_CTX,
+                                 EVP_MD_CTX_create,
+                                 EVP_MD_CTX_destroy>
+    {
+      using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
+
+      void init(const EVP_MD* md)
+      {
+        this->md = md;
+        CHECK1(EVP_DigestInit_ex(p, md, NULL));
+      }
+
+      void update(const std::vector<uint8_t>& message)
+      {
+        CHECK1(EVP_DigestUpdate(p, message.data(), message.size()));
+      }
+
+      std::vector<uint8_t> final()
+      {
+        std::vector<uint8_t> r(EVP_MD_size(md));
+        CHECK1(EVP_DigestFinal_ex(p, r.data(), r.size()));
+        return r;
+      }
+
+    protected:
+      EVP_MD* md = NULL;
+    };
   }
 }
