@@ -164,13 +164,11 @@ namespace ravl
       {
         using namespace crypto;
 
-        SHA256_CTX ctx;
-        SHA256_Init(&ctx);
+        Unique_EVP_MD_CTX mdctx;
 
-        SHA256_Update(&ctx, message.data(), message.size());
-
-        std::vector<uint8_t> hash(ctx.md_len, 0);
-        SHA256_Final(hash.data(), &ctx);
+        mdctx->init();
+        mdctx->update(&ctx, message.data(), message.size());
+        auto hash = mdctx->final();
 
         auto signature_der = convert_signature_to_der(signature);
 
