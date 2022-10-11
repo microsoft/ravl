@@ -99,6 +99,7 @@ namespace ravl
       }
       catch (...)
       {
+        log("caught exception while extracting retry-after header");
         return false;
       }
       if (verbose)
@@ -120,6 +121,8 @@ namespace ravl
     size_t max_attempts,
     bool verbose)
   {
+    const size_t max_attempts_in = max_attempts;
+
     if (!initialized)
     {
       curl_global_init(CURL_GLOBAL_ALL);
@@ -136,6 +139,10 @@ namespace ravl
 
     while (max_attempts > 0)
     {
+      auto tme = std::chrono::system_clock::now();
+      std::time_t ttme = std::chrono::system_clock::to_time_t(tme);
+      std::cout << "@ " << std::ctime(&ttme);
+
       easy_setup(curl, request.url, request.body, response, timeout, verbose);
 
       CURLcode curl_code = curl_easy_perform(curl);
@@ -147,8 +154,6 @@ namespace ravl
       }
       else
       {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.status);
-
         if (must_retry(curl, 0, 0, response, verbose))
           max_attempts--;
         else
@@ -163,7 +168,9 @@ namespace ravl
       curl_easy_cleanup(curl);
 
     throw std::runtime_error(fmt::format(
-      "maxmimum number of URL request retries exceeded for {}", request.url));
+      "maxmimum number ({}) of URL request retries exceeded for {}",
+      max_attempts_in,
+      request.url));
   }
 
   class CurlClient : public HTTPClient
