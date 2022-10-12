@@ -49,6 +49,7 @@ option(OE_TEST_ENCLAVE "enable Open Enclave test enclave (requires Open Enclave 
 option(SGX_TEST_ENCLAVE "enable SGX test enclave (requires Intel SGX SDK)" OFF)
 option(CURL "use libCURL for HTTP requests" ON)
 option(OPENSSL "use OpenSSL as the crypto library" ON)
+option(SAN "enable sanitizers" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
@@ -87,6 +88,12 @@ endif()
 if(PROFILE)
   list(APPEND RAVL_FLAGS -g -pg)
   list(APPEND RAVL_LINK_OPTS -g -pg)
+endif()
+
+
+if(SAN)
+  list(APPEND RAVL_FLAGS -fsanitize=undefined,address -fno-omit-frame-pointer)
+  list(APPEND RAVL_LINK_OPTS -fsanitize=undefined,address)
 endif()
 
 set(RAVL_TARGETS)
@@ -131,6 +138,7 @@ if(CLI)
   target_include_directories(ravl-cli PRIVATE ${RAVL_DIR}/include)
   set_target_properties(ravl-cli PROPERTIES OUTPUT_NAME ravl)
   target_link_libraries(ravl-cli PRIVATE $<BUILD_INTERFACE:ravl> pthread)
+  target_link_options(ravl-cli PRIVATE ${RAVL_LINK_OPTS})
   list(APPEND RAVL_TARGETS ravl-cli)
 endif()
 
