@@ -29,40 +29,26 @@ namespace ravl
 {
   namespace crypto
   {
-#ifdef RAVL_HAVE_OPENSSL
-    using namespace OpenSSL;
-#endif
+    using Unique_STACK_OF_X509 = OpenSSL::Unique_STACK_OF_X509;
+    using Unique_BIO = OpenSSL::Unique_BIO;
+    using Unique_X509 = OpenSSL::Unique_X509;
+    using Unique_X509_STORE = OpenSSL::Unique_X509_STORE;
+    using Unique_X509_CRL = OpenSSL::Unique_X509_CRL;
+    using Unique_EVP_PKEY = OpenSSL::Unique_EVP_PKEY;
+    using Unique_EVP_MD_CTX = OpenSSL::Unique_EVP_MD_CTX;
+    using Unique_ASN1_SEQUENCE = OpenSSL::Unique_ASN1_SEQUENCE;
+    using Unique_EVP_PKEY_P256 = OpenSSL::Unique_EVP_PKEY_P256;
+    using Unique_EVP_PKEY_CTX = OpenSSL::Unique_EVP_PKEY_CTX;
+    using Unique_ASN1_OCTET_STRING = OpenSSL::Unique_ASN1_OCTET_STRING;
 
     inline std::string to_base64(const std::span<const uint8_t>& bytes)
     {
-      Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO());
-
-      BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
-      BIO_set_close(bio_chain, BIO_CLOSE);
-      int n = BIO_write(bio_chain, bytes.data(), bytes.size());
-      BIO_flush(bio_chain);
-
-      if (n < 0)
-        throw std::runtime_error("base64 encoding error");
-
-      return bio_chain.to_string();
+      return OpenSSL::to_base64(bytes);
     }
 
     inline std::vector<uint8_t> from_base64(const std::string& b64)
     {
-      Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO(b64));
-
-      std::vector<uint8_t> out(b64.size());
-      BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
-      BIO_set_close(bio_chain, BIO_CLOSE);
-      int n = BIO_read(bio_chain, out.data(), b64.size());
-
-      if (n < 0)
-        throw std::runtime_error("base64 decoding error");
-
-      out.resize(n);
-
-      return out;
+      return OpenSSL::from_base64(b64);
     }
 
     inline std::vector<uint8_t> convert_signature_to_der(
@@ -70,35 +56,7 @@ namespace ravl
       const std::span<const uint8_t>& s,
       bool little_endian = false)
     {
-      if (r.size() != s.size())
-        throw std::runtime_error("incompatible signature coordinates");
-
-      Unique_ECDSA_SIG sig;
-      {
-        Unique_BIGNUM r_bn;
-        Unique_BIGNUM s_bn;
-        if (little_endian)
-        {
-          CHECKNULL(BN_lebin2bn(r.data(), r.size(), r_bn));
-          CHECKNULL(BN_lebin2bn(s.data(), s.size(), s_bn));
-        }
-        else
-        {
-          CHECKNULL(BN_bin2bn(r.data(), r.size(), r_bn));
-          CHECKNULL(BN_bin2bn(s.data(), s.size(), s_bn));
-        }
-        CHECK1(ECDSA_SIG_set0(sig, r_bn, s_bn));
-        r_bn.release(); // r, s now owned by the signature object
-        s_bn.release();
-      }
-      int der_size = i2d_ECDSA_SIG(sig, NULL);
-      CHECK0(der_size);
-      if (der_size < 0)
-        throw std::runtime_error("not an ECDSA signature");
-      std::vector<uint8_t> res(der_size);
-      auto der_sig_buf = res.data();
-      CHECK0(i2d_ECDSA_SIG(sig, &der_sig_buf));
-      return res;
+      return OpenSSL::convert_signature_to_der(r, s, little_endian);
     }
 
     inline std::vector<uint8_t> convert_signature_to_der(

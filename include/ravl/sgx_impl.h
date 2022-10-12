@@ -163,10 +163,9 @@ namespace ravl
     {
       using namespace crypto;
 
-      auto hash = crypto::sha256(message);
-      auto signature_der = convert_signature_to_der(signature);
-
-      return pkey.verify_signature(hash, signature_der);
+      auto hash = sha256(message);
+      auto sig_der = convert_signature_to_der(signature);
+      return pkey.verify_signature(hash, sig_der);
     }
 
     RAVL_VISIBILITY bool verify_hash_match(

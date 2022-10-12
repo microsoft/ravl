@@ -10,6 +10,7 @@
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/core_names.h>
 #include <openssl/ec.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
@@ -687,22 +688,67 @@ namespace ravl
         {}
       };
 
+      struct Unique_BN_CTX
+        : public Unique_SSL_OBJECT<BN_CTX, BN_CTX_new, BN_CTX_free>
+      {};
+
+      struct Unique_EC_GROUP
+        : public Unique_SSL_OBJECT<EC_GROUP, nullptr, EC_GROUP_free>
+      {
+        Unique_EC_GROUP(int nid) :
+          Unique_SSL_OBJECT(EC_GROUP_new_by_curve_name(nid), EC_GROUP_free)
+        {}
+      };
+
+      struct Unique_EC_POINT
+        : public Unique_SSL_OBJECT<EC_POINT, nullptr, EC_POINT_free>
+      {
+        Unique_EC_POINT(const Unique_EC_GROUP& grp) :
+          Unique_SSL_OBJECT(EC_POINT_new(grp), EC_POINT_free)
+        {}
+      };
+
       struct Unique_EVP_PKEY_P256 : public Unique_EVP_PKEY
       {
         Unique_EVP_PKEY_P256(const std::span<const uint8_t>& coordinates) :
           Unique_EVP_PKEY()
         {
+          const char* group_name = "prime256v1";
+
           Unique_BIGNUM x(&coordinates[0], 32);
           Unique_BIGNUM y(&coordinates[32], 32);
 
-          // The following is deprecated in OpenSSL 3.0.
-          // Use EC_POINT_set_affine_coordinates?
-          // Use EVP_PKEY_fromdata?
+          Unique_BN_CTX bn_ctx;
+          Unique_EC_GROUP grp(NID_X9_62_prime256v1);
+          EC_POINT* pnt = EC_POINT_new(grp);
+          CHECK1(EC_POINT_set_affine_coordinates(grp, pnt, x, y, bn_ctx));
+          size_t len = EC_POINT_point2oct(
+            grp, pnt, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, bn_ctx);
+          std::vector<unsigned char> buf(len);
+          EC_POINT_point2oct(
+            grp,
+            pnt,
+            POINT_CONVERSION_UNCOMPRESSED,
+            buf.data(),
+            buf.size(),
+            bn_ctx);
+          EC_POINT_free(pnt);
 
-          EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-          CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
-          CHECK1(EVP_PKEY_set1_EC_KEY(p.get(), ec_key));
-          EC_KEY_free(ec_key);
+          EVP_PKEY_CTX* ek_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
+          OSSL_PARAM params[] = {
+            OSSL_PARAM_utf8_string(
+              OSSL_PKEY_PARAM_GROUP_NAME,
+              (void*)group_name,
+              strlen(group_name)),
+            OSSL_PARAM_octet_string(
+              OSSL_PKEY_PARAM_PUB_KEY, buf.data(), buf.size()),
+            OSSL_PARAM_END};
+
+          EVP_PKEY* epk = NULL;
+          CHECK1(EVP_PKEY_fromdata_init(ek_ctx));
+          CHECK1(EVP_PKEY_fromdata(ek_ctx, &epk, EVP_PKEY_PUBLIC_KEY, params));
+
+          p.reset(epk);
         }
       };
 
@@ -1103,6 +1149,38 @@ namespace ravl
         const EVP_MD* md = NULL;
       };
 
+      inline std::string to_base64(const std::span<const uint8_t>& bytes)
+      {
+        Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO());
+
+        BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
+        BIO_set_close(bio_chain, BIO_CLOSE);
+        int n = BIO_write(bio_chain, bytes.data(), bytes.size());
+        BIO_flush(bio_chain);
+
+        if (n < 0)
+          throw std::runtime_error("base64 encoding error");
+
+        return bio_chain.to_string();
+      }
+
+      inline std::vector<uint8_t> from_base64(const std::string& b64)
+      {
+        Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO(b64));
+
+        std::vector<uint8_t> out(b64.size());
+        BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
+        BIO_set_close(bio_chain, BIO_CLOSE);
+        int n = BIO_read(bio_chain, out.data(), b64.size());
+
+        if (n < 0)
+          throw std::runtime_error("base64 decoding error");
+
+        out.resize(n);
+
+        return out;
+      }
+
       inline std::vector<uint8_t> sha256(
         const std::span<const uint8_t>& message)
       {
@@ -1252,6 +1330,42 @@ namespace ravl
           ERR_error_string(openssl_err, buf);
           throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
         }
+      }
+
+      inline std::vector<uint8_t> convert_signature_to_der(
+        const std::span<const uint8_t>& r,
+        const std::span<const uint8_t>& s,
+        bool little_endian = false)
+      {
+        if (r.size() != s.size())
+          throw std::runtime_error("incompatible signature coordinates");
+
+        Unique_ECDSA_SIG sig;
+        {
+          Unique_BIGNUM r_bn;
+          Unique_BIGNUM s_bn;
+          if (little_endian)
+          {
+            CHECKNULL(BN_lebin2bn(r.data(), r.size(), r_bn));
+            CHECKNULL(BN_lebin2bn(s.data(), s.size(), s_bn));
+          }
+          else
+          {
+            CHECKNULL(BN_bin2bn(r.data(), r.size(), r_bn));
+            CHECKNULL(BN_bin2bn(s.data(), s.size(), s_bn));
+          }
+          CHECK1(ECDSA_SIG_set0(sig, r_bn, s_bn));
+          r_bn.release(); // r, s now owned by the signature object
+          s_bn.release();
+        }
+        int der_size = i2d_ECDSA_SIG(sig, NULL);
+        CHECK0(der_size);
+        if (der_size < 0)
+          throw std::runtime_error("not an ECDSA signature");
+        std::vector<uint8_t> res(der_size);
+        auto der_sig_buf = res.data();
+        CHECK0(i2d_ECDSA_SIG(sig, &der_sig_buf));
+        return res;
       }
     }
   }
