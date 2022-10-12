@@ -194,7 +194,13 @@ namespace ravl
         t.detach();
       }
 
-      virtual ~MonitorThread() {}
+      virtual ~MonitorThread()
+      {
+        keep_going = false;
+        client = nullptr;
+        id = 0;
+        multi = nullptr;
+      }
 
       void stop()
       {
@@ -203,8 +209,8 @@ namespace ravl
 
       void run()
       {
-        while (keep_going)
-          keep_going &= client->poll(id, multi, callback);
+        while (keep_going && client && id && multi)
+          keep_going = client->poll(id, multi, callback);
       }
 
     protected:
