@@ -198,7 +198,6 @@ namespace ravl
       {
         keep_going = false;
         client = nullptr;
-        id = 0;
         multi = nullptr;
       }
 
@@ -209,7 +208,7 @@ namespace ravl
 
       void run()
       {
-        while (keep_going && client && id && multi)
+        while (keep_going && client && multi)
           keep_going = client->poll(id, multi, callback);
       }
 
