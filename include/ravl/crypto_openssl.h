@@ -10,7 +10,6 @@
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
-#include <openssl/core_names.h>
 #include <openssl/ec.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
@@ -31,6 +30,7 @@
 #include <vector>
 
 #if OPENSSL_VERSION_MAJOR >= 3
+#  include <openssl/core_names.h>
 #  include <openssl/types.h>
 #endif
 
@@ -713,10 +713,11 @@ namespace ravl
         Unique_EVP_PKEY_P256(const std::span<const uint8_t>& coordinates) :
           Unique_EVP_PKEY()
         {
-          const char* group_name = "prime256v1";
-
           Unique_BIGNUM x(&coordinates[0], 32);
           Unique_BIGNUM y(&coordinates[32], 32);
+
+#if OPENSSL_VERSION_MAJOR >= 3
+          const char* group_name = "prime256v1";
 
           Unique_BN_CTX bn_ctx;
           Unique_EC_GROUP grp(NID_X9_62_prime256v1);
@@ -749,6 +750,12 @@ namespace ravl
           CHECK1(EVP_PKEY_fromdata(ek_ctx, &epk, EVP_PKEY_PUBLIC_KEY, params));
 
           p.reset(epk);
+#else
+          EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+          CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
+          CHECK1(EVP_PKEY_set1_EC_KEY(p.get(), ec_key));
+          EC_KEY_free(ec_key);
+#endif
         }
       };
 
