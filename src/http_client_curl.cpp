@@ -176,6 +176,8 @@ namespace ravl
       HTTPClient(request_timeout, max_attempts, verbose)
     {}
 
+    virtual ~CurlClient() {}
+
     class MonitorThread
     {
     public:
@@ -190,15 +192,12 @@ namespace ravl
         multi(multi),
         callback(callback)
       {
-        t = std::thread(&MonitorThread::run, this);
-        t.detach();
+        std::thread(&MonitorThread::run, this).detach();
       }
 
       virtual ~MonitorThread()
       {
-        keep_going = false;
-        client = nullptr;
-        multi = nullptr;
+        stop();
       }
 
       void stop()
@@ -208,13 +207,13 @@ namespace ravl
 
       void run()
       {
-        while (keep_going && client && multi)
+        while (keep_going)
           keep_going = client->poll(id, multi, callback);
+        curl_multi_cleanup(multi);
       }
 
     protected:
       bool keep_going = true;
-      std::thread t;
 
       CurlClient* client;
       HTTPRequestSetId id;
@@ -254,9 +253,11 @@ namespace ravl
         consume_msgs(id, multi);
         return true;
       }
-      else if (callback)
+
+      std::lock_guard<std::mutex> guard(mtx);
+
+      if (callback)
       {
-        std::lock_guard<std::mutex> guard(mtx);
         consume_msgs(id, multi);
         auto rsps_it = responses.find(id);
         if (rsps_it == responses.end())
@@ -268,7 +269,9 @@ namespace ravl
         requests.erase(id);
       }
 
-      curl_multi_cleanup(multi);
+      auto mtit = monitor_threads.find(id);
+      if (mtit != monitor_threads.end())
+        mtit->second->stop();
 
       return false;
     }
