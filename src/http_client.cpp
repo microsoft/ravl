@@ -55,4 +55,10 @@ namespace ravl
   {
     return true;
   }
+
+  void SynchronousHTTPClient::erase(const HTTPRequestSetId& id)
+  {
+    request_sets.erase(id);
+    response_sets.erase(id);
+  }
 }

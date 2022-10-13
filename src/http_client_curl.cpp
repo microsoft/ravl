@@ -415,6 +415,16 @@ namespace ravl
       }
     }
 
+    void erase(const HTTPRequestSetId& id)
+    {
+      auto mtit = monitor_threads.find(id);
+      if (mtit != monitor_threads.end())
+        mtit->second->stop();
+      monitor_threads.erase(mtit);
+      requests.erase(id);
+      responses.erase(id);
+    }
+
   protected:
     mutable std::mutex mtx;
 
@@ -458,5 +468,10 @@ namespace ravl
   bool AsynchronousHTTPClient::is_complete(const HTTPRequestSetId& id) const
   {
     return static_cast<CurlClient*>(implementation)->is_complete(id);
+  }
+
+  void AsynchronousHTTPClient::erase(const HTTPRequestSetId& id)
+  {
+    return static_cast<CurlClient*>(implementation)->erase(id);
   }
 }

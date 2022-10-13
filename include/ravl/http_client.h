@@ -65,6 +65,8 @@ namespace ravl
 
     virtual bool is_complete(const HTTPRequestSetId& id) const = 0;
 
+    virtual void erase(const HTTPRequestSetId& id) = 0;
+
   protected:
     size_t request_timeout = 0;
     size_t max_attempts = 5;
@@ -92,6 +94,8 @@ namespace ravl
       size_t max_attempts = 5,
       bool verbose = false);
 
+    virtual void erase(const HTTPRequestSetId& id) override;
+
   protected:
     std::unordered_map<HTTPRequestSetId, HTTPRequests> request_sets;
     std::unordered_map<HTTPRequestSetId, HTTPResponses> response_sets;
@@ -111,6 +115,8 @@ namespace ravl
       std::function<void(HTTPResponses&&)>&& callback) override;
 
     virtual bool is_complete(const HTTPRequestSetId& id) const override;
+
+    virtual void erase(const HTTPRequestSetId& id) override;
 
   private:
     void* implementation;
