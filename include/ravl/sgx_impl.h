@@ -84,6 +84,8 @@ namespace ravl
           throw std::runtime_error("excess collateral data");
       }
 
+      QL_QVE_Collateral(const QL_QVE_Collateral& other) = default;
+
       uint16_t major_version = 3;
       uint16_t minor_version = 1;
       uint32_t tee_type = 0;
@@ -318,18 +320,28 @@ namespace ravl
     RAVL_VISIBILITY std::shared_ptr<QL_QVE_Collateral> consume_url_responses(
       const Options& options,
       const std::vector<HTTPResponse>& http_responses,
+      const std::shared_ptr<QL_QVE_Collateral>& collateral,
       bool qve = false)
     {
-      size_t expected_responses = 4;
+      size_t expected_responses = 0;
 
-      if (!options.root_ca_certificate)
-        expected_responses++;
+      if (
+        !collateral ||
+        (collateral->root_ca.empty() && !options.root_ca_certificate) ||
+        options.fresh_root_ca_certificate)
+        expected_responses += 1;
+
+      if (!collateral || options.fresh_endorsements)
+        expected_responses += 4;
 
       if (http_responses.size() != expected_responses)
-        throw std::runtime_error(
-          "collateral download request set of unexpected size");
+        throw std::runtime_error(fmt::format(
+          "collateral download request set of unexpected size ({} vs {})",
+          http_responses.size(),
+          expected_responses));
 
-      auto r = std::make_shared<QL_QVE_Collateral>();
+      auto r = collateral ? std::make_shared<QL_QVE_Collateral>(*collateral) :
+                            std::make_shared<QL_QVE_Collateral>();
 
       size_t i = 0;
 
@@ -339,36 +351,39 @@ namespace ravl
         r->root_ca = http_responses[i++].body;
       }
 
-      check_http_200(http_responses[i], "root CA CRL");
-      r->root_ca_crl = http_responses[i++].body;
-
-      check_http_200(http_responses[i], "TCB info");
-      r->tcb_info = http_responses[i].body;
-      r->tcb_info_issuer_chain =
-        http_responses[i].get_header_string("SGX-TCB-Info-Issuer-Chain", true);
-      i++;
-
-      check_http_200(http_responses[i], "PCK CRL");
-      r->pck_crl = http_responses[i].body;
-      r->pck_crl_issuer_chain =
-        http_responses[i].get_header_string("SGX-PCK-CRL-Issuer-Chain", true);
-      i++;
-
-      if (!qve)
+      if (http_responses.size() > 4)
       {
-        auto response = http_responses[i];
-        check_http_200(response, "QE identity");
-        r->qe_identity = response.body;
-        r->qe_identity_issuer_chain =
-          response.get_header_string("SGX-Enclave-Identity-Issuer-Chain", true);
-      }
-      else
-      {
-        auto response = http_responses[i];
-        check_http_200(response, "QVE identity");
-        r->qe_identity = response.body;
-        r->qe_identity_issuer_chain =
-          response.get_header_string("SGX-Enclave-Identity-Issuer-Chain", true);
+        check_http_200(http_responses[i], "root CA CRL");
+        r->root_ca_crl = http_responses[i++].body;
+
+        check_http_200(http_responses[i], "TCB info");
+        r->tcb_info = http_responses[i].body;
+        r->tcb_info_issuer_chain = http_responses[i].get_header_string(
+          "SGX-TCB-Info-Issuer-Chain", true);
+        i++;
+
+        check_http_200(http_responses[i], "PCK CRL");
+        r->pck_crl = http_responses[i].body;
+        r->pck_crl_issuer_chain =
+          http_responses[i].get_header_string("SGX-PCK-CRL-Issuer-Chain", true);
+        i++;
+
+        if (!qve)
+        {
+          auto response = http_responses[i];
+          check_http_200(response, "QE identity");
+          r->qe_identity = response.body;
+          r->qe_identity_issuer_chain = response.get_header_string(
+            "SGX-Enclave-Identity-Issuer-Chain", true);
+        }
+        else
+        {
+          auto response = http_responses[i];
+          check_http_200(response, "QVE identity");
+          r->qe_identity = response.body;
+          r->qe_identity_issuer_chain = response.get_header_string(
+            "SGX-Enclave-Identity-Issuer-Chain", true);
+        }
       }
 
       return r;
@@ -1074,9 +1089,14 @@ namespace ravl
 
       Unique_X509_STORE store;
 
-      auto collateral = !http_responses || http_responses->empty() ?
-        std::make_shared<QL_QVE_Collateral>(this->endorsements) :
-        consume_url_responses(options, *http_responses);
+      std::shared_ptr<QL_QVE_Collateral> collateral;
+
+      if (!this->endorsements.empty())
+        collateral = std::make_shared<QL_QVE_Collateral>(this->endorsements);
+
+      if (http_responses && !http_responses->empty())
+        collateral =
+          consume_url_responses(options, *http_responses, collateral);
 
       std::span quote = parse_quote(*this);
       SignatureData signature_data(quote, *this);
