@@ -215,32 +215,33 @@ namespace ravl
         }
       }
 
+      std::optional<HTTPRequests> http_requests;
       try
       {
-        auto http_requests = request.attestation->prepare_endorsements(options);
-        if (http_requests)
-        {
-          auto callback = [this, id](HTTPResponses&& r) {
-            {
-              std::lock_guard<std::mutex> guard(responses_mtx);
-              auto [it, ok] = http_responses.emplace(id, r);
-              if (!ok)
-                throw std::bad_alloc();
-            }
-            advance(id);
-            advance(id);
-          };
-          request.http_request_set_id =
-            http_client->submit(std::move(*http_requests), callback);
-          return true;
-        }
+        http_requests = request.attestation->prepare_endorsements(options);
       }
-      catch (std::exception& ex)
+      catch (const std::exception& ex)
       {
         if (options.verbosity > 0)
-          log(fmt::format("  - verification failed: {}", ex.what()));
-        throw std::runtime_error(
-          fmt::format("attestation verification failed: {}", ex.what()));
+          log(fmt::format("  - endorsement preparation failed: {}", ex.what()));
+        throw;
+      }
+
+      if (http_requests)
+      {
+        auto callback = [this, id](HTTPResponses&& r) {
+          {
+            std::lock_guard<std::mutex> guard(responses_mtx);
+            auto [it, ok] = http_responses.emplace(id, r);
+            if (!ok)
+              throw std::bad_alloc();
+          }
+          advance(id);
+          advance(id);
+        };
+        request.http_request_set_id =
+          http_client->submit(std::move(*http_requests), callback);
+        return true;
       }
 
       return false;
@@ -271,7 +272,7 @@ namespace ravl
 
         claims = attestation.verify(options, responses);
       }
-      catch (std::exception& ex)
+      catch (const std::exception& ex)
       {
         throw std::runtime_error(
           fmt::format("attestation verification failed: {}", ex.what()));
