@@ -682,9 +682,8 @@ namespace ravl
         Unique_EVP_PKEY_CTX(const Unique_EVP_PKEY& key) :
           Unique_SSL_OBJECT(EVP_PKEY_CTX_new(key, NULL), EVP_PKEY_CTX_free)
         {}
-        Unique_EVP_PKEY_CTX() :
-          Unique_SSL_OBJECT(
-            EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL), EVP_PKEY_CTX_free)
+        Unique_EVP_PKEY_CTX(int nid) :
+          Unique_SSL_OBJECT(EVP_PKEY_CTX_new_id(nid, NULL), EVP_PKEY_CTX_free)
         {}
       };
 
@@ -721,7 +720,7 @@ namespace ravl
 
           Unique_BN_CTX bn_ctx;
           Unique_EC_GROUP grp(NID_X9_62_prime256v1);
-          EC_POINT* pnt = EC_POINT_new(grp);
+          Unique_EC_POINT pnt(grp);
           CHECK1(EC_POINT_set_affine_coordinates(grp, pnt, x, y, bn_ctx));
           size_t len = EC_POINT_point2oct(
             grp, pnt, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, bn_ctx);
@@ -733,9 +732,8 @@ namespace ravl
             buf.data(),
             buf.size(),
             bn_ctx);
-          EC_POINT_free(pnt);
 
-          EVP_PKEY_CTX* ek_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
+          Unique_EVP_PKEY_CTX ek_ctx(EVP_PKEY_EC);
           OSSL_PARAM params[] = {
             OSSL_PARAM_utf8_string(
               OSSL_PKEY_PARAM_GROUP_NAME,
