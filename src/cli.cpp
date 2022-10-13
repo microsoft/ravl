@@ -1,3 +1,4 @@
+#include <CLI11/CLI11.hpp>
 #include <fstream>
 #include <iostream>
 #include <ravl/options.h>
@@ -6,42 +7,55 @@
 
 int main(int argc, const char** argv)
 {
+  CLI::App app{"ravl"};
+
   try
   {
-    if (argc == 1)
-    {
-      std::cout << "Usage: " << argv[0] << " <filename>\n" << std::endl;
-      return 1;
-    }
-    else
-    {
-      ravl::Options options = {
-        .verbosity = 1, .certificate_verification = {.ignore_time = true}};
+    ravl::Options options = {.verbosity = 1};
 
-      for (int i = 1; i < argc; i++)
+    app.add_option("-v", options.verbosity, "Verbosity");
+    app.add_flag(
+      "-f", options.fresh_endorsements, "Force download of fresh endorsements");
+    app.add_flag(
+      "-r",
+      options.fresh_root_ca_certificate,
+      "Force download of fresh root certificate");
+    app.add_flag(
+      "-e",
+      options.certificate_verification.ignore_time,
+      "Ignore expiry time of certificates");
+
+    app.allow_config_extras(true);
+
+    app.parse(argc, argv);
+
+    for (auto f : app.remaining())
+    {
+      std::ifstream is(f);
+      if (!is.good())
       {
-        std::ifstream is(argv[i]);
-        if (!is.good())
-        {
-          std::cout << "Warning: error opening '" << argv[i] << "', skipping."
-                    << std::endl;
-          continue;
-        }
+        std::cout << "Warning: error opening '" << f << "', skipping."
+                  << std::endl;
+        continue;
+      }
 
-        std::stringstream sstr;
-        sstr << is.rdbuf();
-        auto attestation = ravl::parse_attestation(sstr.str());
+      std::stringstream sstr;
+      sstr << is.rdbuf();
+      auto attestation = ravl::parse_attestation(sstr.str());
 
-        try
-        {
-          auto claims = verify_synchronized(attestation, options);
-        }
-        catch (const std::exception& ex)
-        {
-          std::cout << "Error: " << ex.what() << std::endl;
-        }
+      try
+      {
+        auto claims = verify_synchronized(attestation, options);
+      }
+      catch (const std::exception& ex)
+      {
+        std::cout << "Error: " << ex.what() << std::endl;
       }
     }
+  }
+  catch (const CLI::ParseError& e)
+  {
+    return app.exit(e);
   }
   catch (const std::exception& ex)
   {
