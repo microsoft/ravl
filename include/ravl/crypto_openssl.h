@@ -29,7 +29,7 @@
 #include <string_view>
 #include <vector>
 
-#if OPENSSL_VERSION_MAJOR >= 3
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
 #  include <openssl/core_names.h>
 #  include <openssl/types.h>
 #endif
@@ -659,7 +659,7 @@ namespace ravl
 
         bool operator==(const Unique_EVP_PKEY& other) const
         {
-#if OPENSSL_VERSION_MAJOR >= 3
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
           return EVP_PKEY_eq(*this, other) == 1;
 #else
           return EVP_PKEY_cmp(*this, other) == 1;
@@ -715,7 +715,7 @@ namespace ravl
           Unique_BIGNUM x(&coordinates[0], 32);
           Unique_BIGNUM y(&coordinates[32], 32);
 
-#if OPENSSL_VERSION_MAJOR >= 3
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
           const char* group_name = "prime256v1";
 
           Unique_BN_CTX bn_ctx;
@@ -1298,7 +1298,7 @@ namespace ravl
 
         X509_STORE_CTX_set0_param(store_ctx, param);
 
-#if OPENSSL_VERSION_MAJOR >= 3
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
         X509_STORE_CTX_set_verify_cb(
           store_ctx, [](int ok, X509_STORE_CTX* store_ctx) {
             int ec = X509_STORE_CTX_get_error(store_ctx);
