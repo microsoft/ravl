@@ -416,49 +416,49 @@ namespace ravl
       const Unique_X509& certificate,
       const CertificateValidationOptions& options)
     {
-        using namespace OpenSSL;
+      using namespace OpenSSL;
 
-        Unique_X509_STORE_CTX store_ctx;
-        CHECK1(X509_STORE_CTX_init(store_ctx, store, certificate, NULL));
+      Unique_X509_STORE_CTX store_ctx;
+      CHECK1(X509_STORE_CTX_init(store_ctx, store, certificate, NULL));
 
-        X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
-        X509_VERIFY_PARAM_set_depth(param, INT_MAX);
-        X509_VERIFY_PARAM_set_auth_level(param, 0);
+      X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
+      X509_VERIFY_PARAM_set_depth(param, INT_MAX);
+      X509_VERIFY_PARAM_set_auth_level(param, 0);
 
-        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
-        CHECK1(
-          X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
+      CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
+      CHECK1(
+        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
 
-        if (options.ignore_time)
-        {
+      if (options.ignore_time)
+      {
         CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
-        }
+      }
 
-        if (options.verification_time)
-        {
+      if (options.verification_time)
+      {
         X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
-        }
+      }
 
-        X509_STORE_CTX_set0_param(store_ctx, param);
+      X509_STORE_CTX_set0_param(store_ctx, param);
 
-        int rc = X509_verify_cert(store_ctx);
+      int rc = X509_verify_cert(store_ctx);
 
-        if (rc == 1)
+      if (rc == 1)
         return true;
-        else if (rc == 0)
-        {
+      else if (rc == 0)
+      {
         int err_code = X509_STORE_CTX_get_error(store_ctx);
         const char* err_str = X509_verify_cert_error_string(err_code);
         throw std::runtime_error(fmt::format(
           "certificate not self-signed or signature invalid: {}", err_str));
-        }
-        else
-        {
+      }
+      else
+      {
         unsigned long openssl_err = ERR_get_error();
         char buf[4096];
         ERR_error_string(openssl_err, buf);
         throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
-        }
+      }
     }
   }
 }

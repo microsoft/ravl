@@ -32,6 +32,9 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   list(APPEND RAVL_FLAGS -Wall -pedantic)
+  if(NOT DEFINED SAN)
+    set(SAN on)
+  endif()
 endif()
 
 set(RAVL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -49,7 +52,7 @@ option(OE_TEST_ENCLAVE "enable Open Enclave test enclave (requires Open Enclave 
 option(SGX_TEST_ENCLAVE "enable SGX test enclave (requires Intel SGX SDK)" OFF)
 option(CURL "use libCURL for HTTP requests" ON)
 option(OPENSSL "use OpenSSL as the crypto library" ON)
-option(SAN "enable sanitizers" ON)
+option(SAN "enable sanitizers" OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
