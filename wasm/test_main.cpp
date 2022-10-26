@@ -28,7 +28,7 @@ Options default_options = {
 
 void test_without_endorsements(const std::string& json_att)
 {
-  auto http_client = std::make_shared<AsynchronousHTTPClient>();
+  auto http_client = std::make_shared<AsynchronousHTTPClient>(0, 5, true);
   auto att_tracker = std::make_shared<AttestationRequestTracker>();
 
   auto att_without = parse_attestation(json_att);
@@ -59,10 +59,10 @@ void test_without_endorsements(const std::string& json_att)
 
 void test_synchronized(const std::string& json_att)
 {
-  auto http_client = std::make_shared<AsynchronousHTTPClient>();
+  auto http_client = std::make_shared<AsynchronousHTTPClient>(0, 5, true);
   auto att_tracker = std::make_shared<AttestationRequestTracker>();
   auto att = parse_attestation(json_att);
-  auto claims = verify(att, default_options, http_client);
+  auto claims = verify_synchronized(att, default_options, http_client);
   printf("with endorsements: %d\n", claims != nullptr);
 }
 

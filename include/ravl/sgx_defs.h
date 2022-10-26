@@ -183,7 +183,8 @@ namespace ravl
       char* qe_identity;
       uint32_t qe_identity_size;
     };
-    EXPECT_SIZE(sgx_ql_qve_collateral_t, 92);
+    EXPECT_SIZE(
+      sgx_ql_qve_collateral_t, 7 * sizeof(void*) + 9 * sizeof(uint32_t));
 
 #pragma pack(pop)
 

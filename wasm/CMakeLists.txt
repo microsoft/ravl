@@ -8,15 +8,14 @@ project(ravl LANGUAGES CXX C ASM)
 
 cmake_minimum_required(VERSION 3.14)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_VISIBILITY_PRESET default)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 0)
+
 
 set(RAVL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(RAVL_SRC_DIR ${RAVL_DIR}/src)
-
-option(OE "enable Open Enclave" ON)
-option(SGX "enable SGX" ON)
-option(SEV_SNP "enable SEV/SNP" ON)
-option(TESTS "enable testing" ON)
-option(PROFILE "enable profiling" OFF)
 
 if(NOT DEFINED ENV{EMSDK})
   message(FATAL_ERROR "This build requires empscripten, but the EMSDK environment variable is not defined.")
@@ -26,8 +25,8 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/openssl)
   message(FATAL_ERROR "This build requires an emscripten build of OpenSSL, see ../openssl.sh")
 endif()
 
-set(RAVL_SRC ${RAVL_SRC_DIR}/ravl.cpp)
-set(RAVL_INCLUDE ${RAVL_DIR}/3rdparty ${RAVL_DIR}/include ${RAVL_SRC_DIR})
+set(RAVL_SRC ${RAVL_SRC_DIR}/ravl.cpp ${RAVL_SRC_DIR}/attestation.cpp)
+set(RAVL_INCLUDE ${RAVL_DIR}/3rdparty ${RAVL_DIR}/include)
 set(RAVL_DEFS)
 set(RAVL_LIB_DEPS)
 set(RAVL_LIB_DIRS)
@@ -42,23 +41,9 @@ list(APPEND RAVL_LIB_DEPS crypto)
 list(APPEND RAVL_INCLUDE ${CMAKE_BINARY_DIR}/openssl/include)
 list(APPEND RAVL_LIB_DIRS ${CMAKE_BINARY_DIR}/openssl)
 
-if (SGX)
-  list(APPEND RAVL_DEFS HAVE_SGX)
-  list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/sgx.cpp)
-endif()
-
-if (OE)
-  list(APPEND RAVL_DEFS HAVE_OPEN_ENCLAVE)
-  list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/oe.cpp)
-endif()
-
-if (SEV_SNP)
-  list(APPEND RAVL_DEFS HAVE_SEV_SNP)
-  list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/sev_snp.cpp)
-endif()
-
 list(APPEND RAVL_SRC ${RAVL_SRC_DIR}/http_client.cpp http_client_fetch.cpp)
 
+list(APPEND RAVL_DEFS RAVL_LIBRARY_BUILD)
 
 set(CMAKE_EXECUTABLE_SUFFIX_CXX .html)
 add_executable(ravl ${RAVL_SRC} test_main.cpp)

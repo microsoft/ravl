@@ -17,7 +17,11 @@
 
 namespace ravl
 {
-  HTTPResponse HTTPRequest::execute(size_t request_timeout, bool verbose)
+  HTTPResponse SynchronousHTTPClient::execute_synchronous(
+    const HTTPRequest& request,
+    size_t timeout,
+    size_t max_attempts,
+    bool verbose)
   {
     throw std::runtime_error("synchronous fetch not supported");
   }
@@ -212,6 +216,13 @@ namespace ravl
       return is_complete_unlocked(id);
     }
 
+    void erase(const HTTPRequestSetId& id)
+    {
+      std::lock_guard<std::mutex> guard(mtx);
+      requests.erase(id);
+      responses.erase(id);
+    }
+
   protected:
     mutable std::mutex mtx;
 
@@ -229,7 +240,7 @@ namespace ravl
   };
 
   AsynchronousHTTPClient::AsynchronousHTTPClient(
-    size_t request_timeout, bool verbose)
+    size_t request_timeout, size_t max_attempts, bool verbose)
   {
     implementation = new FetchTracker(request_timeout, verbose);
   }
@@ -249,5 +260,10 @@ namespace ravl
   bool AsynchronousHTTPClient::is_complete(const HTTPRequestSetId& id) const
   {
     return static_cast<FetchTracker*>(implementation)->is_complete(id);
+  }
+
+  void AsynchronousHTTPClient::erase(const HTTPRequestSetId& id)
+  {
+    static_cast<FetchTracker*>(implementation)->erase(id);
   }
 }
