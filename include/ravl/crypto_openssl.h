@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "crypto_options.h"
-
 #include <cstring>
 #include <memory>
 #include <openssl/asn1.h>
@@ -40,14 +38,10 @@ namespace ravl
   {
     namespace OpenSSL
     {
-      /*
-       * Generic OpenSSL error handling
-       */
-
       class asn1_format_exception : public std::runtime_error
       {
       public:
-        asn1_format_exception(std::string detail) :
+        asn1_format_exception(const std::string& detail) :
           std::runtime_error("incorrectly formatted ASN.1 structure: " + detail)
         {}
         virtual ~asn1_format_exception() = default;
@@ -56,14 +50,10 @@ namespace ravl
       /// Returns the error string from an error code
       inline std::string error_string(int ec)
       {
-        // ERR_error_string doesn't really expect the code could actually be
-        // zero and uses the `static char buf[256]` which is NOT cleaned nor
-        // checked if it has changed. So we use ERR_error_string_n directly.
         if (ec)
         {
           std::string err(256, '\0');
           ERR_error_string_n((unsigned long)ec, err.data(), err.size());
-          // Remove any trailing NULs before returning
           err.resize(std::strlen(err.c_str()));
           return err;
         }
@@ -85,11 +75,7 @@ namespace ravl
       }
 
       /// Throws if rc is 0 and has error
-      inline void
-#ifdef _DEBUG
-        __attribute__((noinline))
-#endif
-        CHECK0(int rc)
+      inline void CHECK0(int rc)
       {
         unsigned long ec = ERR_get_error();
         if (rc == 0 && ec != 0)
@@ -100,11 +86,7 @@ namespace ravl
       }
 
       /// Throws if ptr is null
-      inline void
-#ifdef _DEBUG
-        __attribute__((noinline))
-#endif
-        CHECKNULL(void* ptr)
+      inline void CHECKNULL(void* ptr)
       {
         if (ptr == NULL)
         {
@@ -113,13 +95,6 @@ namespace ravl
             std::string("OpenSSL error: missing object: ") + error_string(ec));
         }
       }
-
-      /*
-       * Unique pointer wrappers for SSL objects, with SSL' specific
-       * constructors and destructors. Some objects need special functionality,
-       * others are just wrappers around the same template interface
-       * Unique_SSL_OBJECT.
-       */
 
       /// Generic template interface for different types of objects below.
       template <class T, T* (*CTOR)(), void (*DTOR)(T*)>
@@ -1153,225 +1128,6 @@ namespace ravl
       protected:
         const EVP_MD* md = NULL;
       };
-
-      inline std::string to_base64(const std::span<const uint8_t>& bytes)
-      {
-        Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO());
-
-        BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
-        BIO_set_close(bio_chain, BIO_CLOSE);
-        int n = BIO_write(bio_chain, bytes.data(), bytes.size());
-        BIO_flush(bio_chain);
-
-        if (n < 0)
-          throw std::runtime_error("base64 encoding error");
-
-        return bio_chain.to_string();
-      }
-
-      inline std::vector<uint8_t> from_base64(const std::string& b64)
-      {
-        Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO(b64));
-
-        std::vector<uint8_t> out(b64.size());
-        BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
-        BIO_set_close(bio_chain, BIO_CLOSE);
-        int n = BIO_read(bio_chain, out.data(), b64.size());
-
-        if (n < 0)
-          throw std::runtime_error("base64 decoding error");
-
-        out.resize(n);
-
-        return out;
-      }
-
-      inline std::vector<uint8_t> sha256(
-        const std::span<const uint8_t>& message)
-      {
-        Unique_EVP_MD_CTX ctx;
-        ctx.init(EVP_sha256());
-        ctx.update(message);
-        return ctx.final();
-      }
-
-      inline std::vector<uint8_t> sha384(
-        const std::span<const uint8_t>& message)
-      {
-        Unique_EVP_MD_CTX ctx;
-        ctx.init(EVP_sha384());
-        ctx.update(message);
-        return ctx.final();
-      }
-
-      inline std::vector<uint8_t> sha512(
-        const std::span<const uint8_t>& message)
-      {
-        Unique_EVP_MD_CTX ctx;
-        ctx.init(EVP_sha512());
-        ctx.update(message);
-        return ctx.final();
-      }
-
-      inline bool verify_certificate(
-        const Unique_X509_STORE& store,
-        const Unique_X509& certificate,
-        const CertificateValidationOptions& options)
-      {
-        Unique_X509_STORE_CTX store_ctx;
-        CHECK1(X509_STORE_CTX_init(store_ctx, store, certificate, NULL));
-
-        X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
-        X509_VERIFY_PARAM_set_depth(param, INT_MAX);
-        X509_VERIFY_PARAM_set_auth_level(param, 0);
-
-        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
-        CHECK1(
-          X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
-
-        if (options.ignore_time)
-        {
-          CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
-        }
-
-        if (options.verification_time)
-        {
-          X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
-        }
-
-        X509_STORE_CTX_set0_param(store_ctx, param);
-
-        int rc = X509_verify_cert(store_ctx);
-
-        if (rc == 1)
-          return true;
-        else if (rc == 0)
-        {
-          int err_code = X509_STORE_CTX_get_error(store_ctx);
-          const char* err_str = X509_verify_cert_error_string(err_code);
-          throw std::runtime_error(fmt::format(
-            "certificate not self-signed or signature invalid: {}", err_str));
-        }
-        else
-        {
-          unsigned long openssl_err = ERR_get_error();
-          char buf[4096];
-          ERR_error_string(openssl_err, buf);
-          throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
-        }
-      }
-
-      inline Unique_STACK_OF_X509 verify_certificate_chain(
-        const Unique_X509_STORE& store,
-        const Unique_STACK_OF_X509& stack,
-        const CertificateValidationOptions& options,
-        bool trusted_root = false)
-      {
-        if (stack.size() <= 1)
-          throw std::runtime_error("certificate stack too small");
-
-        if (trusted_root)
-          CHECK1(X509_STORE_add_cert(store, stack.back()));
-
-        auto target = stack.at(0);
-
-        Unique_X509_STORE_CTX store_ctx;
-        CHECK1(X509_STORE_CTX_init(store_ctx, store, target, stack));
-
-        X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
-        X509_VERIFY_PARAM_set_depth(param, INT_MAX);
-        X509_VERIFY_PARAM_set_auth_level(param, 0);
-
-        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
-        CHECK1(
-          X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
-
-        if (options.ignore_time)
-        {
-          CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
-        }
-
-        if (options.verification_time)
-        {
-          X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
-        }
-
-        X509_STORE_CTX_set0_param(store_ctx, param);
-
-#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
-        X509_STORE_CTX_set_verify_cb(
-          store_ctx, [](int ok, X509_STORE_CTX* store_ctx) {
-            int ec = X509_STORE_CTX_get_error(store_ctx);
-            if (ec == X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER)
-            {
-              // OpenSSL 3.0 with X509_V_FLAG_X509_STRICT requires an authority
-              // key id, but, for instance, AMD SEV/SNP VCEK certificates don't
-              // come with one, so we skip this check.
-              return 1;
-            }
-            return ok;
-          });
-#endif
-
-        int rc = X509_verify_cert(store_ctx);
-
-        if (rc == 1)
-          return Unique_STACK_OF_X509(store_ctx);
-        else if (rc == 0)
-        {
-          int err_code = X509_STORE_CTX_get_error(store_ctx);
-          int depth = X509_STORE_CTX_get_error_depth(store_ctx);
-          const char* err_str = X509_verify_cert_error_string(err_code);
-          throw std::runtime_error(fmt::format(
-            "certificate chain verification failed: {} (depth: {})",
-            err_str,
-            depth));
-          throw std::runtime_error("no chain or signature invalid");
-        }
-        else
-        {
-          unsigned long openssl_err = ERR_get_error();
-          char buf[4096];
-          ERR_error_string(openssl_err, buf);
-          throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
-        }
-      }
-
-      inline std::vector<uint8_t> convert_signature_to_der(
-        const std::span<const uint8_t>& r,
-        const std::span<const uint8_t>& s,
-        bool little_endian = false)
-      {
-        if (r.size() != s.size())
-          throw std::runtime_error("incompatible signature coordinates");
-
-        Unique_ECDSA_SIG sig;
-        {
-          Unique_BIGNUM r_bn;
-          Unique_BIGNUM s_bn;
-          if (little_endian)
-          {
-            CHECKNULL(BN_lebin2bn(r.data(), r.size(), r_bn));
-            CHECKNULL(BN_lebin2bn(s.data(), s.size(), s_bn));
-          }
-          else
-          {
-            CHECKNULL(BN_bin2bn(r.data(), r.size(), r_bn));
-            CHECKNULL(BN_bin2bn(s.data(), s.size(), s_bn));
-          }
-          CHECK1(ECDSA_SIG_set0(sig, r_bn, s_bn));
-          r_bn.release(); // r, s now owned by the signature object
-          s_bn.release();
-        }
-        int der_size = i2d_ECDSA_SIG(sig, NULL);
-        CHECK0(der_size);
-        if (der_size < 0)
-          throw std::runtime_error("not an ECDSA signature");
-        std::vector<uint8_t> res(der_size);
-        auto der_sig_buf = res.data();
-        CHECK0(i2d_ECDSA_SIG(sig, &der_sig_buf));
-        return res;
-      }
     }
   }
 }
