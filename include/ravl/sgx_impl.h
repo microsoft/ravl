@@ -176,8 +176,7 @@ namespace ravl
     {
       using namespace crypto;
 
-      Unique_EVP_MD_CTX mdctx;
-      mdctx.init(EVP_sha256());
+      Unique_EVP_MD_CTX mdctx(EVP_sha256());
       for (const auto& input : inputs)
         if (input.size() > 0)
           mdctx.update(input);

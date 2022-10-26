@@ -1104,11 +1104,10 @@ namespace ravl
       struct Unique_EVP_MD_CTX
         : public Unique_SSL_OBJECT<EVP_MD_CTX, EVP_MD_CTX_new, EVP_MD_CTX_free>
       {
-        using Unique_SSL_OBJECT::Unique_SSL_OBJECT;
-
-        void init(const EVP_MD* md)
+        Unique_EVP_MD_CTX(const EVP_MD* md) :
+          Unique_SSL_OBJECT(EVP_MD_CTX_new(), EVP_MD_CTX_free)
         {
-          this->md = md;
+          md_size = EVP_MD_size(md);
           CHECK1(EVP_DigestInit_ex(p.get(), md, NULL));
         }
 
@@ -1119,14 +1118,14 @@ namespace ravl
 
         std::vector<uint8_t> final()
         {
-          std::vector<uint8_t> r(EVP_MD_size(md));
+          std::vector<uint8_t> r(md_size);
           unsigned sz = r.size();
           CHECK1(EVP_DigestFinal_ex(p.get(), r.data(), &sz));
           return r;
         }
 
       protected:
-        const EVP_MD* md = NULL;
+        int md_size = 0;
       };
     }
   }

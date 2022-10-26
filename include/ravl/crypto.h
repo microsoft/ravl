@@ -389,24 +389,21 @@ namespace ravl
 
     inline std::vector<uint8_t> sha256(const std::span<const uint8_t>& message)
     {
-      Unique_EVP_MD_CTX ctx;
-      ctx.init(EVP_sha256());
+      Unique_EVP_MD_CTX ctx(EVP_sha256());
       ctx.update(message);
       return ctx.final();
     }
 
     inline std::vector<uint8_t> sha384(const std::span<const uint8_t>& message)
     {
-      Unique_EVP_MD_CTX ctx;
-      ctx.init(EVP_sha384());
+      Unique_EVP_MD_CTX ctx(EVP_sha384());
       ctx.update(message);
       return ctx.final();
     }
 
     inline std::vector<uint8_t> sha512(const std::span<const uint8_t>& message)
     {
-      Unique_EVP_MD_CTX ctx;
-      ctx.init(EVP_sha512());
+      Unique_EVP_MD_CTX ctx(EVP_sha512());
       ctx.update(message);
       return ctx.final();
     }
