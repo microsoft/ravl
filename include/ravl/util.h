@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+
 #pragma once
 
 #include <chrono>
@@ -113,7 +114,7 @@ namespace ravl
   }
 
   template <typename T>
-  T from_hex_t(const std::string& s, bool little_endian = true)
+  inline T from_hex_t(const std::string& s, bool little_endian = true)
   {
     if (s.size() % 2)
       throw std::runtime_error("odd number of hex digits");
@@ -135,13 +136,30 @@ namespace ravl
     return r;
   }
 
+  inline std::vector<uint8_t> vec_from_hex(const std::string& s)
+  {
+    if (s.size() % 2)
+      throw std::runtime_error("odd number of hex digits");
+
+    std::vector<uint8_t> r;
+    r.reserve(s.size() / 2);
+    for (size_t i = 0; i < s.size() / 2; i++)
+    {
+      uint8_t t;
+      if (sscanf(s.c_str() + 2 * i, "%02hhx", &t) != 1)
+        return {};
+      r.push_back(t);
+    }
+    return r;
+  }
+
   // From http://www.geekhideout.com/urlcode.shtml
   inline char from_hex(char ch)
   {
     return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
   }
 
-  inline std::string to_hex(const std::span<uint8_t>& v)
+  inline std::string to_hex(const std::span<const uint8_t>& v)
   {
     std::string r;
     r.reserve(v.size() * 2);

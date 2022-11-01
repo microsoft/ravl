@@ -54,6 +54,9 @@ namespace ravl
     /// Function to up-cast generic claims
     template <typename T>
     static std::shared_ptr<T> get(std::shared_ptr<ravl::Claims>& claims);
+
+    /// Conversion to JSON format
+    virtual std::string to_json() const = 0;
   };
 
   /// Attestation class

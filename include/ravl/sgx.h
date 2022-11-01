@@ -70,16 +70,20 @@ namespace ravl
       std::array<uint8_t, 32> basename;
       ReportBody report_body;
 
-      struct
+      struct SignatureData
       {
         std::array<uint8_t, 32 * 2> signature;
         std::array<uint8_t, 32 * 2> attest_pub_key;
         ReportBody qe_report;
         std::array<uint8_t, 32 * 2> qe_report_sig;
         std::vector<uint8_t> auth_data;
-      } signature_data;
+      };
+
+      SignatureData signature_data;
 
       Endorsements endorsements;
+
+      virtual std::string to_json() const override;
     };
 
     class Attestation : public ravl::Attestation

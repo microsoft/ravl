@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <chrono>
+#include <nlohmann/json.hpp>
 #include <ravl/attestation.h>
 #include <ravl/http_client.h>
 #include <ravl/oe.h>
@@ -10,10 +11,10 @@
 #include <ravl/sev_snp.h>
 #include <ravl/sgx.h>
 #include <ravl/util.h>
+#include <string>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
-#include <string>
 
 using namespace ravl;
 
@@ -357,4 +358,47 @@ TEST_CASE("SEV/SNP asynchronous")
     to_hex(sc->measurement) ==
     "ede826880a4e1a41898a96810efb09f2070513abb355e89652564cd18f1d43a7a031d1ff54"
     "490dbd61687de101b66ed1");
+}
+
+TEST_CASE("Open Enclave CoffeeLake JSON claims")
+{
+  auto att = parse_attestation(oe_coffeelake_attestation);
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(
+    claims = verify_synchronized(att, default_options, http_client));
+
+  auto oec = Claims::get<ravl::oe::Claims>(claims);
+
+  auto s = claims->to_json();
+  auto nj = nlohmann::json::parse(s);
+  REQUIRE(nj.contains("sgx_claims"));
+
+  oec->sgx_claims = nullptr;
+  s = claims->to_json();
+  nj = nlohmann::json::parse(s);
+  REQUIRE(nj.contains("sgx_claims"));
+  REQUIRE(nj["sgx_claims"] == nullptr);
+}
+
+TEST_CASE("SEV/SNP JSON claims")
+{
+  auto att = parse_attestation(sev_snp_quote);
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(
+    claims = verify_synchronized(att, default_options, http_client));
+
+  auto sc = Claims::get<ravl::sev_snp::Claims>(claims);
+
+  auto s = claims->to_json();
+  auto nj = nlohmann::json::parse(s);
+  REQUIRE(nj.contains("endorsements"));
+  REQUIRE(nj["endorsements"].contains("vcek_issuer_chain_crl"));
+
+  sc->endorsements.vcek_issuer_chain_crl = std::nullopt;
+  s = claims->to_json();
+  nj = nlohmann::json::parse(s);
+  REQUIRE(nj.contains("endorsements"));
+  REQUIRE(nj["endorsements"].contains("vcek_issuer_chain_crl"));
+
+  REQUIRE(nj["endorsements"]["vcek_issuer_chain_crl"] == nullptr);
 }

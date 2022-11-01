@@ -26,6 +26,8 @@ namespace ravl
 
       std::shared_ptr<sgx::Claims> sgx_claims;
       std::map<std::string, std::vector<uint8_t>> custom_claims;
+
+      virtual std::string to_json() const override;
     };
 
     class Attestation : public ravl::Attestation

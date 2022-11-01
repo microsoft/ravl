@@ -73,6 +73,8 @@ namespace ravl
       Signature signature;
 
       Endorsements endorsements;
+
+      virtual std::string to_json() const override;
     };
 
     class Attestation : public ravl::Attestation

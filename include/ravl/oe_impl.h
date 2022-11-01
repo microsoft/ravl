@@ -4,6 +4,8 @@
 #pragma once
 
 #include "http_client.h"
+#include "json_conversions.h"
+#include "nlohmann/json.hpp"
 #include "oe.h"
 #include "sgx.h"
 #include "sgx_defs.h"
@@ -124,11 +126,40 @@ namespace ravl
 
 #endif
 
+namespace nlohmann
+{
+  template <>
+  struct nlohmann::adl_serializer<std::shared_ptr<ravl::sgx::Claims>>
+  {
+    inline static void to_json(
+      nlohmann::json& j, const std::shared_ptr<ravl::sgx::Claims>& x)
+    {
+      if (!x)
+        j = nullptr;
+      else
+        j = *x;
+    }
+
+    inline static void from_json(
+      const nlohmann::json& j, std::shared_ptr<ravl::sgx::Claims>& x)
+    {
+      x = std::make_shared<ravl::sgx::Claims>(j.get<ravl::sgx::Claims>());
+    }
+  };
+}
+
 namespace ravl
 {
   namespace oe
   {
     static constexpr oe_uuid_t sgx_remote_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Claims, sgx_claims, custom_claims);
+
+    RAVL_VISIBILITY std::string Claims::to_json() const
+    {
+      return nlohmann::json(*this).dump();
+    }
 
 #ifndef RAVL_USE_OE_VERIFIER
     RAVL_VISIBILITY std::

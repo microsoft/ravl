@@ -5,10 +5,12 @@
 
 #include "crypto.h"
 #include "http_client.h"
+#include "json_conversions.h"
 #include "sev_snp.h"
 #include "util.h"
 #include "visibility.h"
 
+#include <nlohmann/json.hpp>
 #include <span>
 
 #define FMT_HEADER_ONLY
@@ -179,6 +181,54 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         MSG_VMRK_RSP,
         MSG_TYPE_MAX
       };
+    }
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+      Claims::TCBVersion, boot_loader, tee, snp, microcode);
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Claims::Signature, r, s);
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+      Endorsements,
+      root_ca_certificate,
+      vcek_certificate_chain,
+      vcek_issuer_chain_crl);
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+      Claims,
+      version,
+      guest_svn,
+      policy,
+      family_id,
+      image_id,
+      vmpl,
+      signature_algo,
+      platform_version,
+      platform_info,
+      flags,
+      report_data,
+      measurement,
+      host_data,
+      id_key_digest,
+      author_key_digest,
+      report_id,
+      report_id_ma,
+      reported_tcb,
+      chip_id,
+      committed_tcb,
+      current_minor,
+      current_build,
+      current_major,
+      committed_build,
+      committed_minor,
+      committed_major,
+      launch_tcb,
+      signature,
+      endorsements);
+
+    RAVL_VISIBILITY std::string Claims::to_json() const
+    {
+      return nlohmann::json(*this).dump();
     }
 
 #define SEV_GUEST_IOC_TYPE 'S'
@@ -453,7 +503,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         throw std::runtime_error("Root CA certificate not saved");
       r->endorsements.root_ca_certificate = e.root_ca_certificate->pem();
       r->endorsements.vcek_certificate_chain = e.vcek_certificate_chain.pem();
-      if (r->endorsements.vcek_issuer_chain_crl)
+      if (e.vcek_issuer_chain_crl)
         r->endorsements.vcek_issuer_chain_crl = e.vcek_issuer_chain_crl->pem();
 
       return r;
@@ -527,6 +577,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
       if (!ark_certificate.has_public_key(
             snp::amd_milan_root_signing_public_key))
+        // TODO: add option to bypass this check
         throw std::runtime_error(
           "Root CA certificate does not have the expected AMD Milan public "
           "key");

@@ -5,12 +5,12 @@
 
 #include "crypto.h"
 #include "http_client.h"
+#include "json_conversions.h"
 #include "sgx.h"
 #include "sgx_defs.h"
 #include "util.h"
 #include "visibility.h"
 
-#include <nlohmann/json.hpp>
 #include <vector>
 
 #define FMT_HEADER_ONLY
@@ -38,6 +38,63 @@ namespace ravl
 
     static const char* datetime_format = "%Y-%m-%dT%H:%M:%SZ";
     static const char* sgx_earliest_tcb_crl_date = "2017-03-17T00:00:00Z";
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Claims::ReportAttributes, flags, xfrm);
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+      Claims::ReportBody,
+      cpu_svn,
+      misc_select,
+      isv_ext_prod_id,
+      attributes,
+      mr_enclave,
+      mr_signer,
+      config_id,
+      isv_prod_id,
+      isv_svn,
+      config_svn,
+      isv_family_id,
+      report_data);
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+      Claims::SignatureData,
+      signature,
+      attest_pub_key,
+      qe_report,
+      qe_report_sig,
+      auth_data);
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+      Endorsements,
+      major_version,
+      minor_version,
+      tee_type,
+      root_ca,
+      pck_crl_issuer_chain,
+      root_ca_crl,
+      pck_crl,
+      tcb_info_issuer_chain,
+      tcb_info,
+      qe_identity_issuer_chain,
+      qe_identity);
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+      Claims,
+      version,
+      sign_type,
+      epid_group_id,
+      qe_svn,
+      pce_svn,
+      xeid,
+      basename,
+      report_body,
+      signature_data,
+      endorsements);
+
+    RAVL_VISIBILITY std::string Claims::to_json() const
+    {
+      return nlohmann::json(*this).dump();
+    }
 
     class QL_QVE_Collateral // ~ sgx_ql_qve_collateral_t
     {
