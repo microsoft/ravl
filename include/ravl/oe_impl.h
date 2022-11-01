@@ -129,10 +129,10 @@ namespace ravl
 namespace nlohmann
 {
   template <>
-  struct nlohmann::adl_serializer<std::shared_ptr<ravl::sgx::Claims>>
+  struct adl_serializer<std::shared_ptr<ravl::sgx::Claims>>
   {
     inline static void to_json(
-      nlohmann::json& j, const std::shared_ptr<ravl::sgx::Claims>& x)
+      json& j, const std::shared_ptr<ravl::sgx::Claims>& x)
     {
       if (!x)
         j = nullptr;
@@ -141,7 +141,7 @@ namespace nlohmann
     }
 
     inline static void from_json(
-      const nlohmann::json& j, std::shared_ptr<ravl::sgx::Claims>& x)
+      const json& j, std::shared_ptr<ravl::sgx::Claims>& x)
     {
       x = std::make_shared<ravl::sgx::Claims>(j.get<ravl::sgx::Claims>());
     }
