@@ -575,9 +575,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       auto ask_certificate = chain.at(1);
       auto ark_certificate = chain.at(2);
 
-      if (!ark_certificate.has_public_key(
-            snp::amd_milan_root_signing_public_key))
-        // TODO: add option to bypass this check
+      if (
+        options.check_root_certificate_manufacturer_key &&
+        !ark_certificate.has_public_key(snp::amd_milan_root_signing_public_key))
         throw std::runtime_error(
           "Root CA certificate does not have the expected AMD Milan public "
           "key");

@@ -29,6 +29,10 @@ namespace ravl
     /// fresh_root_ca_certificate; PEM format)
     std::optional<std::string> root_ca_certificate = std::nullopt;
 
+    /// Check that the root CA certificate has the platform manufacturer's
+    /// public key (intended for debugging only).
+    bool check_root_certificate_manufacturer_key = true;
+
     /// Optional URL template for cached Intel SGX endorsements (DCAP)
     std::optional<std::string> sgx_endorsement_cache_url_template =
       std::nullopt;

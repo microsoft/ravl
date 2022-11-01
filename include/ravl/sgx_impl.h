@@ -747,7 +747,9 @@ namespace ravl
 
       Unique_EVP_PKEY tcb_issuer_leaf_pubkey(tcb_issuer_leaf);
 
-      if (!tcb_issuer_root.has_public_key(intel_root_public_key_pem))
+      if (
+        options.check_root_certificate_manufacturer_key &&
+        !tcb_issuer_root.has_public_key(intel_root_public_key_pem))
         throw std::runtime_error(
           "TCB issuer root certificate does not use the expected Intel SGX "
           "public key");
@@ -787,7 +789,9 @@ namespace ravl
 
       Unique_EVP_PKEY qe_id_issuer_leaf_pubkey(qe_id_issuer_leaf);
 
-      if (!qe_id_issuer_root.has_public_key(intel_root_public_key_pem))
+      if (
+        options.check_root_certificate_manufacturer_key &&
+        !qe_id_issuer_root.has_public_key(intel_root_public_key_pem))
         throw std::runtime_error(
           "QE identity issuer root certificate does not use the expected Intel "
           "SGX public key");
@@ -1229,7 +1233,9 @@ namespace ravl
         throw std::runtime_error(
           "PCK certificate does not have expected common name");
 
-      if (!pck_root.has_public_key(intel_root_public_key_pem))
+      if (
+        options.check_root_certificate_manufacturer_key &&
+        !pck_root.has_public_key(intel_root_public_key_pem))
         throw std::runtime_error(
           "root CA certificate does not have the expected Intel SGX public "
           "key");
