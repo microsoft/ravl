@@ -67,6 +67,7 @@ namespace ravl
       inline void CHECK1(int rc)
       {
         unsigned long ec = ERR_get_error();
+        ERR_clear_error();
         if (rc != 1 && ec != 0)
         {
           throw std::runtime_error(
@@ -78,6 +79,7 @@ namespace ravl
       inline void CHECK0(int rc)
       {
         unsigned long ec = ERR_get_error();
+        ERR_clear_error();
         if (rc == 0 && ec != 0)
         {
           throw std::runtime_error(
@@ -91,6 +93,7 @@ namespace ravl
         if (ptr == NULL)
         {
           unsigned long ec = ERR_get_error();
+          ERR_clear_error();
           throw std::runtime_error(
             std::string("OpenSSL error: missing object: ") + error_string(ec));
         }

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstring>
 #include <memory>
+#include <openssl/err.h>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -320,6 +321,7 @@ namespace ravl
         unsigned long openssl_err = ERR_get_error();
         char buf[4096];
         ERR_error_string(openssl_err, buf);
+        ERR_clear_error();
         throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
       }
     }
@@ -454,6 +456,7 @@ namespace ravl
         unsigned long openssl_err = ERR_get_error();
         char buf[4096];
         ERR_error_string(openssl_err, buf);
+        ERR_clear_error();
         throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
       }
     }
