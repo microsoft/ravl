@@ -235,7 +235,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 #define SEV_SNP_GUEST_MSG_REPORT \
   _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct snp::GuestRequest)
 
-    RAVL_VISIBILITY crypto::Unique_X509 parse_root_cert(
+    RAVL_VISIBILITY crypto::UqX509 parse_root_cert(
       const std::vector<HTTPResponse>& url_responses)
     {
       using namespace crypto;
@@ -243,7 +243,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       if (url_responses.size() != 1)
         throw std::runtime_error("collateral download request set failed");
       auto issuer_chain = url_responses[0].body;
-      Unique_STACK_OF_X509 stack(issuer_chain);
+      UqStackOfX509 stack(issuer_chain);
       if (stack.size() != 2)
         throw std::runtime_error("unexpected size of issuer certificate chain");
       return stack.at(1).pem();
@@ -266,9 +266,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
     struct EndorsementsEtc
     {
-      std::optional<crypto::Unique_X509> root_ca_certificate;
-      crypto::Unique_STACK_OF_X509 vcek_certificate_chain;
-      std::optional<crypto::Unique_X509_CRL> vcek_issuer_chain_crl;
+      std::optional<crypto::UqX509> root_ca_certificate;
+      crypto::UqStackOfX509 vcek_certificate_chain;
+      std::optional<crypto::UqX509_CRL> vcek_issuer_chain_crl;
 
       std::string to_string(uint32_t verbosity, size_t indent = 0) const
       {
@@ -278,9 +278,9 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         ss << std::string(indent + 2, ' ') << "- Endorsements" << std::endl;
 
         std::string ins(indent + 4, ' ');
-        const Unique_STACK_OF_X509& st = vcek_certificate_chain;
+        const UqStackOfX509& st = vcek_certificate_chain;
         ss << ins << "- VCEK certificate chain:" << std::endl;
-        ss << st.to_string_short(indent + 4) << std::endl;
+        ss << to_string_short(st, indent + 4) << std::endl;
 
         if (verbosity > 1)
           ss << ins << "  - PEM:" << std::endl
@@ -291,8 +291,8 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
           ss << "none";
         else
         {
-          const Unique_X509_CRL& vcek_issuer_crl = *vcek_issuer_chain_crl;
-          ss << std::endl << vcek_issuer_crl.to_string_short(indent + 6);
+          const UqX509_CRL& vcek_issuer_crl = *vcek_issuer_chain_crl;
+          ss << std::endl << to_string_short(vcek_issuer_crl, indent + 6);
           if (verbosity > 1)
             ss << std::endl
                << ins << "  - PEM:" << std::endl
@@ -325,7 +325,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
           throw std::runtime_error("unexpected number of URL responses");
 
         auto issuer_chain = http_responses[0].body;
-        Unique_STACK_OF_X509 stack(issuer_chain);
+        UqStackOfX509 stack(issuer_chain);
 
         if (stack.size() != 3)
           throw std::runtime_error(
@@ -337,7 +337,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         auto issuer_crl_der = std::span<const uint8_t>(
           (uint8_t*)http_responses[1].body.data(),
           http_responses[1].body.size());
-        auto q = Unique_X509_CRL(issuer_crl_der, false);
+        auto q = UqX509_CRL(issuer_crl_der, false);
         r.vcek_issuer_chain_crl = std::move(q);
       }
       else
@@ -347,7 +347,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
 
         auto issuer_chain = http_responses[1].body;
 
-        Unique_STACK_OF_X509 stack(issuer_chain);
+        UqStackOfX509 stack(issuer_chain);
         if (stack.size() != 2)
           throw std::runtime_error(
             "unexpected size of issuer certificate chain");
@@ -355,13 +355,13 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         r.root_ca_certificate = stack.at(1);
 
         auto vcek_cert = http_responses[0].body;
-        stack.insert(0, Unique_X509(Unique_BIO(vcek_cert), false));
+        stack.insert(0, UqX509(UqBIO(vcek_cert), false));
         r.vcek_certificate_chain = std::move(stack);
 
         auto issuer_crl_der = std::span<const uint8_t>(
           (uint8_t*)http_responses[2].body.data(),
           http_responses[2].body.size());
-        r.vcek_issuer_chain_crl = Unique_X509_CRL(issuer_crl_der, false);
+        r.vcek_issuer_chain_crl = UqX509_CRL(issuer_crl_der, false);
       }
 
       return r;
@@ -415,7 +415,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
     }
 
     RAVL_VISIBILITY bool verify_signature(
-      const crypto::Unique_EVP_PKEY& pkey,
+      crypto::UqEVP_PKEY& pkey,
       const std::span<const uint8_t>& message,
       const snp::Signature& signature)
     {
@@ -524,7 +524,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         *reinterpret_cast<const ravl::sev_snp::snp::Attestation*>(
           evidence.data());
 
-      Unique_X509_STORE store;
+      UqX509_STORE store;
 
       EndorsementsEtc endorsements_etc;
 
@@ -533,7 +533,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         endorsements_etc.vcek_certificate_chain = vec2str(endorsements);
         if (options.root_ca_certificate)
           endorsements_etc.root_ca_certificate =
-            Unique_X509(*options.root_ca_certificate);
+            UqX509(*options.root_ca_certificate);
         else if (options.fresh_root_ca_certificate)
           endorsements_etc.root_ca_certificate =
             parse_root_cert(*http_responses);
@@ -591,7 +591,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
       std::span msg(
         evidence.data(), evidence.size() - sizeof(snp_att.signature));
 
-      Unique_EVP_PKEY vcek_pk(vcek_certificate);
+      UqEVP_PKEY vcek_pk(vcek_certificate);
       if (!verify_signature(vcek_pk, msg, snp_att.signature))
         throw std::runtime_error("invalid VCEK signature");
 
@@ -606,7 +606,7 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
   RAVL_VISIBILITY std::shared_ptr<sev_snp::Claims> Claims::get(
     std::shared_ptr<Claims>& claims)
   {
-    if (claims->source != Source::SEV_SNP)
+    if (!claims || claims->source != Source::SEV_SNP)
       throw std::runtime_error("invalid request for SEV/SNP claims conversion");
     return static_pointer_cast<sev_snp::Claims>(claims);
   }

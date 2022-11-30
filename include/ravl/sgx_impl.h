@@ -172,39 +172,39 @@ namespace ravl
         {
           using namespace crypto;
 
-          Unique_X509_CRL root_crl(root_ca_crl);
+          UqX509_CRL root_crl(root_ca_crl);
           ss << ins << "- Root CA CRL:" << std::endl;
-          ss << root_crl.to_string_short(indent + 4) << std::endl;
+          ss << to_string_short(root_crl, indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << fmt::format("  - PEM:\n{}", indentate(root_ca_crl, 8))
                << std::endl;
 
-          Unique_STACK_OF_X509 st(pck_crl_issuer_chain);
+          UqStackOfX509 st(pck_crl_issuer_chain);
           ss << ins << "- PCK CRL issuer chain:" << std::endl;
-          ss << st.to_string_short(indent + 4) << std::endl;
+          ss << to_string_short(st, indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
                << indentate(pck_crl_issuer_chain, 8) << std::endl;
 
-          Unique_X509_CRL crl(pck_crl);
+          UqX509_CRL crl(pck_crl);
           ss << ins << "- PCK CRL:" << std::endl;
-          ss << crl.to_string_short(indent + 4) << std::endl;
+          ss << to_string_short(crl, indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
                << indentate(pck_crl, 8) << std::endl;
 
-          Unique_STACK_OF_X509 ist(tcb_info_issuer_chain);
+          UqStackOfX509 ist(tcb_info_issuer_chain);
           ss << ins << "- TCB info issuer chain:" << std::endl;
-          ss << ist.to_string_short(indent + 4) << std::endl;
+          ss << to_string_short(ist, indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
                << indentate(tcb_info_issuer_chain, 8) << std::endl;
 
           ss << ins << fmt::format("- TCB info: {}", tcb_info) << std::endl;
 
-          Unique_STACK_OF_X509 qist(qe_identity_issuer_chain);
+          UqStackOfX509 qist(qe_identity_issuer_chain);
           ss << ins << "- QE identity issuer chain:" << std::endl;
-          ss << qist.to_string_short(indent + 4) << std::endl;
+          ss << to_string_short(qist, indent + 4) << std::endl;
           if (verbosity > 1)
             ss << ins << "  - PEM:" << std::endl
                << indentate(qe_identity_issuer_chain, 8) << std::endl;
@@ -216,7 +216,7 @@ namespace ravl
     };
 
     RAVL_VISIBILITY bool verify_signature(
-      const crypto::Unique_EVP_PKEY& pkey,
+      crypto::UqEVP_PKEY& pkey,
       const std::span<const uint8_t>& message,
       const std::span<const uint8_t>& signature)
     {
@@ -227,13 +227,21 @@ namespace ravl
       return pkey.verify_signature(hash, sig_der);
     }
 
+    RAVL_VISIBILITY bool verify_signature(
+      crypto::UqEVP_PKEY&& pkey,
+      const std::span<const uint8_t>& message,
+      const std::span<const uint8_t>& signature)
+    {
+      return verify_signature(pkey, message, signature);
+    }
+
     RAVL_VISIBILITY bool verify_hash_match(
       const std::vector<std::span<const uint8_t>>& inputs,
       const std::span<const uint8_t>& expected)
     {
       using namespace crypto;
 
-      Unique_EVP_MD_CTX mdctx(EVP_sha256());
+      UqEVP_MD_CTX mdctx(EVP_sha256());
       for (const auto& input : inputs)
         if (input.size() > 0)
           mdctx.update(input);
@@ -463,7 +471,7 @@ namespace ravl
       const std::string sgx_ext_configuration_smt_enabled_oid =
         sgx_ext_configuration_oid + ".3";
 
-      CertificateExtension(const crypto::Unique_X509& certificate)
+      CertificateExtension(const crypto::UqX509& certificate)
       {
         // See
         // https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.4.pdf
@@ -480,7 +488,7 @@ namespace ravl
           throw std::runtime_error(
             "PCK certificate does not contain the SGX extension");
 
-        Unique_ASN1_SEQUENCE seq(X509_EXTENSION_get_data(sgx_ext));
+        UqASN1_SEQUENCE seq(X509_EXTENSION_get_data(sgx_ext));
 
         unsigned seq_sz = seq.size();
         if (
@@ -550,7 +558,7 @@ namespace ravl
 
     protected:
       TCB get_tcb_ext(
-        const crypto::Unique_ASN1_SEQUENCE& seq,
+        const crypto::UqASN1_SEQUENCE& seq,
         int index,
         const std::string& expected_oid)
       {
@@ -605,7 +613,7 @@ namespace ravl
     RAVL_VISIBILITY TCBLevel verify_tcb_json(
       const std::string& tcb_info,
       const CertificateExtension& pck_ext,
-      const crypto::Unique_EVP_PKEY& signer_pubkey)
+      crypto::UqEVP_PKEY& signer_pubkey)
     {
       TCBLevel platform_tcb_level = {};
 
@@ -723,7 +731,7 @@ namespace ravl
       const std::string& tcb_info_issuer_chain,
       const std::string& tcb_info,
       const CertificateExtension& pck_ext,
-      const crypto::Unique_X509_STORE& store,
+      crypto::UqX509_STORE& store,
       const Options& options,
       size_t indent = 0)
     {
@@ -745,7 +753,7 @@ namespace ravl
       auto tcb_issuer_leaf = tcb_issuer_chain.front();
       auto tcb_issuer_root = tcb_issuer_chain.back();
 
-      Unique_EVP_PKEY tcb_issuer_leaf_pubkey(tcb_issuer_leaf);
+      UqEVP_PKEY tcb_issuer_leaf_pubkey(tcb_issuer_leaf);
 
       if (
         options.check_root_certificate_manufacturer_key &&
@@ -761,7 +769,7 @@ namespace ravl
       const std::string& qe_identity_issuer_chain,
       const std::string& qe_identity,
       const std::span<const uint8_t>& qe_report_body_s,
-      const crypto::Unique_X509_STORE& store,
+      crypto::UqX509_STORE& store,
       const Options& options,
       size_t indent = 0)
     {
@@ -787,7 +795,7 @@ namespace ravl
       auto qe_id_issuer_root =
         qe_id_issuer_chain.at(qe_id_issuer_chain.size() - 1);
 
-      Unique_EVP_PKEY qe_id_issuer_leaf_pubkey(qe_id_issuer_leaf);
+      UqEVP_PKEY qe_id_issuer_leaf_pubkey(qe_id_issuer_leaf);
 
       if (
         options.check_root_certificate_manufacturer_key &&
@@ -1059,7 +1067,7 @@ namespace ravl
 
         auto pck_pem =
           extract_pem_certificate(signature_data.certification_data);
-        Unique_X509 pck_leaf(Unique_BIO(pck_pem), true);
+        UqX509 pck_leaf(UqBIO(pck_pem), true);
         CertificateExtension pck_ext(pck_leaf);
 
         bool have_pid = pck_ext.platform_instance_id &&
@@ -1147,7 +1155,7 @@ namespace ravl
 
       size_t indent = 0;
 
-      Unique_X509_STORE store;
+      UqX509_STORE store;
 
       std::shared_ptr<QL_QVE_Collateral> collateral;
 
@@ -1194,13 +1202,13 @@ namespace ravl
         if (trusted_root)
         {
           log("- Root CA Certificate (auto-trusted):", indent + 2);
-          log(pck_crl_issuer_chain.back().to_string_short(indent + 4));
+          log(to_string_short(pck_crl_issuer_chain.back(), indent + 4));
         }
         else
         {
-          Unique_X509 root(collateral->root_ca, true);
+          UqX509 root(collateral->root_ca, true);
           log("- Root CA Certificate:", indent + 2);
-          log(root.to_string_short(indent + 4));
+          log(to_string_short(root, indent + 4));
         }
         if (options.verbosity > 1)
         {
@@ -1222,7 +1230,7 @@ namespace ravl
         signature_data.certification_data,
         store,
         options.certificate_verification,
-        trusted_root,
+        false,
         options.verbosity,
         indent + 4);
 
@@ -1244,7 +1252,7 @@ namespace ravl
         throw std::runtime_error("root certificate is not from a CA");
 
       // Verify QE and quote signatures and the authentication hash
-      Unique_EVP_PKEY qe_leaf_pubkey(pck_leaf);
+      UqEVP_PKEY qe_leaf_pubkey(pck_leaf);
 
       bool qe_sig_ok = verify_signature(
         qe_leaf_pubkey, signature_data.report, signature_data.report_signature);
@@ -1252,7 +1260,7 @@ namespace ravl
         throw std::runtime_error("QE signature verification failed");
 
       bool quote_sig_ok = verify_signature(
-        Unique_EVP_PKEY_P256(signature_data.public_key),
+        UqEVP_PKEY_P256(signature_data.public_key),
         quote,
         signature_data.quote_signature);
       if (!quote_sig_ok)
@@ -1297,7 +1305,7 @@ namespace ravl
   RAVL_VISIBILITY std::shared_ptr<sgx::Claims> Claims::get(
     std::shared_ptr<ravl::Claims>& claims)
   {
-    if (claims->source != Source::SGX)
+    if (!claims || claims->source != Source::SGX)
       throw std::runtime_error("invalid request for SGX claims conversion");
     return static_pointer_cast<sgx::Claims>(claims);
   }

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "http_client.h"
 #include "request_tracker.h"
 #include "visibility.h"
 
@@ -105,31 +106,38 @@ namespace ravl
 
     RequestID advance(RequestID id, Request& req)
     {
-      switch (req.state)
+      try
       {
-        case RequestState::ERROR:
-          throw std::runtime_error("verification request failed");
-        case RequestState::SUBMITTED:
-          req.state = RequestState::WAITING_FOR_ENDORSEMENTS;
-          if (!prepare_endorsements(id, req))
-          {
+        switch (req.state)
+        {
+          case RequestState::ERROR:
+            throw std::runtime_error("verification request failed");
+          case RequestState::SUBMITTED:
+            req.state = RequestState::WAITING_FOR_ENDORSEMENTS;
+            if (!prepare_endorsements(id, req))
+            {
+              req.state = RequestState::HAVE_ENDORSEMENTS;
+              advance(id, req);
+            }
+            break;
+          case RequestState::WAITING_FOR_ENDORSEMENTS:
             req.state = RequestState::HAVE_ENDORSEMENTS;
-            advance(id, req);
-          }
-          break;
-        case RequestState::WAITING_FOR_ENDORSEMENTS:
-          req.state = RequestState::HAVE_ENDORSEMENTS;
-          break;
-        case RequestState::HAVE_ENDORSEMENTS:
-          verify(id, req);
-          req.state = RequestState::FINISHED;
-          if (req.callback)
-            req.callback(id);
-          break;
-        case RequestState::FINISHED:
-          break;
-        default:
-          throw std::runtime_error("unexpected request state");
+            break;
+          case RequestState::HAVE_ENDORSEMENTS:
+            verify(id, req);
+            req.state = RequestState::FINISHED;
+            if (req.callback)
+              req.callback(id);
+            break;
+          case RequestState::FINISHED:
+            break;
+          default:
+            throw std::runtime_error("unexpected request state");
+        }
+      }
+      catch (std::exception ex)
+      {
+        req.state = RequestState::ERROR;
       }
 
       return req.state;
@@ -138,6 +146,12 @@ namespace ravl
     bool finished(RequestID id) const
     {
       return state(id) == RequestState::FINISHED;
+    }
+
+    bool completed(RequestID id) const
+    {
+      return state(id) == RequestState::FINISHED ||
+        state(id) == RequestState::ERROR;
     }
 
     std::shared_ptr<Claims> result(RequestID id) const
@@ -317,6 +331,12 @@ namespace ravl
   {
     return static_cast<AttestationRequestTrackerImpl*>(implementation)
       ->finished(id);
+  }
+
+  RAVL_VISIBILITY bool AttestationRequestTracker::completed(RequestID id) const
+  {
+    return static_cast<AttestationRequestTrackerImpl*>(implementation)
+      ->completed(id);
   }
 
   RAVL_VISIBILITY std::shared_ptr<Claims> AttestationRequestTracker::result(

@@ -47,8 +47,13 @@ namespace ravl
     /// Advance the state of an async verification request.
     RequestID advance(RequestID id);
 
-    /// Predicate indicating completion of an async verification request.
+    /// Predicate indicating successful completion of an async verification
+    /// request.
     bool finished(RequestID id) const;
+
+    /// Predicate indicating completion (successful or failed) of an async
+    /// verification request.
+    bool completed(RequestID id) const;
 
     /// Get the result of an async verification request.
     std::shared_ptr<Claims> result(RequestID id) const;

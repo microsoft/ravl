@@ -298,9 +298,14 @@ TEST_CASE("SGX CoffeeLake asynchronous")
         opts.http_timeout, opts.http_max_attempts, opts.verbosity > 0));
 
     std::thread t([&tracker, id, &claims]() {
-      while (!tracker.finished(id))
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      claims = tracker.result(id);
+      try
+      {
+        while (!tracker.completed(id))
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        claims = tracker.result(id);
+      }
+      catch (...)
+      {}
     });
 
     t.join();
@@ -337,9 +342,14 @@ TEST_CASE("SEV/SNP asynchronous")
         opts.http_timeout, opts.http_max_attempts, opts.verbosity > 0));
 
     std::thread t([&tracker, id, &claims]() {
-      while (!tracker.finished(id))
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      claims = tracker.result(id);
+      try
+      {
+        while (!tracker.completed(id))
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        claims = tracker.result(id);
+      }
+      catch (...)
+      {}
     });
 
     t.join();

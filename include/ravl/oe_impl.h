@@ -606,7 +606,7 @@ namespace ravl
   RAVL_VISIBILITY std::shared_ptr<ravl::oe::Claims> Claims::get(
     std::shared_ptr<Claims>& claims)
   {
-    if (claims->source != Source::OPEN_ENCLAVE)
+    if (!claims || claims->source != Source::OPEN_ENCLAVE)
       throw std::runtime_error(
         "invalid request for Open Enclave claims conversion");
     return static_pointer_cast<oe::Claims>(claims);

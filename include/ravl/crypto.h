@@ -21,7 +21,7 @@
 #include <fmt/format.h>
 
 #ifdef RAVL_HAVE_OPENSSL
-#  include "crypto_openssl.h"
+#  include "ravl/openssl.hpp"
 #else
 #  error No crypto library available.
 #endif
@@ -30,21 +30,20 @@ namespace ravl
 {
   namespace crypto
   {
-    using Unique_STACK_OF_X509 = OpenSSL::Unique_STACK_OF_X509;
-    using Unique_BIO = OpenSSL::Unique_BIO;
-    using Unique_X509 = OpenSSL::Unique_X509;
-    using Unique_X509_STORE = OpenSSL::Unique_X509_STORE;
-    using Unique_X509_CRL = OpenSSL::Unique_X509_CRL;
-    using Unique_EVP_PKEY = OpenSSL::Unique_EVP_PKEY;
-    using Unique_EVP_MD_CTX = OpenSSL::Unique_EVP_MD_CTX;
-    using Unique_ASN1_SEQUENCE = OpenSSL::Unique_ASN1_SEQUENCE;
-    using Unique_EVP_PKEY_P256 = OpenSSL::Unique_EVP_PKEY_P256;
-    using Unique_EVP_PKEY_CTX = OpenSSL::Unique_EVP_PKEY_CTX;
-    using Unique_ASN1_OCTET_STRING = OpenSSL::Unique_ASN1_OCTET_STRING;
+    using UqBIO = OpenSSL::UqBIO;
+    using UqX509 = OpenSSL::UqX509;
+    using UqX509_CRL = OpenSSL::UqX509_CRL;
+    using UqX509_REVOKED = OpenSSL::UqX509_REVOKED;
+    using UqStackOfX509 = OpenSSL::UqStackOfX509;
+    using UqASN1_OCTET_STRING = OpenSSL::UqASN1_OCTET_STRING;
+    using UqX509_STORE = OpenSSL::UqX509_STORE;
+    using UqEVP_MD_CTX = OpenSSL::UqEVP_MD_CTX;
+    using UqEVP_PKEY = OpenSSL::UqEVP_PKEY;
+    using UqASN1_SEQUENCE = OpenSSL::UqASN1_SEQUENCE;
 
     inline std::string to_base64(const std::span<const uint8_t>& bytes)
     {
-      Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO());
+      UqBIO bio_chain((UqBIO(BIO_f_base64())), UqBIO());
 
       BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
       BIO_set_close(bio_chain, BIO_CLOSE);
@@ -54,12 +53,12 @@ namespace ravl
       if (n < 0)
         throw std::runtime_error("base64 encoding error");
 
-      return bio_chain.to_string();
+      return (std::string)bio_chain;
     }
 
     inline std::vector<uint8_t> from_base64(const std::string& b64)
     {
-      Unique_BIO bio_chain((Unique_BIO(BIO_f_base64())), Unique_BIO(b64));
+      UqBIO bio_chain((UqBIO(BIO_f_base64())), UqBIO(b64));
 
       std::vector<uint8_t> out(b64.size());
       BIO_set_flags(bio_chain, BIO_FLAGS_BASE64_NO_NL);
@@ -74,6 +73,58 @@ namespace ravl
       return out;
     }
 
+    struct UqEVP_PKEY_P256 : public OpenSSL::UqEVP_PKEY
+    {
+#ifdef HAVE_SPAN
+      UqEVP_PKEY_P256(const std::span<const uint8_t>& coordinates) :
+        UqEVP_PKEY()
+      {
+        using namespace OpenSSL;
+
+        UqBIGNUM x(&coordinates[0], 32);
+        UqBIGNUM y(&coordinates[32], 32);
+
+#  if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
+        const char* group_name = "prime256v1";
+
+        UqBN_CTX bn_ctx;
+        UqEC_GROUP grp(NID_X9_62_prime256v1);
+        UqEC_POINT pnt(grp);
+        CHECK1(EC_POINT_set_affine_coordinates(grp, pnt, x, y, bn_ctx));
+        size_t len = EC_POINT_point2oct(
+          grp, pnt, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, bn_ctx);
+        std::vector<unsigned char> buf(len);
+        EC_POINT_point2oct(
+          grp,
+          pnt,
+          POINT_CONVERSION_UNCOMPRESSED,
+          buf.data(),
+          buf.size(),
+          bn_ctx);
+
+        UqEVP_PKEY_CTX ek_ctx(EVP_PKEY_EC);
+        OSSL_PARAM params[] = {
+          OSSL_PARAM_utf8_string(
+            OSSL_PKEY_PARAM_GROUP_NAME, (void*)group_name, strlen(group_name)),
+          OSSL_PARAM_octet_string(
+            OSSL_PKEY_PARAM_PUB_KEY, buf.data(), buf.size()),
+          OSSL_PARAM_END};
+
+        EVP_PKEY* epk = NULL;
+        CHECK1(EVP_PKEY_fromdata_init(ek_ctx));
+        CHECK1(EVP_PKEY_fromdata(ek_ctx, &epk, EVP_PKEY_PUBLIC_KEY, params));
+
+        p.reset(epk);
+#  else
+        EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+        CHECK1(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y));
+        CHECK1(EVP_PKEY_set1_EC_KEY(*this, ec_key));
+        EC_KEY_free(ec_key);
+#  endif
+      }
+#endif
+    };
+
     inline std::vector<uint8_t> convert_signature_to_der(
       const std::span<const uint8_t>& r,
       const std::span<const uint8_t>& s,
@@ -84,24 +135,7 @@ namespace ravl
       if (r.size() != s.size())
         throw std::runtime_error("incompatible signature coordinates");
 
-      Unique_ECDSA_SIG sig;
-      {
-        Unique_BIGNUM r_bn;
-        Unique_BIGNUM s_bn;
-        if (little_endian)
-        {
-          CHECKNULL(BN_lebin2bn(r.data(), r.size(), r_bn));
-          CHECKNULL(BN_lebin2bn(s.data(), s.size(), s_bn));
-        }
-        else
-        {
-          CHECKNULL(BN_bin2bn(r.data(), r.size(), r_bn));
-          CHECKNULL(BN_bin2bn(s.data(), s.size(), s_bn));
-        }
-        CHECK1(ECDSA_SIG_set0(sig, r_bn, s_bn));
-        r_bn.release(); // r, s now owned by the signature object
-        s_bn.release();
-      }
+      UqECDSA_SIG sig(UqBIGNUM(r, little_endian), UqBIGNUM(s, little_endian));
       int der_size = i2d_ECDSA_SIG(sig, NULL);
       CHECK0(der_size);
       if (der_size < 0)
@@ -171,19 +205,19 @@ namespace ravl
       return r;
     }
 
-    inline Unique_STACK_OF_X509 load_certificates(
+    inline UqStackOfX509 load_certificates(
       const std::vector<std::string>& certificates)
     {
       // Leaf tracking/searching may be unnecessary as the chains should
       // be in order anyways.
 
-      Unique_STACK_OF_X509 r;
-      X509* leaf = NULL;
+      UqStackOfX509 r;
+      UqX509 leaf;
 
       for (const auto& cert : certificates)
       {
-        Unique_BIO cert_bio(cert.data(), cert.size());
-        Unique_X509 x509(cert_bio, true);
+        UqBIO cert_bio(cert.data(), cert.size());
+        UqX509 x509(cert_bio, true);
 
         if (!x509.is_ca())
         {
@@ -203,8 +237,8 @@ namespace ravl
         // that isn't used as an authority.
         for (size_t ii = 0; ii < r.size(); ii++)
         {
-          const auto& i = r.at(ii);
-          Unique_ASN1_OCTET_STRING subj_key_id(X509_get0_subject_key_id(i));
+          const UqX509& c_i = r.at(ii);
+          UqASN1_OCTET_STRING subj_key_id(c_i.subject_key_id());
 
           bool i_appears_as_ca = false;
           for (size_t ji = 0; ji < r.size(); ji++)
@@ -212,12 +246,11 @@ namespace ravl
             if (ii == ji)
               continue;
 
-            const auto& j = r.at(ji);
+            const auto& c_j = r.at(ji);
 
-            if (j.has_authority_key_id())
+            if (c_j.has_authority_key_id())
             {
-              Unique_ASN1_OCTET_STRING auth_key_id(
-                X509_get0_authority_key_id(j));
+              UqASN1_OCTET_STRING auth_key_id(c_j.authority_key_id());
 
               if (subj_key_id == auth_key_id)
               {
@@ -232,7 +265,7 @@ namespace ravl
             if (leaf)
               throw std::runtime_error("multiple leaves in certificate set");
 
-            leaf = i;
+            leaf = c_i;
           }
         }
       }
@@ -247,9 +280,9 @@ namespace ravl
       return r;
     }
 
-    inline Unique_STACK_OF_X509 verify_certificate_chain(
-      const Unique_X509_STORE& store,
-      const Unique_STACK_OF_X509& stack,
+    inline UqStackOfX509 verify_certificate_chain(
+      UqX509_STORE& store,
+      UqStackOfX509& stack,
       const CertificateValidationOptions& options,
       bool trusted_root = false)
     {
@@ -258,77 +291,126 @@ namespace ravl
       if (stack.size() <= 1)
         throw std::runtime_error("certificate stack too small");
 
+      // for (size_t i = 0; i < stack.size(); i++)
+      //   std::cout << "[" << i << "]: " << (std::string)stack.at(i) <<
+      //   std::endl;
+
       if (trusted_root)
-        CHECK1(X509_STORE_add_cert(store, stack.back()));
+        store.add(stack.back());
 
-      auto target = stack.at(0);
+      UqX509 target = stack.at(0);
 
-      Unique_X509_STORE_CTX store_ctx;
-      CHECK1(X509_STORE_CTX_init(store_ctx, store, target, stack));
+      UqX509_STORE_CTX store_ctx;
+      store_ctx.init(store, target, stack);
 
-      X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
-      X509_VERIFY_PARAM_set_depth(param, INT_MAX);
-      X509_VERIFY_PARAM_set_auth_level(param, 0);
+      UqX509_VERIFY_PARAM param;
+      param.set_depth(INT_MAX);
+      param.set_auth_level(0);
 
-      CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
-      CHECK1(
-        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
+      CHECK1(param.set_flags(X509_V_FLAG_X509_STRICT));
+      CHECK1(param.set_flags(X509_V_FLAG_CHECK_SS_SIGNATURE));
+      CHECK1(param.set_flags(X509_V_FLAG_PARTIAL_CHAIN));
 
       if (options.ignore_time)
-      {
-        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
-      }
+        CHECK1(param.set_flags(X509_V_FLAG_NO_CHECK_TIME));
 
       if (options.verification_time)
-      {
-        X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
-      }
+        store_ctx.set_time(0, *options.verification_time);
 
-      X509_STORE_CTX_set0_param(store_ctx, param);
+      store_ctx.set_param(std::move(param));
 
 #if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
-      X509_STORE_CTX_set_verify_cb(
-        store_ctx, [](int ok, X509_STORE_CTX* store_ctx) {
-          int ec = X509_STORE_CTX_get_error(store_ctx);
-          if (ec == X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER)
-          {
-            // OpenSSL 3.0 with X509_V_FLAG_X509_STRICT requires an authority
-            // key id, but, for instance, AMD SEV/SNP VCEK certificates don't
-            // come with one, so we skip this check.
-            return 1;
-          }
-          return ok;
-        });
+      store_ctx.set_verify_cb([](int ok, X509_STORE_CTX* store_ctx) {
+        int ec = store_ctx.get_error();
+        if (ec == X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER)
+        {
+          // OpenSSL 3.0 with X509_V_FLAG_X509_STRICT requires an authority
+          // key id, but, for instance, AMD SEV/SNP VCEK certificates don't
+          // come with one, so we skip this check.
+          return 1;
+        }
+        return ok;
+      });
 #endif
 
-      int rc = X509_verify_cert(store_ctx);
+      int rc = store_ctx.verify_cert();
 
       if (rc == 1)
-        return Unique_STACK_OF_X509(store_ctx);
+        return UqStackOfX509(store_ctx);
       else if (rc == 0)
       {
-        int err_code = X509_STORE_CTX_get_error(store_ctx);
+        int ec = X509_STORE_CTX_get_error(store_ctx);
         int depth = X509_STORE_CTX_get_error_depth(store_ctx);
-        const char* err_str = X509_verify_cert_error_string(err_code);
+        const char* err_str = X509_verify_cert_error_string(ec);
         throw std::runtime_error(fmt::format(
           "certificate chain verification failed: {} (depth: {})",
           err_str,
           depth));
-        throw std::runtime_error("no chain or signature invalid");
       }
       else
       {
-        unsigned long openssl_err = ERR_get_error();
-        char buf[4096];
-        ERR_error_string(openssl_err, buf);
-        ERR_clear_error();
-        throw std::runtime_error(fmt::format("OpenSSL error: {}", buf));
+        throw std::runtime_error(OpenSSL::get_errors(ERR_get_error()));
       }
     }
 
-    inline Unique_STACK_OF_X509 verify_certificate_chain(
-      const Unique_STACK_OF_X509& stack,
-      const Unique_X509_STORE& store,
+    inline std::string to_string_short(const UqX509_CRL& crl, size_t indent = 0)
+    {
+      std::stringstream ss;
+      auto rkd = crl.revoked();
+      std::string ins(indent, ' ');
+      ss << ins << "- Issuer: " << crl.issuer() << std::endl;
+      ss << ins << "- Revoked serial numbers: ";
+      if (rkd.size() == 0)
+        ss << "none";
+      ss << std::endl;
+      for (size_t i = 0; i < rkd.size(); i++)
+      {
+        ss << ins << "- " << rkd.at(i).serialNumber() << std::endl;
+      }
+      ss << ins << "- Last update: " << (std::string)crl.last_update()
+         << "  Next update: " << (std::string)crl.next_update();
+      return ss.str();
+    }
+
+    inline std::string to_string_short(const UqX509& x509, size_t indent = 0)
+    {
+      std::string ins(indent, ' ');
+      std::stringstream ss;
+
+      ss << ins << "- Subject: " << (std::string)x509.get_subject_name()
+         << std::endl;
+
+      std::string subj_key_id =
+        x509.has_subject_key_id() ? (std::string)x509.subject_key_id() : "none";
+      ss << ins << "  - Subject key ID: " << subj_key_id << std::endl;
+
+      std::string auth_key_id = x509.has_authority_key_id() ?
+        (std::string)x509.authority_key_id() :
+        "none";
+      ss << ins << "  - Authority key ID: " << auth_key_id << std::endl;
+
+      ss << ins << "  - CA: " << (x509.is_ca() ? "yes" : "no") << std::endl;
+      ss << ins << "  - Not before: " << (std::string)x509.not_before()
+         << "  Not after: " << (std::string)x509.not_after();
+      return ss.str();
+    }
+
+    inline std::string to_string_short(
+      const UqStackOfX509& stack, size_t indent = 0)
+    {
+      std::stringstream ss;
+      for (size_t i = 0; i < stack.size(); i++)
+      {
+        if (i != 0)
+          ss << std::endl;
+        ss << to_string_short(stack.at(i), indent + 2);
+      }
+      return ss.str();
+    }
+
+    inline UqStackOfX509 verify_certificate_chain(
+      UqStackOfX509& stack,
+      UqX509_STORE& store,
       const CertificateValidationOptions& options,
       bool trusted_root = false,
       uint8_t verbosity = 0,
@@ -339,7 +421,7 @@ namespace ravl
         for (size_t i = 0; i < stack.size(); i++)
         {
           auto c = stack.at(i);
-          log(c.to_string_short(indent));
+          log(to_string_short(c, indent));
           if (verbosity > 1)
           {
             log(std::string(indent + 2, ' ') + "- PEM:");
@@ -376,71 +458,81 @@ namespace ravl
       }
     }
 
-    inline Unique_STACK_OF_X509 verify_certificate_chain(
+    inline UqStackOfX509 verify_certificate_chain(
       const std::string& pem,
-      const Unique_X509_STORE& store,
+      UqX509_STORE& store,
       const CertificateValidationOptions& options,
       bool trusted_root = false,
       uint8_t verbosity = 0,
       size_t indent = 0)
     {
-      std::span<const uint8_t> span((uint8_t*)pem.data(), pem.size());
+      UqStackOfX509 stack(pem);
       return verify_certificate_chain(
-        span, store, options, trusted_root, verbosity, indent);
+        stack, store, options, trusted_root, verbosity, indent);
     }
+
+#ifdef HAVE_SPAN
+    inline UqStackOfX509 verify_certificate_chain(
+      const std::span<const uint8_t>& pem,
+      UqX509_STORE& store,
+      const CertificateValidationOptions& options,
+      bool trusted_root = false,
+      uint8_t verbosity = 0,
+      size_t indent = 0)
+    {
+      UqStackOfX509 stack(pem);
+      return verify_certificate_chain(
+        stack, store, options, trusted_root, verbosity, indent);
+    }
+#endif
 
     inline std::vector<uint8_t> sha256(const std::span<const uint8_t>& message)
     {
-      Unique_EVP_MD_CTX ctx(EVP_sha256());
+      UqEVP_MD_CTX ctx(EVP_sha256());
       ctx.update(message);
       return ctx.final();
     }
 
     inline std::vector<uint8_t> sha384(const std::span<const uint8_t>& message)
     {
-      Unique_EVP_MD_CTX ctx(EVP_sha384());
+      UqEVP_MD_CTX ctx(EVP_sha384());
       ctx.update(message);
       return ctx.final();
     }
 
     inline std::vector<uint8_t> sha512(const std::span<const uint8_t>& message)
     {
-      Unique_EVP_MD_CTX ctx(EVP_sha512());
+      UqEVP_MD_CTX ctx(EVP_sha512());
       ctx.update(message);
       return ctx.final();
     }
 
     inline bool verify_certificate(
-      const Unique_X509_STORE& store,
-      const Unique_X509& certificate,
+      UqX509_STORE& store,
+      UqX509& certificate,
       const CertificateValidationOptions& options)
     {
       using namespace OpenSSL;
 
-      Unique_X509_STORE_CTX store_ctx;
-      CHECK1(X509_STORE_CTX_init(store_ctx, store, certificate, NULL));
+      UqX509_STORE_CTX store_ctx;
+      store_ctx.init(store, certificate);
 
-      X509_VERIFY_PARAM* param = X509_VERIFY_PARAM_new();
-      X509_VERIFY_PARAM_set_depth(param, INT_MAX);
-      X509_VERIFY_PARAM_set_auth_level(param, 0);
+      UqX509_VERIFY_PARAM param;
+      param.set_depth(INT_MAX);
+      param.set_auth_level(0);
 
-      CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_X509_STRICT));
-      CHECK1(
-        X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_CHECK_SS_SIGNATURE));
+      CHECK1(param.set_flags(X509_V_FLAG_X509_STRICT));
+      CHECK1(param.set_flags(X509_V_FLAG_CHECK_SS_SIGNATURE));
 
       if (options.ignore_time)
-      {
-        CHECK1(X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME));
-      }
+        CHECK1(param.set_flags(X509_V_FLAG_NO_CHECK_TIME));
 
       if (options.verification_time)
-      {
-        X509_STORE_CTX_set_time(store_ctx, 0, *options.verification_time);
-      }
+        store_ctx.set_time(0, *options.verification_time);
 
-      X509_STORE_CTX_set0_param(store_ctx, param);
+      store_ctx.set_param(std::move(param));
 
-      int rc = X509_verify_cert(store_ctx);
+      int rc = store_ctx.verify_cert();
 
       if (rc == 1)
         return true;
