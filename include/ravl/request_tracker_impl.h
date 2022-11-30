@@ -135,7 +135,7 @@ namespace ravl
             throw std::runtime_error("unexpected request state");
         }
       }
-      catch (std::exception ex)
+      catch (std::exception& ex)
       {
         req.state = RequestState::ERROR;
       }

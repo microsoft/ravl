@@ -270,8 +270,11 @@ namespace OpenSSL
   {
     using UqSSLObject::UqSSLObject;
 
-    UqASN1_INTEGER(ASN1_INTEGER* x) :
-      UqSSLObject::UqSSLObject(x, ASN1_INTEGER_free)
+    explicit UqASN1_INTEGER(
+      ASN1_INTEGER*& x,
+      void (*dtor)(ASN1_INTEGER*) = ASN1_INTEGER_free,
+      bool check_null = true) :
+      UqSSLObject::UqSSLObject(ASN1_INTEGER_dup(x), dtor, check_null)
     {}
 
     void set(long n)
@@ -363,7 +366,10 @@ namespace OpenSSL
 
     friend struct UqStackOfX509_REVOKEDBase;
 
-    explicit UqX509_REVOKED(X509_REVOKED* x) :
+    explicit UqX509_REVOKED(
+      X509_REVOKED*& x,
+      void (*dtor)(X509_REVOKED*) = X509_REVOKED_free,
+      bool check_null = true) :
       UqSSLObject(X509_REVOKED_dup(x), X509_REVOKED_free)
     {}
 
@@ -513,7 +519,10 @@ namespace OpenSSL
       UqSSLObject(X509_EXTENSION_dup(ext.p.get()), X509_EXTENSION_free)
     {}
 
-    explicit UqX509_EXTENSION(X509_EXTENSION* ext) :
+    explicit UqX509_EXTENSION(
+      X509_EXTENSION*& ext,
+      void (*dtor)(X509_EXTENSION*) = X509_EXTENSION_free,
+      bool check_null = true) :
       UqSSLObject(X509_EXTENSION_dup(ext), X509_EXTENSION_free)
     {}
 
@@ -564,7 +573,9 @@ namespace OpenSSL
       p = std::move(other.p);
     }
 
-    explicit UqX509(X509* x) : UqSSLObject(x, X509_free)
+    explicit UqX509(
+      X509*& x, void (*dtor)(X509*) = X509_free, bool check_null = true) :
+      UqSSLObject(x, X509_free, check_null)
     {
       X509_up_ref(p.get());
     }
@@ -1000,7 +1011,7 @@ namespace OpenSSL
     {
       EVP_PKEY* ppkey = NULL;
       CHECK1(EVP_PKEY_keygen(p.get(), &ppkey));
-      return UqEVP_PKEY(ppkey, EVP_PKEY_free);
+      return UqEVP_PKEY(ppkey);
     }
   };
 
@@ -1212,14 +1223,17 @@ namespace OpenSSL
   {
     using UqSSLObject::UqSSLObject;
 
-    UqASN1_TYPE(ASN1_TYPE* t) :
+    explicit UqASN1_TYPE(
+      ASN1_TYPE*&& t,
+      void (*dtor)(ASN1_TYPE*) = ASN1_TYPE_free,
+      bool check_null = true) :
       UqSSLObject(
         [&t]() {
           ASN1_TYPE* n = ASN1_TYPE_new();
           CHECK1(ASN1_TYPE_set1(n, t->type, t->value.ptr));
           return n;
         }(),
-        ASN1_TYPE_free)
+        dtor)
     {}
 
     UqASN1_TYPE(int type, void* value) :
@@ -1437,14 +1451,14 @@ namespace OpenSSL
   class UqStackOf : public UqSSLObject<STACK_OF(Q), nullptr, nullptr>
   {
   public:
-    UqStackOf<T, Q>() = default;
-    virtual ~UqStackOf<T, Q>()
+    UqStackOf(){};
+    virtual ~UqStackOf()
     {
       dtor(*this);
     }
-    UqStackOf<T, Q>(STACK_OF(Q) * ptr) : UqSSLObject(ptr, dtor) {}
-    UqStackOf<T, Q>(UqStackOf<T, Q>&& x) : UqSSLObject(std::move(x.p)) {}
-    UqStackOf<T, Q>& operator=(UqStackOf<T, Q>&& other)
+    UqStackOf(STACK_OF(Q) * ptr) : UqSSLObject(ptr, dtor) {}
+    UqStackOf(UqStackOf&& x) : UqSSLObject(std::move(x.p)) {}
+    UqStackOf& operator=(UqStackOf&& other)
     {
       p = std::move(other.p);
       return *this;
@@ -1498,19 +1512,19 @@ namespace OpenSSL
     void dtor();
   };
 
-  template <>
-  class UqStackOf<UqX509, X509>
-    : public UqSSLObject<STACK_OF(X509), sk_X509_new_null, sk_X509_free>
-  {
-  protected:
-    /* clang-format off */
-    int sk_num() { return sk_X509_num(*this); }
-    int sk_insert(X509* x, int i) { return sk_X509_insert(*this, x, i); }
-    X509* sk_value(int i) { return sk_X509_value(*this, i); }
-    int sk_push(X509* x) { return sk_X509_push(*this, x); }
-    void dtor() { sk_X509_pop_free(*this, X509_free); };
-    /* clang-format on */
-  };
+  // template <>
+  // class UqStackOf<UqX509, X509>
+  //   : public UqSSLObject<STACK_OF(X509), sk_X509_new_null, sk_X509_free>
+  // {
+  // protected:
+  //   /* clang-format off */
+  //   int sk_num() { return sk_X509_num(*this); }
+  //   int sk_insert(X509* x, int i) { return sk_X509_insert(*this, x, i); }
+  //   X509* sk_value(int i) { return sk_X509_value(*this, i); }
+  //   int sk_push(X509* x) { return sk_X509_push(*this, x); }
+  //   void dtor() { sk_X509_pop_free(*this, X509_free); };
+  //   /* clang-format on */
+  // };
 
 #define UQSTACKOFBASE(T) \
   struct UqStackOf##T##Base \
@@ -1525,7 +1539,11 @@ namespace OpenSSL
     using UqSSLObject::UqSSLObject; \
     UqStackOf##T##Base() : UqSSLObject(sk_##T##_new_null(), dtor) \
     {} \
-    UqStackOf##T##Base(STACK_OF(T) * ptr) : UqSSLObject(ptr, dtor) \
+    UqStackOf##T##Base( \
+      STACK_OF(T) * &ptr, \
+      void (*dtorarg)(STACK_OF(T) *) = dtor, \
+      bool check_null = true) : \
+      UqSSLObject(ptr, dtorarg) \
     {} \
     UqStackOf##T##Base(UqStackOf##T##Base&& x) : UqSSLObject(std::move(x.p)) \
     {} \
@@ -1587,31 +1605,7 @@ namespace OpenSSL
 #endif
       UqX509_STORE_CTX& ctx) :
       UqStackOfX509Base(X509_STORE_CTX_get1_chain(ctx), dtor)
-    {
-      // for (size_t i = 0; i < size(); i++)
-      //   X509_up_ref(at(i));
-    }
-
-    // UqStackOfX509(const UqStackOfX509& other) :
-    // UqStackOfX509Base(other.p.get())
-    // {
-    //   X509_chain_up_ref(*this);
-    // }
-
-    // UqStackOfX509(UqStackOfX509&& other) :
-    // UqStackOfX509Base(std::move(other))
-    // {}
-
-    // UqStackOfX509& operator=(UqStackOfX509&& other)
-    // {
-    //   p = std::move(other.p);
-    //   return *this;
-    // }
-
-    // explicit UqStackOfX509(STACK_OF(X509) * x) : UqStackOfX509Base(x)
-    // {
-    //   X509_chain_up_ref(*this);
-    // }
+    {}
 
 #ifdef HAVE_SPAN
     UqStackOfX509(const std::span<const uint8_t>& pem) : UqStackOfX509Base()
@@ -1693,7 +1687,7 @@ namespace OpenSSL
 
   inline UqStackOfX509_EXTENSION UqX509_REQ::get_extensions() const
   {
-    return X509_REQ_get_extensions(p.get());
+    return UqStackOfX509_EXTENSION(X509_REQ_get_extensions(p.get()));
   }
 
   inline void UqX509_STORE_CTX::init(
