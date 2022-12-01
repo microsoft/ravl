@@ -1292,8 +1292,7 @@ namespace ravl
         indent + 2);
 
       if (
-        !pck_cert_chain && qe_sig_ok && pk_auth_hash_matches && quote_sig_ok &&
-        qe_id_ok)
+        !(qe_sig_ok && pk_auth_hash_matches && quote_sig_ok && qe_id_ok))
         std::runtime_error("one of the basic properties is not satisfied");
 
       return make_claims(

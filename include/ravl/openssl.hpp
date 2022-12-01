@@ -20,8 +20,6 @@
 #  endif
 #endif
 
-extern "C"
-{
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
@@ -36,10 +34,10 @@ extern "C"
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
-}
 
 #if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
 #  include <openssl/core_names.h>
+#  include <openssl/safestack.h>
 #  include <openssl/types.h>
 #endif
 
@@ -105,6 +103,17 @@ namespace OpenSSL
         "OpenSSL object creation failed because of " +
         get_errors(ERR_get_error()));
   }
+
+  /// Forward declarations
+  struct UqEVP_PKEY;
+  struct UqX509V3_CTX;
+  struct UqASN1_OCTET_STRING;
+  struct UqX509_STORE_CTX;
+  struct UqX509_STORE_CTX;
+  struct UqEVP_PKEY_CTX;
+  class UqStackOfX509;
+  class UqStackOfX509_EXTENSION;
+  class UqStackOfX509_REVOKED;
 
   /// Generic template interface for didtorerent types of objects below.
   template <class T, T* (*CTOR)(), void (*DTOR)(T*)>
@@ -364,7 +373,7 @@ namespace OpenSSL
   {
     using UqSSLObject::UqSSLObject;
 
-    friend struct UqStackOfX509_REVOKEDBase;
+    friend class UqStackOfX509_REVOKED;
 
     explicit UqX509_REVOKED(
       X509_REVOKED*& x,
@@ -386,8 +395,6 @@ namespace OpenSSL
       return r;
     }
   };
-
-  struct UqStackOfX509_REVOKED;
 
   struct UqX509_CRL : public UqSSLObject<X509_CRL, X509_CRL_new, X509_CRL_free>
   {
@@ -503,9 +510,6 @@ namespace OpenSSL
     }
   };
 
-  struct UqEVP_PKEY;
-  struct UqX509V3_CTX;
-
   struct UqX509_EXTENSION : public UqSSLObject<
                               X509_EXTENSION,
                               X509_EXTENSION_new,
@@ -513,7 +517,7 @@ namespace OpenSSL
   {
     using UqSSLObject::UqSSLObject;
 
-    friend struct UqStackOfX509_EXTENSIONBase;
+    friend class UqStackOfX509_EXTENSION;
 
     UqX509_EXTENSION(const UqX509_EXTENSION& ext) :
       UqSSLObject(X509_EXTENSION_dup(ext.p.get()), X509_EXTENSION_free)
@@ -537,9 +541,6 @@ namespace OpenSSL
       return make_unique_nodelete(X509_EXTENSION_get_object(p.get()));
     }
   };
-
-  struct UqASN1_OCTET_STRING;
-  struct UqX509_STORE_CTX;
 
   struct UqX509 : public UqSSLObject<X509, X509_new, X509_free>
   {
@@ -820,8 +821,6 @@ namespace OpenSSL
     }
   };
 
-  struct UqX509_STORE_CTX;
-
   struct UqX509_VERIFY_PARAM : public UqSSLObject<
                                  X509_VERIFY_PARAM,
                                  X509_VERIFY_PARAM_new,
@@ -846,8 +845,6 @@ namespace OpenSSL
       X509_VERIFY_PARAM_set_auth_level(*this, auth_level);
     }
   };
-
-  struct UqStackOfX509;
 
   struct UqX509_STORE_CTX : public UqSSLObject<
                               X509_STORE_CTX,
@@ -891,8 +888,6 @@ namespace OpenSSL
       return X509_STORE_CTX_get_error(*this);
     }
   };
-
-  struct UqEVP_PKEY_CTX;
 
   struct UqEVP_PKEY : public UqSSLObject<EVP_PKEY, EVP_PKEY_new, EVP_PKEY_free>
   {
@@ -951,20 +946,6 @@ namespace OpenSSL
       const std::span<const uint8_t>& signature);
 #endif
   };
-
-  inline UqEVP_PKEY UqX509::get_pubkey() const
-  {
-    EVP_PKEY* pk = X509_get_pubkey(p.get());
-    // Note: up-ref should not be requried according to the documentation.
-    // Perhaps an indication that something is wrong in UqStackOfX509?
-    EVP_PKEY_up_ref(pk);
-    return UqEVP_PKEY(pk, EVP_PKEY_free);
-  }
-
-  inline void UqX509::set_pubkey(UqEVP_PKEY& key) const
-  {
-    CHECK1(X509_set_pubkey(p.get(), key));
-  }
 
   inline void UqX509::set_pubkey(UqEVP_PKEY&& key) const
   {
@@ -1033,54 +1014,6 @@ namespace OpenSSL
       UqSSLObject(EC_POINT_new(grp), EC_POINT_free)
     {}
   };
-
-  struct UqStackOfX509_EXTENSION;
-
-  inline bool UqEVP_PKEY::verify_signature(
-    const std::vector<uint8_t>& message, const std::vector<uint8_t>& signature)
-  {
-    UqEVP_PKEY_CTX pctx(*this);
-
-    CHECK1(EVP_PKEY_verify_init(pctx));
-
-    int rc = EVP_PKEY_verify(
-      pctx, signature.data(), signature.size(), message.data(), message.size());
-
-    return rc == 1;
-  }
-
-#ifdef HAVE_SPAN
-  inline bool UqEVP_PKEY::verify_signature(
-    const std::span<const uint8_t>& message,
-    const std::span<const uint8_t>& signature)
-  {
-    UqEVP_PKEY_CTX pctx(*this);
-
-    CHECK1(EVP_PKEY_verify_init(pctx));
-
-    int rc = EVP_PKEY_verify(
-      pctx, signature.data(), signature.size(), message.data(), message.size());
-
-    return rc == 1;
-  }
-#endif
-
-  inline bool UqX509::has_public_key(const UqEVP_PKEY& target) const
-  {
-    return UqEVP_PKEY(*this) == target;
-  }
-
-  inline bool UqX509::has_public_key(UqEVP_PKEY&& target) const
-  {
-    return has_public_key((UqEVP_PKEY&)target);
-  }
-
-  inline bool UqX509::has_public_key(const std::string& target) const
-  {
-    UqBIO bio(target);
-    UqEVP_PKEY key(bio);
-    return has_public_key(key);
-  }
 
   struct UqX509_REQ : public UqSSLObject<X509_REQ, X509_REQ_new, X509_REQ_free>
   {
@@ -1185,14 +1118,6 @@ namespace OpenSSL
     }
   };
 
-  inline UqX509_EXTENSION::UqX509_EXTENSION(
-    LHASH_OF(CONF_VALUE) * conf,
-    UqX509V3_CTX& ctx,
-    int nid,
-    const char* value) :
-    UqSSLObject(X509V3_EXT_conf_nid(conf, ctx, nid, value), X509_EXTENSION_free)
-  {}
-
   struct UqECDSA_SIG
     : public UqSSLObject<ECDSA_SIG, ECDSA_SIG_new, ECDSA_SIG_free>
   {
@@ -1277,23 +1202,6 @@ namespace OpenSSL
       return r;
     }
   };
-
-  inline UqASN1_OCTET_STRING UqX509::subject_key_id() const
-  {
-    const ASN1_OCTET_STRING* key_id = X509_get0_subject_key_id(p.get());
-    if (!key_id)
-      throw std::runtime_error("certificate does not contain a subject key id");
-    return UqASN1_OCTET_STRING(key_id);
-  }
-
-  inline UqASN1_OCTET_STRING UqX509::authority_key_id() const
-  {
-    const ASN1_OCTET_STRING* key_id = X509_get0_authority_key_id(p.get());
-    if (!key_id)
-      throw std::runtime_error(
-        "certificate does not contain an authority key id");
-    return UqASN1_OCTET_STRING(key_id);
-  }
 
   struct UqASN1_SEQUENCE
     : public UqSSLObject<ASN1_SEQUENCE_ANY, nullptr, nullptr>
@@ -1447,174 +1355,140 @@ namespace OpenSSL
     int md_size = 0;
   };
 
-  template <typename T, typename Q>
-  class UqStackOf : public UqSSLObject<STACK_OF(Q), nullptr, nullptr>
+  template <
+    typename T,
+    typename Q,
+    typename ST,
+    ST* (*CTOR)(),
+    void (*DTOR)(ST*)>
+  class UqStackOf : public UqSSLObject<ST, CTOR, DTOR>
   {
   public:
-    UqStackOf(){};
-    virtual ~UqStackOf()
+    UqStackOf() = default;
+
+    UqStackOf(const UqStackOf& other) :
+      UqSSLObject<ST, CTOR, DTOR>(other._sk_dup())
+    {}
+
+    explicit UqStackOf(ST* x) : UqSSLObject<ST, CTOR, DTOR>(x) {}
+
+    virtual ~UqStackOf() {}
+
+    UqStackOf& operator=(const UqStackOf& other)
     {
-      dtor(*this);
-    }
-    UqStackOf(STACK_OF(Q) * ptr) : UqSSLObject(ptr, dtor) {}
-    UqStackOf(UqStackOf&& x) : UqSSLObject(std::move(x.p)) {}
-    UqStackOf& operator=(UqStackOf&& other)
-    {
-      p = std::move(other.p);
+      this->p.reset(other._sk_dup());
       return *this;
     }
+
+    UqStackOf& operator=(UqStackOf&& other)
+    {
+      this->p = std::move(other.p);
+      return *this;
+    }
+
     size_t size() const
     {
-      int r = sk_num(*this);
+      int r = _sk_num();
       return r == (-1) ? 0 : r;
     }
+
     T at(size_t i) const
     {
       if (i >= size())
         throw std::out_of_range("index into stack out of range");
-      auto v = value(*this, i);
+      auto v = _sk_value(i);
       if (v == NULL)
         throw std::runtime_error("no such value");
       return T(v);
     }
+
     void insert(size_t i, T&& x)
     {
-      CHECK0(sk_insert(*this, x, i));
+      CHECK0(_sk_insert(x, i));
       std::move(x).release();
     }
+
     T front() const
     {
       return (*this).at(0);
     }
+
     T back() const
     {
       return (*this).at(size() - 1);
     }
+
     bool empty() const
     {
       return size() == 0;
     }
+
     void push(T&& x)
     {
-      sk_push(*this, x);
+      _sk_push(x);
       x.release();
     }
+
     void push(const T& x)
     {
       push(T(x));
     }
 
   protected:
-    int sk_num();
-    int sk_insert(Q*, int);
-    Q* sk_value(int);
-    int sk_push(const Q* ptr);
-    void dtor();
+    virtual ST* _sk_new_null() const = 0;
+    virtual int _sk_num() const = 0;
+    virtual int _sk_insert(Q*, int) = 0;
+    virtual Q* _sk_value(int) const = 0;
+    virtual int _sk_push(Q* ptr) = 0;
+    virtual ST* _sk_dup() const = 0;
   };
 
-  // template <>
-  // class UqStackOf<UqX509, X509>
-  //   : public UqSSLObject<STACK_OF(X509), sk_X509_new_null, sk_X509_free>
-  // {
-  // protected:
-  //   /* clang-format off */
-  //   int sk_num() { return sk_X509_num(*this); }
-  //   int sk_insert(X509* x, int i) { return sk_X509_insert(*this, x, i); }
-  //   X509* sk_value(int i) { return sk_X509_value(*this, i); }
-  //   int sk_push(X509* x) { return sk_X509_push(*this, x); }
-  //   void dtor() { sk_X509_pop_free(*this, X509_free); };
-  //   /* clang-format on */
-  // };
+  inline STACK_OF(X509)* UqStackOfX509_new() { return sk_X509_new_null(); }
+  inline void UqStackOfX509_free(STACK_OF(X509) *x) { sk_X509_free(x); }
 
-#define UQSTACKOFBASE(T) \
-  struct UqStackOf##T##Base \
-    : public UqSSLObject<STACK_OF(T), sk_##T##_new_null, nullptr> \
-  { \
-  protected: \
-    static constexpr void (*dtor)(STACK_OF(T) *) = [](STACK_OF(T) * x) { \
-      sk_##T##_pop_free(x, T##_free); \
-    }; \
-\
-  public: \
-    using UqSSLObject::UqSSLObject; \
-    UqStackOf##T##Base() : UqSSLObject(sk_##T##_new_null(), dtor) \
-    {} \
-    UqStackOf##T##Base( \
-      STACK_OF(T) * &ptr, \
-      void (*dtorarg)(STACK_OF(T) *) = dtor, \
-      bool check_null = true) : \
-      UqSSLObject(ptr, dtorarg) \
-    {} \
-    UqStackOf##T##Base(UqStackOf##T##Base&& x) : UqSSLObject(std::move(x.p)) \
-    {} \
-    UqStackOf##T##Base& operator=(UqStackOf##T##Base&& other) \
-    { \
-      p = std::move(other.p); \
-      return *this; \
-    } \
-    size_t size() const \
-    { \
-      int r = sk_##T##_num(*this); \
-      return r == (-1) ? 0 : r; \
-    } \
-    Uq##T at(size_t i) const \
-    { \
-      if (i >= size()) \
-        throw std::out_of_range("index into stack out of range"); \
-      T* value = sk_##T##_value(*this, i); \
-      if (value == NULL) \
-        throw std::runtime_error("no such value"); \
-      return Uq##T(value); \
-    } \
-    void insert(size_t i, Uq##T&& x) \
-    { \
-      auto ptr = x.p.release(); \
-      CHECK0(sk_##T##_insert(*this, ptr, i)); \
-    } \
-    void push(Uq##T&& x) \
-    { \
-      sk_##T##_push(*this, x.p.release()); \
-    } \
-    void push(const Uq##T& x) \
-    { \
-      push(Uq##T(x)); \
-    } \
-    Uq##T front() const \
-    { \
-      return (*this).at(0); \
-    } \
-    Uq##T back() const \
-    { \
-      return (*this).at(size() - 1); \
-    } \
-    bool empty() const \
-    { \
-      return size() == 0; \
-    } \
-  }
-
-  UQSTACKOFBASE(X509);
-
-  struct UqStackOfX509 : public UqStackOfX509Base
+  class UqStackOfX509 : public UqStackOf<
+                          UqX509,
+                          X509,
+                          STACK_OF(X509),
+                          UqStackOfX509_new,
+                          UqStackOfX509_free>
   {
-    using UqStackOfX509Base::UqStackOfX509Base;
+  protected:
+    /* clang-format off */
+    virtual STACK_OF(X509)* _sk_new_null() const override { return sk_X509_new_null(); }
+    virtual int _sk_num() const override { return sk_X509_num(*this); }
+    virtual int _sk_insert(X509* x, int i) override { return sk_X509_insert(*this, x, i); }
+    virtual X509* _sk_value(int i) const override { return sk_X509_value(*this, i); }
+    virtual int _sk_push(X509* x) override { return sk_X509_push(*this, x); }
+    virtual STACK_OF(X509)* _sk_dup() const override {
+      return X509_chain_up_ref(const_cast<STACK_OF(X509)*>(static_cast<const STACK_OF(X509)*>(*this)));
+    }
+    /* clang-format on */
+
+  public:
+    using UqStackOf::UqStackOf;
+
+    virtual ~UqStackOfX509()
+    {
+      sk_X509_pop_free(*this, X509_free);
+      (void)p.release();
+    };
 
     UqStackOfX509(
 #if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
       const
 #endif
       UqX509_STORE_CTX& ctx) :
-      UqStackOfX509Base(X509_STORE_CTX_get1_chain(ctx), dtor)
+      UqStackOf(X509_STORE_CTX_get1_chain(ctx))
     {}
 
 #ifdef HAVE_SPAN
-    UqStackOfX509(const std::span<const uint8_t>& pem) : UqStackOfX509Base()
+    UqStackOfX509(const std::span<const uint8_t>& pem) : UqStackOfX509()
     {
       UqBIO mem(pem);
       STACK_OF(X509_INFO)* sk_info =
         PEM_X509_INFO_read_bio(mem, NULL, NULL, NULL);
       int sz = sk_X509_INFO_num(sk_info);
-      p.reset(sk_X509_new_null());
       for (int i = 0; i < sz; i++)
       {
         auto sk_i = sk_X509_INFO_value(sk_info, i);
@@ -1627,13 +1501,12 @@ namespace OpenSSL
     }
 #endif
 
-    UqStackOfX509(const std::string& pem) : UqStackOfX509Base()
+    UqStackOfX509(const std::string& pem) : UqStackOfX509()
     {
       UqBIO mem(pem);
       STACK_OF(X509_INFO)* sk_info =
         PEM_X509_INFO_read_bio(mem, NULL, NULL, NULL);
       int sz = sk_X509_INFO_num(sk_info);
-      p.reset(sk_X509_new_null());
       for (int i = 0; i < sz; i++)
       {
         auto sk_i = sk_X509_INFO_value(sk_info, i);
@@ -1678,16 +1551,149 @@ namespace OpenSSL
     }
   };
 
-  UQSTACKOFBASE(X509_EXTENSION);
+  inline STACK_OF(X509_EXTENSION)* UqStackOfX509_EXTENSION_new() { return sk_X509_EXTENSION_new_null(); }
+  inline void UqStackOfX509_EXTENSION_free(STACK_OF(X509_EXTENSION) *x) { sk_X509_EXTENSION_free(x); }
 
-  struct UqStackOfX509_EXTENSION : public UqStackOfX509_EXTENSIONBase
+  class UqStackOfX509_EXTENSION : public UqStackOf<
+                                    UqX509_EXTENSION,
+                                    X509_EXTENSION,
+                                    STACK_OF(X509_EXTENSION),
+                                    UqStackOfX509_EXTENSION_new,
+                                    UqStackOfX509_EXTENSION_free>
   {
-    using UqStackOfX509_EXTENSIONBase::UqStackOfX509_EXTENSIONBase;
+  protected:
+    /* clang-format off */
+    virtual STACK_OF(X509_EXTENSION)* _sk_new_null() const override { return sk_X509_EXTENSION_new_null(); }
+    virtual int _sk_num() const override { return sk_X509_EXTENSION_num(*this); }
+    virtual int _sk_insert(X509_EXTENSION* x, int i) override { return sk_X509_EXTENSION_insert(*this, x, i); }
+    virtual X509_EXTENSION* _sk_value(int i) const override { return sk_X509_EXTENSION_value(*this, i); }
+    virtual int _sk_push(X509_EXTENSION* x) override { return sk_X509_EXTENSION_push(*this, x); }
+    virtual STACK_OF(X509_EXTENSION)* _sk_dup() const override { return sk_X509_EXTENSION_dup(*this); }
+    /* clang-format on */
+
+  public:
+    using UqStackOf::UqStackOf;
+
+    virtual ~UqStackOfX509_EXTENSION()
+    {
+      sk_X509_EXTENSION_pop_free(*this, X509_EXTENSION_free);
+      (void)p.release();
+    };
   };
 
-  inline UqStackOfX509_EXTENSION UqX509_REQ::get_extensions() const
+  inline STACK_OF(X509_REVOKED)* UqStackOfX509_REVOKED_new() { return sk_X509_REVOKED_new_null(); }
+  inline void UqStackOfX509_REVOKED_free(STACK_OF(X509_REVOKED) *x) { sk_X509_REVOKED_free(x); }
+
+  class UqStackOfX509_REVOKED : public UqStackOf<
+                                  UqX509_REVOKED,
+                                  X509_REVOKED,
+                                  STACK_OF(X509_REVOKED),
+                                  UqStackOfX509_REVOKED_new,
+                                  UqStackOfX509_REVOKED_free>
   {
-    return UqStackOfX509_EXTENSION(X509_REQ_get_extensions(p.get()));
+  protected:
+    /* clang-format off */
+    virtual STACK_OF(X509_REVOKED)* _sk_new_null() const override { return sk_X509_REVOKED_new_null(); }
+    virtual int _sk_num() const override { return sk_X509_REVOKED_num(*this); }
+    virtual int _sk_insert(X509_REVOKED* x, int i) override { return sk_X509_REVOKED_insert(*this, x, i); }
+    virtual X509_REVOKED* _sk_value(int i) const override { return sk_X509_REVOKED_value(*this, i); }
+    virtual int _sk_push(X509_REVOKED* x) override { return sk_X509_REVOKED_push(*this, x); }
+    virtual STACK_OF(X509_REVOKED)* _sk_dup() const override { return sk_X509_REVOKED_dup(*this); }
+    /* clang-format on */
+
+  public:
+    using UqStackOf::UqStackOf;
+
+    virtual ~UqStackOfX509_REVOKED()
+    {
+      sk_X509_REVOKED_pop_free(*this, X509_REVOKED_free);
+      (void)p.release();
+    };
+  };
+
+  inline UqEVP_PKEY UqX509::get_pubkey() const
+  {
+    EVP_PKEY* pk = X509_get_pubkey(p.get());
+    // Note: up-ref should not be requried according to the documentation.
+    // Perhaps an indication that something is wrong in UqStackOfX509?
+    EVP_PKEY_up_ref(pk);
+    return UqEVP_PKEY(pk, EVP_PKEY_free);
+  }
+
+  inline void UqX509::set_pubkey(UqEVP_PKEY& key) const
+  {
+    CHECK1(X509_set_pubkey(p.get(), key));
+  }
+
+  inline bool UqEVP_PKEY::verify_signature(
+    const std::vector<uint8_t>& message, const std::vector<uint8_t>& signature)
+  {
+    UqEVP_PKEY_CTX pctx(*this);
+
+    CHECK1(EVP_PKEY_verify_init(pctx));
+
+    int rc = EVP_PKEY_verify(
+      pctx, signature.data(), signature.size(), message.data(), message.size());
+
+    return rc == 1;
+  }
+
+#ifdef HAVE_SPAN
+  inline bool UqEVP_PKEY::verify_signature(
+    const std::span<const uint8_t>& message,
+    const std::span<const uint8_t>& signature)
+  {
+    UqEVP_PKEY_CTX pctx(*this);
+
+    CHECK1(EVP_PKEY_verify_init(pctx));
+
+    int rc = EVP_PKEY_verify(
+      pctx, signature.data(), signature.size(), message.data(), message.size());
+
+    return rc == 1;
+  }
+#endif
+
+  inline bool UqX509::has_public_key(const UqEVP_PKEY& target) const
+  {
+    return UqEVP_PKEY(*this) == target;
+  }
+
+  inline bool UqX509::has_public_key(UqEVP_PKEY&& target) const
+  {
+    return has_public_key((UqEVP_PKEY&)target);
+  }
+
+  inline bool UqX509::has_public_key(const std::string& target) const
+  {
+    UqBIO bio(target);
+    UqEVP_PKEY key(bio);
+    return has_public_key(key);
+  }
+
+  inline UqX509_EXTENSION::UqX509_EXTENSION(
+    LHASH_OF(CONF_VALUE) * conf,
+    UqX509V3_CTX& ctx,
+    int nid,
+    const char* value) :
+    UqSSLObject(X509V3_EXT_conf_nid(conf, ctx, nid, value), X509_EXTENSION_free)
+  {}
+
+  inline UqASN1_OCTET_STRING UqX509::subject_key_id() const
+  {
+    const ASN1_OCTET_STRING* key_id = X509_get0_subject_key_id(p.get());
+    if (!key_id)
+      throw std::runtime_error("certificate does not contain a subject key id");
+    return UqASN1_OCTET_STRING(key_id);
+  }
+
+  inline UqASN1_OCTET_STRING UqX509::authority_key_id() const
+  {
+    const ASN1_OCTET_STRING* key_id = X509_get0_authority_key_id(p.get());
+    if (!key_id)
+      throw std::runtime_error(
+        "certificate does not contain an authority key id");
+    return UqASN1_OCTET_STRING(key_id);
   }
 
   inline void UqX509_STORE_CTX::init(
@@ -1700,13 +1706,6 @@ namespace OpenSSL
   {
     CHECK1(X509_STORE_CTX_init(p.get(), store, target, NULL));
   }
-
-  UQSTACKOFBASE(X509_REVOKED);
-
-  struct UqStackOfX509_REVOKED : public UqStackOfX509_REVOKEDBase
-  {
-    using UqStackOfX509_REVOKEDBase::UqStackOfX509_REVOKEDBase;
-  };
 
   inline UqStackOfX509_REVOKED UqX509_CRL::revoked() const
   {
@@ -1723,6 +1722,10 @@ namespace OpenSSL
         X509_REVOKED_free);
       return UqStackOfX509_REVOKED(copy);
     }
+  }
+
+  inline UqStackOfX509_EXTENSION UqX509_REQ::get_extensions() const {
+    return UqStackOfX509_EXTENSION(X509_REQ_get_extensions(p.get()));
   }
 
   inline void UqX509_REQ::add_extensions(UqStackOfX509_EXTENSION& exts)

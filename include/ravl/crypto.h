@@ -320,8 +320,8 @@ namespace ravl
       store_ctx.set_param(std::move(param));
 
 #if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
-      store_ctx.set_verify_cb([](int ok, X509_STORE_CTX* store_ctx) {
-        int ec = store_ctx.get_error();
+      store_ctx.set_verify_cb([](int ok, X509_STORE_CTX* sctx) {
+        int ec = X509_STORE_CTX_get_error(sctx);
         if (ec == X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER)
         {
           // OpenSSL 3.0 with X509_V_FLAG_X509_STRICT requires an authority
