@@ -5,7 +5,6 @@
 
 #include "crypto.h"
 #include "http_client.h"
-#include "json_conversions.h"
 #include "sgx.h"
 #include "sgx_defs.h"
 #include "util.h"
@@ -1144,7 +1143,7 @@ namespace ravl
 
     RAVL_VISIBILITY std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
-      const std::optional<std::vector<HTTPResponse>>& http_responses) const
+      const std::optional<HTTPResponses>& http_responses) const
     {
       using namespace crypto;
 
@@ -1291,8 +1290,7 @@ namespace ravl
         options,
         indent + 2);
 
-      if (
-        !(qe_sig_ok && pk_auth_hash_matches && quote_sig_ok && qe_id_ok))
+      if (!(qe_sig_ok && pk_auth_hash_matches && quote_sig_ok && qe_id_ok))
         std::runtime_error("one of the basic properties is not satisfied");
 
       return make_claims(

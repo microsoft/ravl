@@ -39,6 +39,8 @@ namespace ravl
         ravl::Attestation(Source::OPEN_ENCLAVE, evidence, endorsements)
       {}
 
+      virtual ~Attestation() = default;
+
       virtual std::optional<HTTPRequests> prepare_endorsements(
         const Options& options) const override;
 
