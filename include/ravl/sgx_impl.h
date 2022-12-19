@@ -5,7 +5,6 @@
 
 #include "crypto.h"
 #include "http_client.h"
-#include "json_conversions.h"
 #include "sgx.h"
 #include "sgx_defs.h"
 #include "util.h"

@@ -5,7 +5,6 @@
 
 #include "crypto.h"
 #include "http_client.h"
-#include "json_conversions.h"
 #include "sev_snp.h"
 #include "util.h"
 #include "visibility.h"
@@ -15,6 +14,29 @@
 
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>
+
+namespace nlohmann
+{
+  template <>
+  struct adl_serializer<std::optional<std::string>>
+  {
+    inline static void to_json(json& j, const std::optional<std::string>& x)
+    {
+      if (x)
+        j = *x;
+      else
+        j = nullptr;
+    }
+
+    inline static void from_json(const json& j, std::optional<std::string>& x)
+    {
+      if (j == nullptr)
+        x = std::nullopt;
+      else
+        x = j.get<std::string>();
+    }
+  };
+}
 
 namespace ravl
 {
