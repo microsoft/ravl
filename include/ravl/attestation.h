@@ -102,7 +102,7 @@ namespace ravl
       const Options& options = {},
       const std::optional<HTTPResponses>& http_responses = {}) const = 0;
 
-    /// String representation
+    /// (JSON) String representation
     operator std::string() const;
 
     /// Assignment operator
