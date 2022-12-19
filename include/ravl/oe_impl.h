@@ -505,7 +505,6 @@ namespace ravl
 
       for (size_t i = 0; i < claims_size; i++)
       {
-        printf("%s=%s\n", claims[i].name, "");
         const auto& claim = claims[i];
         std::span value(claim.value, claim.value_size);
 
@@ -588,9 +587,6 @@ namespace ravl
         sgx_attestation = sgx_att;
         custom_claims = cc;
       }
-
-      // std::string sat = sgx_attestation;
-      // printf("%s\n", sat.c_str());
 
       auto claims = std::make_shared<Claims>();
       claims->sgx_claims = static_pointer_cast<sgx::Claims>(
