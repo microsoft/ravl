@@ -332,7 +332,7 @@ namespace OpenSSL
   {
     using UqSSLObject::UqSSLObject;
 
-    explicit UqX509_NAME(X509_NAME* n) :
+    explicit UqX509_NAME(X509_NAME*& n) :
       UqSSLObject(X509_NAME_dup(n), X509_NAME_free)
     {}
 
