@@ -332,6 +332,25 @@ namespace OpenSSL
   {
     using UqSSLObject::UqSSLObject;
 
+    explicit UqX509_NAME(X509_NAME* n) :
+      UqSSLObject(X509_NAME_dup(n), X509_NAME_free)
+    {}
+
+    std::string get_common_name()
+    {
+      std::string r;
+      int i = X509_NAME_get_index_by_NID(*this, NID_commonName, -1);
+      while (i != -1)
+      {
+        X509_NAME_ENTRY* entry = X509_NAME_get_entry(*this, i);
+        ASN1_STRING* entry_string = X509_NAME_ENTRY_get_data(entry);
+        r += std::string(r.size() == 0 ? "" : " ") +
+          (char*)ASN1_STRING_get0_data(entry_string);
+        i = X509_NAME_get_index_by_NID(*this, NID_commonName, i);
+      }
+      return r;
+    }
+
     void add_entry_by_txt(
       const char* field, int type, const char* bytes, int len, int loc, int set)
     {
@@ -936,6 +955,18 @@ namespace OpenSSL
       return *this;
     }
 
+    void pem_write_PUBKEY(UqBIO& bio)
+    {
+      OpenSSL::CHECK1(PEM_write_bio_PUBKEY(bio, *this));
+    }
+
+    std::string pem_pubkey()
+    {
+      UqBIO bio;
+      pem_write_PUBKEY(bio);
+      return (std::string)bio;
+    }
+
     bool verify_signature(
       const std::vector<uint8_t>& message,
       const std::vector<uint8_t>& signature);
@@ -1019,8 +1050,19 @@ namespace OpenSSL
   {
     using UqSSLObject::UqSSLObject;
 
-    UqX509_REQ(UqBIO& mem) :
-      UqSSLObject(PEM_read_bio_X509_REQ(mem, NULL, NULL, NULL), X509_REQ_free)
+    UqX509_REQ(UqBIO& mem, bool pem = true) :
+      UqSSLObject(
+        pem ? PEM_read_bio_X509_REQ(mem, NULL, NULL, NULL) :
+              d2i_X509_REQ_bio(mem, NULL),
+        X509_REQ_free)
+    {}
+
+    UqX509_REQ(const std::vector<uint8_t>& data, bool pem = true) :
+      UqSSLObject(
+        pem ? PEM_read_bio_X509_REQ(
+                UqBIO(data.data(), data.size()), NULL, NULL, NULL) :
+              d2i_X509_REQ_bio(UqBIO(data.data(), data.size()), NULL),
+        X509_REQ_free)
     {}
 
     void set_subject_name(
@@ -1088,6 +1130,11 @@ namespace OpenSSL
       UqBIO bio;
       CHECK1(print_ex(bio));
       return (std::string)bio;
+    }
+
+    UqX509_NAME get_subject_name()
+    {
+      return make_unique_nodelete(X509_REQ_get_subject_name(*this));
     }
   };
 
@@ -1443,8 +1490,14 @@ namespace OpenSSL
     virtual ST* _sk_dup() const = 0;
   };
 
-  inline STACK_OF(X509)* UqStackOfX509_new() { return sk_X509_new_null(); }
-  inline void UqStackOfX509_free(STACK_OF(X509) *x) { sk_X509_free(x); }
+  inline STACK_OF(X509) * UqStackOfX509_new()
+  {
+    return sk_X509_new_null();
+  }
+  inline void UqStackOfX509_free(STACK_OF(X509) * x)
+  {
+    sk_X509_free(x);
+  }
 
   class UqStackOfX509 : public UqStackOf<
                           UqX509,
@@ -1551,8 +1604,14 @@ namespace OpenSSL
     }
   };
 
-  inline STACK_OF(X509_EXTENSION)* UqStackOfX509_EXTENSION_new() { return sk_X509_EXTENSION_new_null(); }
-  inline void UqStackOfX509_EXTENSION_free(STACK_OF(X509_EXTENSION) *x) { sk_X509_EXTENSION_free(x); }
+  inline STACK_OF(X509_EXTENSION) * UqStackOfX509_EXTENSION_new()
+  {
+    return sk_X509_EXTENSION_new_null();
+  }
+  inline void UqStackOfX509_EXTENSION_free(STACK_OF(X509_EXTENSION) * x)
+  {
+    sk_X509_EXTENSION_free(x);
+  }
 
   class UqStackOfX509_EXTENSION : public UqStackOf<
                                     UqX509_EXTENSION,
@@ -1581,8 +1640,14 @@ namespace OpenSSL
     };
   };
 
-  inline STACK_OF(X509_REVOKED)* UqStackOfX509_REVOKED_new() { return sk_X509_REVOKED_new_null(); }
-  inline void UqStackOfX509_REVOKED_free(STACK_OF(X509_REVOKED) *x) { sk_X509_REVOKED_free(x); }
+  inline STACK_OF(X509_REVOKED) * UqStackOfX509_REVOKED_new()
+  {
+    return sk_X509_REVOKED_new_null();
+  }
+  inline void UqStackOfX509_REVOKED_free(STACK_OF(X509_REVOKED) * x)
+  {
+    sk_X509_REVOKED_free(x);
+  }
 
   class UqStackOfX509_REVOKED : public UqStackOf<
                                   UqX509_REVOKED,
@@ -1724,7 +1789,8 @@ namespace OpenSSL
     }
   }
 
-  inline UqStackOfX509_EXTENSION UqX509_REQ::get_extensions() const {
+  inline UqStackOfX509_EXTENSION UqX509_REQ::get_extensions() const
+  {
     return UqStackOfX509_EXTENSION(X509_REQ_get_extensions(p.get()));
   }
 
