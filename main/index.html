@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>ravl Documentation &#8212; ravl 1.0.0 documentation</title>
   
@@ -35,12 +35,14 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="docsearch:language" content="None">
+  <meta name="docsearch:language" content="en">
   </head>
   
   
@@ -235,18 +237,18 @@
             <article class="bd-article" role="main">
               
   <section id="ravl-documentation">
-<h1>ravl Documentation<a class="headerlink" href="#ravl-documentation" title="Permalink to this headline">#</a></h1>
+<h1>ravl Documentation<a class="headerlink" href="#ravl-documentation" title="Permalink to this heading">#</a></h1>
 <p>RAVL is a library of remote attestation verification procedures that enables clients of confidential services to verify the remote attestation of the service.</p>
 <p>An example of the most basic usage pattern is as follows:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">att</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_attestation</span><span class="p">(</span><span class="n">sev_snp_quote</span><span class="p">);</span><span class="w"></span>
-<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Claims</span><span class="o">&gt;</span><span class="w"> </span><span class="n">claims</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">verify_synchronous</span><span class="p">(</span><span class="n">att</span><span class="p">);</span><span class="w"></span>
-<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">sc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Claims</span><span class="o">::</span><span class="n">get</span><span class="o">&lt;</span><span class="n">sev_snp</span><span class="o">::</span><span class="n">Claims</span><span class="o">&gt;</span><span class="p">(</span><span class="n">claims</span><span class="p">);</span><span class="w"></span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">att</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_attestation</span><span class="p">(</span><span class="n">sev_snp_quote</span><span class="p">);</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Claims</span><span class="o">&gt;</span><span class="w"> </span><span class="n">claims</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">verify_synchronous</span><span class="p">(</span><span class="n">att</span><span class="p">);</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">sc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Claims</span><span class="o">::</span><span class="n">get</span><span class="o">&lt;</span><span class="n">sev_snp</span><span class="o">::</span><span class="n">Claims</span><span class="o">&gt;</span><span class="p">(</span><span class="n">claims</span><span class="p">);</span>
 
 <span class="w">  </span><span class="c1">// Check, e.g., sc-&gt;measurement</span>
 </pre></div>
 </div>
 <section id="generic-attestations">
-<h2>Generic Attestations<a class="headerlink" href="#generic-attestations" title="Permalink to this headline">#</a></h2>
+<h2>Generic Attestations<a class="headerlink" href="#generic-attestations" title="Permalink to this heading">#</a></h2>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11AttestationE">
 <span id="_CPPv3N4ravl11AttestationE"></span><span id="_CPPv2N4ravl11AttestationE"></span><span id="ravl::Attestation"></span><span class="target" id="classravl_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11AttestationE" title="Permalink to this definition">#</a><br /></dt>
@@ -334,7 +336,7 @@
 
 </section>
 <section id="platform-specific-attestations">
-<h2>Platform-specific Attestations<a class="headerlink" href="#platform-specific-attestations" title="Permalink to this headline">#</a></h2>
+<h2>Platform-specific Attestations<a class="headerlink" href="#platform-specific-attestations" title="Permalink to this heading">#</a></h2>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl3sgx11AttestationE">
 <span id="_CPPv3N4ravl3sgx11AttestationE"></span><span id="_CPPv2N4ravl3sgx11AttestationE"></span><span id="ravl::sgx::Attestation"></span><span class="target" id="classravl_1_1sgx_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><a class="headerlink" href="#_CPPv4N4ravl3sgx11AttestationE" title="Permalink to this definition">#</a><br /></dt>
@@ -415,7 +417,7 @@
 
 </section>
 <section id="verification">
-<h2>Verification<a class="headerlink" href="#verification" title="Permalink to this headline">#</a></h2>
+<h2>Verification<a class="headerlink" href="#verification" title="Permalink to this heading">#</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>doxygenfunction: Cannot find function “ravl::verify_sync” in doxygen xml output for project “ravl” from directory: /home/runner/work/ravl/ravl/doc/xml</p>
@@ -525,7 +527,7 @@
 </section>
 </section>
 <section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">#</a></h1>
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading">#</a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
@@ -652,7 +654,7 @@
   <div class="footer-item">
     
 <p class="sphinx-version">
-Created using <a href="http://sphinx-doc.org/">Sphinx</a> 4.5.0.<br>
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.3.0.<br>
 </p>
 
   </div>
