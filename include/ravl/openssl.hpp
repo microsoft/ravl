@@ -111,6 +111,8 @@ namespace OpenSSL
   struct UqX509_STORE_CTX;
   struct UqX509_STORE_CTX;
   struct UqEVP_PKEY_CTX;
+  class UqStackOfX509_NAME;
+  class UqStackOfGENERAL_NAME;
   class UqStackOfX509;
   class UqStackOfX509_EXTENSION;
   class UqStackOfX509_REVOKED;
@@ -250,6 +252,13 @@ namespace OpenSSL
       BIO_get_mem_ptr(p.get(), &bptr);
       return std::string(bptr->data, bptr->length);
     }
+
+    explicit operator std::vector<uint8_t>() const
+    {
+      BUF_MEM* bptr;
+      BIO_get_mem_ptr(p.get(), &bptr);
+      return std::vector<uint8_t>(bptr->data, bptr->data + bptr->length);
+    }
   };
 
   struct UqBIGNUM : public UqSSLObject<BIGNUM, BN_new, BN_free>
@@ -302,12 +311,37 @@ namespace OpenSSL
     }
   };
 
+  struct UqASN1_STRING
+    : public UqSSLObject<ASN1_STRING, ASN1_STRING_new, ASN1_STRING_free>
+  {
+    using UqSSLObject::UqSSLObject;
+
+    UqASN1_STRING(const UqASN1_STRING& x) :
+      UqSSLObject(ASN1_STRING_dup(x), ASN1_STRING_free)
+    {}
+
+    explicit UqASN1_STRING(ASN1_STRING*& x) :
+      UqSSLObject(ASN1_STRING_dup(x), ASN1_STRING_free)
+    {}
+
+    explicit operator std::string() const
+    {
+      UqBIO bio;
+      CHECK1(ASN1_STRING_print(bio, *this));
+      return (std::string)bio;
+    }
+  };
+
   struct UqASN1_TIME
     : public UqSSLObject<ASN1_TIME, ASN1_TIME_new, ASN1_TIME_free>
   {
     using UqSSLObject::UqSSLObject;
 
     UqASN1_TIME(UqASN1_TIME& x) :
+      UqSSLObject(ASN1_STRING_dup(x), ASN1_TIME_free)
+    {}
+
+    explicit UqASN1_TIME(ASN1_TIME*& x) :
       UqSSLObject(ASN1_STRING_dup(x), ASN1_TIME_free)
     {}
 
@@ -327,6 +361,46 @@ namespace OpenSSL
     }
   };
 
+  struct UqGENERAL_NAME
+    : public UqSSLObject<GENERAL_NAME, GENERAL_NAME_new, GENERAL_NAME_free>
+  {
+    using UqSSLObject::UqSSLObject;
+
+    explicit UqGENERAL_NAME(GENERAL_NAME*& n) :
+      UqSSLObject(GENERAL_NAME_dup(n), GENERAL_NAME_free)
+    {}
+
+    void* value()
+    {
+      int ptype = 0;
+      return GENERAL_NAME_get0_value(*this, &ptype);
+    }
+
+    int type() const
+    {
+      int r = 0;
+      GENERAL_NAME_get0_value(*this, &r);
+      return r;
+    }
+
+    UqASN1_STRING string() const
+    {
+      int r = 0;
+      void* p = GENERAL_NAME_get0_value(*this, &r);
+      if (r == 1 || r == 2 || r == 4 || r == 6 || r == 7 || r == 8)
+        return make_unique_nodelete(static_cast<ASN1_STRING*>(p));
+      else
+        throw std::runtime_error("non-string GENERAL_NAME");
+    }
+
+    operator std::string()
+    {
+      UqBIO bio;
+      CHECK1(GENERAL_NAME_print(bio, *this));
+      return (std::string)bio;
+    }
+  };
+
   struct UqX509_NAME
     : public UqSSLObject<X509_NAME, X509_NAME_new, X509_NAME_free>
   {
@@ -335,6 +409,31 @@ namespace OpenSSL
     explicit UqX509_NAME(X509_NAME*& n) :
       UqSSLObject(X509_NAME_dup(n), X509_NAME_free)
     {}
+
+    UqX509_NAME(
+      const std::string& common_name,
+      const std::vector<std::string>& sans = {}) :
+      UqSSLObject(X509_NAME_new(), X509_NAME_free)
+    {
+      CHECK1(X509_NAME_add_entry_by_NID(
+        *this,
+        NID_commonName,
+        MBSTRING_ASC,
+        (unsigned char*)common_name.data(),
+        common_name.size(),
+        -1,
+        0));
+
+      for (const auto& san : sans)
+        CHECK1(X509_NAME_add_entry_by_NID(
+          *this,
+          NID_subject_alt_name,
+          MBSTRING_ASC,
+          (unsigned char*)san.data(),
+          san.size(),
+          -1,
+          0));
+    }
 
     std::string get_common_name()
     {
@@ -367,6 +466,13 @@ namespace OpenSSL
     {
       OpenSSL::CHECK1(X509_NAME_add_entry_by_txt(
         *this, field, type, (const unsigned char*)bytes, len, loc, set));
+    }
+
+    void add_entry_by_nid(
+      int nid, int type, const uint8_t* bytes, int len, int loc, int set)
+    {
+      OpenSSL::CHECK1(X509_NAME_add_entry_by_NID(
+        *this, nid, type, (const unsigned char*)bytes, len, loc, set));
     }
 
     explicit operator std::string()
@@ -555,10 +661,17 @@ namespace OpenSSL
       int nid,
       const char* value);
 
-    UqASN1_OBJECT get_object() const
+    const UqASN1_OBJECT get_object() const
     {
       return make_unique_nodelete(X509_EXTENSION_get_object(p.get()));
     }
+
+    bool get_critical() const
+    {
+      return X509_EXTENSION_get_critical(*this) != 0;
+    }
+
+    const UqASN1_OCTET_STRING get_data() const;
   };
 
   struct UqX509 : public UqSSLObject<X509, X509_new, X509_free>
@@ -967,6 +1080,18 @@ namespace OpenSSL
       return (std::string)bio;
     }
 
+    void i2d_pubkey(UqBIO& bio)
+    {
+      OpenSSL::CHECK1(i2d_PUBKEY_bio(bio, *this));
+    }
+
+    std::vector<uint8_t> der_pubkey()
+    {
+      UqBIO bio;
+      i2d_pubkey(bio);
+      return (std::vector<uint8_t>)bio;
+    }
+
     bool verify_signature(
       const std::vector<uint8_t>& message,
       const std::vector<uint8_t>& signature);
@@ -1065,6 +1190,11 @@ namespace OpenSSL
         X509_REQ_free)
     {}
 
+    UqX509_REQ(UqX509_NAME& name) : UqSSLObject(X509_REQ_new(), X509_REQ_free)
+    {
+      set_subject_name(name);
+    }
+
     void set_subject_name(
 #if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
       const
@@ -1098,6 +1228,18 @@ namespace OpenSSL
       return (std::string)bio;
     }
 
+    void i2d(UqBIO& bio)
+    {
+      OpenSSL::CHECK1(i2d_X509_REQ_bio(bio, *this));
+    }
+
+    std::vector<uint8_t> der()
+    {
+      UqBIO bio;
+      i2d(bio);
+      return (std::vector<uint8_t>)bio;
+    }
+
     UqX509 to_X509(int days, UqEVP_PKEY& key) const
     {
       return UqX509(X509_REQ_to_X509(p.get(), days, key));
@@ -1118,7 +1260,7 @@ namespace OpenSSL
       CHECK1(X509_REQ_set_pubkey(p.get(), key));
     }
 
-    UqStackOfX509_EXTENSION get_extensions() const;
+    const UqStackOfX509_EXTENSION get_extensions() const;
 
     int print_ex(UqBIO& bio) const
     {
@@ -1136,6 +1278,8 @@ namespace OpenSSL
     {
       return make_unique_nodelete(X509_REQ_get_subject_name(*this));
     }
+
+    UqStackOfGENERAL_NAME get_subject_alternative_names();
   };
 
   struct UqX509V3_CTX : public UqSSLObject<X509V3_CTX, nullptr, nullptr>
@@ -1490,6 +1634,80 @@ namespace OpenSSL
     virtual ST* _sk_dup() const = 0;
   };
 
+  inline STACK_OF(GENERAL_NAME) * UqStackOfGENERAL_NAME_new()
+  {
+    return sk_GENERAL_NAME_new_null();
+  }
+
+  inline void UqStackOfGENERAL_NAME_free(STACK_OF(GENERAL_NAME) * x)
+  {
+    sk_GENERAL_NAME_free(x);
+  }
+
+  class UqStackOfGENERAL_NAME : public UqStackOf<
+                                  UqGENERAL_NAME,
+                                  GENERAL_NAME,
+                                  STACK_OF(GENERAL_NAME),
+                                  UqStackOfGENERAL_NAME_new,
+                                  UqStackOfGENERAL_NAME_free>
+  {
+  protected:
+    /* clang-format off */
+    virtual STACK_OF(GENERAL_NAME)* _sk_new_null() const override { return sk_GENERAL_NAME_new_null(); }
+    virtual int _sk_num() const override { return sk_GENERAL_NAME_num(*this); }
+    virtual int _sk_insert(GENERAL_NAME* x, int i) override { return sk_GENERAL_NAME_insert(*this, x, i); }
+    virtual GENERAL_NAME* _sk_value(int i) const override { return sk_GENERAL_NAME_value(*this, i); }
+    virtual int _sk_push(GENERAL_NAME* x) override { return sk_GENERAL_NAME_push(*this, x); }
+    virtual STACK_OF(GENERAL_NAME)* _sk_dup() const override { return sk_GENERAL_NAME_dup(*this); }
+    /* clang-format on */
+
+  public:
+    using UqStackOf::UqStackOf;
+
+    virtual ~UqStackOfGENERAL_NAME()
+    {
+      sk_GENERAL_NAME_pop_free(*this, GENERAL_NAME_free);
+      (void)p.release();
+    };
+  };
+
+  inline STACK_OF(X509_NAME) * UqStackOfX509_NAME_new()
+  {
+    return sk_X509_NAME_new_null();
+  }
+
+  inline void UqStackOfX509_NAME_free(STACK_OF(X509_NAME) * x)
+  {
+    sk_X509_NAME_free(x);
+  }
+
+  class UqStackOfX509_NAME : public UqStackOf<
+                               UqX509_NAME,
+                               X509_NAME,
+                               STACK_OF(X509_NAME),
+                               UqStackOfX509_NAME_new,
+                               UqStackOfX509_NAME_free>
+  {
+  protected:
+    /* clang-format off */
+    virtual STACK_OF(X509_NAME)* _sk_new_null() const override { return sk_X509_NAME_new_null(); }
+    virtual int _sk_num() const override { return sk_X509_NAME_num(*this); }
+    virtual int _sk_insert(X509_NAME* x, int i) override { return sk_X509_NAME_insert(*this, x, i); }
+    virtual X509_NAME* _sk_value(int i) const override { return sk_X509_NAME_value(*this, i); }
+    virtual int _sk_push(X509_NAME* x) override { return sk_X509_NAME_push(*this, x); }
+    virtual STACK_OF(X509_NAME)* _sk_dup() const override { return sk_X509_NAME_dup(*this); }
+    /* clang-format on */
+
+  public:
+    using UqStackOf::UqStackOf;
+
+    virtual ~UqStackOfX509_NAME()
+    {
+      sk_X509_NAME_pop_free(*this, X509_NAME_free);
+      (void)p.release();
+    };
+  };
+
   inline STACK_OF(X509) * UqStackOfX509_new()
   {
     return sk_X509_new_null();
@@ -1789,9 +2007,36 @@ namespace OpenSSL
     }
   }
 
-  inline UqStackOfX509_EXTENSION UqX509_REQ::get_extensions() const
+  inline const UqASN1_OCTET_STRING UqX509_EXTENSION::get_data() const
+  {
+    return make_unique_nodelete(X509_EXTENSION_get_data(p.get()));
+  }
+
+  inline const UqStackOfX509_EXTENSION UqX509_REQ::get_extensions() const
   {
     return UqStackOfX509_EXTENSION(X509_REQ_get_extensions(p.get()));
+  }
+
+  inline UqStackOfGENERAL_NAME UqX509_REQ::get_subject_alternative_names()
+  {
+    UqStackOfGENERAL_NAME r;
+    const auto& exts = get_extensions();
+    for (size_t i = 0; i < exts.size(); i++)
+    {
+      const auto& ext = exts.at(i);
+      const auto& obj = ext.get_object();
+      if (obj.nid() == NID_subject_alt_name)
+      {
+        const auto& ext_data = ext.get_data();
+        const unsigned char* pp = ext_data->data;
+        UqStackOfGENERAL_NAME names(
+          d2i_GENERAL_NAMES(NULL, &pp, ext_data->length));
+        int sz = sk_GENERAL_NAME_num(names);
+        for (int i = 0; i < sz; i++)
+          r.push(names.at(i));
+      }
+    }
+    return r;
   }
 
   inline void UqX509_REQ::add_extensions(UqStackOfX509_EXTENSION& exts)
