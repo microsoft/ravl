@@ -383,6 +383,51 @@ namespace OpenSSL
       return r;
     }
 
+    bool is_othername() const
+    {
+      return type() == GEN_OTHERNAME;
+    }
+
+    bool is_email() const
+    {
+      return type() == GEN_EMAIL;
+    }
+
+    bool is_dns() const
+    {
+      return type() == GEN_DNS;
+    }
+
+    bool is_X400() const
+    {
+      return type() == GEN_X400;
+    }
+
+    bool is_dirname() const
+    {
+      return type() == GEN_DIRNAME;
+    }
+
+    bool is_ediparty() const
+    {
+      return type() == GEN_EDIPARTY;
+    }
+
+    bool is_uri() const
+    {
+      return type() == GEN_URI;
+    }
+
+    bool is_ipadd() const
+    {
+      return type() == GEN_IPADD;
+    }
+
+    bool is_rid() const
+    {
+      return type() == GEN_RID;
+    }
+
     UqASN1_STRING string() const
     {
       int r = 0;
