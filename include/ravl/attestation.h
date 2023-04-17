@@ -107,9 +107,16 @@ namespace ravl
 
     /// Assignment operator
     Attestation& operator=(const Attestation& other) = default;
+
+    /// CBOR conversion
+    std::vector<uint8_t> cbor();
   };
 
-  // Parse a JSON-encoded attestation
+  /// Parse a JSON-encoded attestation
   std::shared_ptr<Attestation> parse_attestation(
     const std::string& json_string);
+
+  /// Parse a CBOR-encoded attestation
+  std::shared_ptr<Attestation> parse_attestation_cbor(
+    const std::vector<uint8_t>& cbor);
 }

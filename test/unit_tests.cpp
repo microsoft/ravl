@@ -422,3 +422,25 @@ TEST_CASE("SEV/SNP JSON claims")
 
   REQUIRE(nj["endorsements"]["vcek_issuer_chain_crl"] == nullptr);
 }
+
+TEST_CASE("Open Enclave CoffeeLake CBOR")
+{
+  auto cbor = parse_attestation(oe_coffeelake_attestation)->cbor();
+  auto att2 = parse_attestation_cbor(cbor);
+
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(
+    claims = verify_synchronized(att2, default_options, http_client));
+
+  auto oec = Claims::get<ravl::oe::Claims>(claims);
+
+  auto s = claims->to_json();
+  auto nj = nlohmann::json::parse(s);
+  REQUIRE(nj.contains("sgx_claims"));
+
+  oec->sgx_claims = nullptr;
+  s = claims->to_json();
+  nj = nlohmann::json::parse(s);
+  REQUIRE(nj.contains("sgx_claims"));
+  REQUIRE(nj["sgx_claims"] == nullptr);
+}

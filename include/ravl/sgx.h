@@ -84,6 +84,8 @@ namespace ravl
       Endorsements endorsements;
 
       virtual std::string to_json() const override;
+
+      virtual std::vector<uint8_t> to_cbor() const;
     };
 
     class Attestation : public ravl::Attestation

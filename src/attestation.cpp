@@ -31,33 +31,49 @@ namespace ravl
     return j.dump();
   }
 
-  Attestation::operator std::string() const
+  static nlohmann::json attestation_json(
+    const Attestation& a, bool base64 = true)
   {
     nlohmann::json j;
-    j["source"] = source;
-    j["evidence"] = to_base64(evidence);
-    if (!endorsements.empty())
+    j["source"] = a.source;
+    if (base64)
+      j["evidence"] = to_base64(a.evidence);
+    else
+      j["evidence"] = a.evidence;
+    if (!a.endorsements.empty())
     {
-      j["endorsements"] = to_base64(endorsements);
+      if (base64)
+        j["endorsements"] = to_base64(a.endorsements);
+      else
+        j["endorsements"] = a.endorsements;
     }
-    return j.dump();
+    return j;
   }
 
-  std::shared_ptr<Attestation> parse_attestation(const std::string& json_string)
+  Attestation::operator std::string() const
   {
-    json j = json::parse(json_string);
+    return attestation_json(*this).dump();
+  }
 
+  static std::shared_ptr<Attestation> parse(const json& j, bool base64 = true)
+  {
     try
     {
       std::shared_ptr<Attestation> r = nullptr;
       auto source = j.at("source").get<Source>();
-      auto evidence = from_base64(j.at("evidence").get<std::string>());
+      std::vector<uint8_t> evidence;
+      if (base64)
+        evidence = from_base64(j.at("evidence").get<std::string>());
+      else
+        evidence = j.at("evidence").get<std::vector<uint8_t>>();
       std::vector<uint8_t> endorsements;
 
       if (j.contains("endorsements"))
       {
-        auto e = j.at("endorsements").get<std::string>();
-        endorsements = from_base64(e);
+        if (base64)
+          endorsements = from_base64(j.at("endorsements").get<std::string>());
+        else
+          endorsements = j.at("endorsements").get<std::vector<uint8_t>>();
       }
 
       switch (source)
@@ -87,5 +103,22 @@ namespace ravl
     }
 
     return nullptr;
+  }
+
+  std::shared_ptr<Attestation> parse_attestation(const std::string& json_string)
+  {
+    return parse(json::parse(json_string));
+  }
+
+  std::vector<uint8_t> Attestation::cbor()
+  {
+    auto aj = attestation_json(*this, false);
+    return nlohmann::json::to_cbor(aj);
+  }
+
+  std::shared_ptr<Attestation> parse_attestation_cbor(
+    const std::vector<uint8_t>& cbor)
+  {
+    return parse(nlohmann::json::from_cbor(cbor), false);
   }
 }
