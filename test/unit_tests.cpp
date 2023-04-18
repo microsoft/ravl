@@ -108,11 +108,12 @@ TEST_CASE("Open Enclave IceLake")
 
 TEST_CASE("Open Enclave CoffeeLake w/o endorsements")
 {
+  auto options = default_options;
+  options.historical = true;
   auto att = parse_attestation(oe_coffeelake_attestation);
   att->endorsements = {};
   std::shared_ptr<ravl::Claims> claims;
-  REQUIRE_NOTHROW(
-    claims = verify_synchronized(att, default_options, http_client));
+  REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
   auto sc = Claims::get<ravl::oe::Claims>(claims);
   REQUIRE(
     to_hex(sc->sgx_claims->report_body.mr_enclave) ==
@@ -134,11 +135,12 @@ TEST_CASE("Open Enclave CoffeeLake w/o custom claims")
 
 TEST_CASE("Open Enclave IceLake w/o endorsements")
 {
+  auto options = default_options;
+  options.historical = true;
   auto att = parse_attestation(oe_icelake_attestation);
   att->endorsements = {};
   std::shared_ptr<ravl::Claims> claims;
-  REQUIRE_NOTHROW(
-    claims = verify_synchronized(att, default_options, http_client));
+  REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
   auto sc = Claims::get<ravl::oe::Claims>(claims);
   REQUIRE(
     to_hex(sc->sgx_claims->report_body.mr_enclave) ==
@@ -159,11 +161,12 @@ TEST_CASE("SGX CoffeeLake")
 
 TEST_CASE("SGX CoffeeLake w/o endorsements")
 {
+  auto options = default_options;
+  options.historical = true;
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
   std::shared_ptr<ravl::Claims> claims;
-  REQUIRE_NOTHROW(
-    claims = verify_synchronized(att, default_options, http_client));
+  REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
 }
 
 TEST_CASE("SGX IceLake")
@@ -176,28 +179,31 @@ TEST_CASE("SGX IceLake")
 
 TEST_CASE("SGX IceLake w/o endorsements")
 {
+  auto options = default_options;
+  options.historical = true;
   auto att = parse_attestation(icelake_quote);
   att->endorsements = {};
   std::shared_ptr<ravl::Claims> claims;
-  REQUIRE_NOTHROW(
-    claims = verify_synchronized(att, default_options, http_client));
+  REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
 }
 
 TEST_CASE("SGX SDK QE Quote3")
 {
+  auto options = default_options;
+  options.historical = true;
   auto att = parse_attestation(sgx_sdk_qe_quote3);
   std::shared_ptr<ravl::Claims> claims;
-  REQUIRE_NOTHROW(
-    claims = verify_synchronized(att, default_options, http_client));
+  REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
 }
 
 TEST_CASE("SGX SDK QE Quote3 w/o endorsements")
 {
+  auto options = default_options;
+  options.historical = true;
   auto att = parse_attestation(sgx_sdk_qe_quote3);
   att->endorsements = {};
   std::shared_ptr<ravl::Claims> claims;
-  REQUIRE_NOTHROW(
-    claims = verify_synchronized(att, default_options, http_client));
+  REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
 }
 
 TEST_CASE("SGX with endorsements from cache")
@@ -256,10 +262,12 @@ TEST_CASE("SEV/SNP synchronous")
 
 TEST_CASE("SGX CoffeeLake synchronous")
 {
+  auto options = default_options;
+  options.historical = true;
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
   std::shared_ptr<ravl::Claims> claims;
-  REQUIRE_NOTHROW(claims = verify_synchronous(att, default_options));
+  REQUIRE_NOTHROW(claims = verify_synchronous(att, options));
 }
 
 TEST_CASE("CCF quote")
@@ -282,6 +290,8 @@ TEST_CASE("CCF quote 2")
 
 TEST_CASE("SGX CoffeeLake asynchronous")
 {
+  auto options = default_options;
+  options.historical = true;
   const auto& opts = default_options;
   auto att = parse_attestation(coffeelake_quote);
   att->endorsements = {};
@@ -292,7 +302,7 @@ TEST_CASE("SGX CoffeeLake asynchronous")
   {
     AttestationRequestTracker tracker;
     auto id = tracker.submit(
-      default_options,
+      options,
       att,
       std::make_shared<AsynchronousHTTPClient>(
         opts.http_timeout, opts.http_max_attempts, opts.verbosity > 0));
