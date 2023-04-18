@@ -95,6 +95,12 @@ namespace ravl
       return nlohmann::json(*this).dump();
     }
 
+    RAVL_VISIBILITY std::vector<uint8_t> Claims::to_cbor() const
+    {
+      auto j = nlohmann::json(*this);
+      return nlohmann::json::to_cbor(j);
+    }
+
     class QL_QVE_Collateral // ~ sgx_ql_qve_collateral_t
     {
     public:

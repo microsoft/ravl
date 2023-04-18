@@ -1978,6 +1978,7 @@ namespace OpenSSL
   {
     return sk_X509_EXTENSION_new_null();
   }
+
   inline void UqStackOfX509_EXTENSION_free(STACK_OF(X509_EXTENSION) * x)
   {
     sk_X509_EXTENSION_free(x);
