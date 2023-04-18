@@ -30,7 +30,7 @@ namespace ravl
     std::optional<std::string> root_ca_certificate = std::nullopt;
 
     /// Check that the root CA certificate has the platform manufacturer's
-    /// public key (intended for debugging only).
+    /// public key (intended for debugging only)
     bool check_root_certificate_manufacturer_key = true;
 
     /// Optional URL template for cached Intel SGX endorsements (DCAP)
@@ -46,5 +46,9 @@ namespace ravl
 
     /// Maximum number of attempts for HTTP requests
     size_t http_max_attempts = 5;
+
+    /// Accept historical attestations where SVNs may be smaller than for fresh
+    /// attestations
+    bool historical = false;
   };
 }

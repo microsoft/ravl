@@ -871,7 +871,8 @@ namespace ravl
           qe_report_body.isv_prod_id)
           throw std::runtime_error("QE isv prod id mismatch");
 
-        if (qe_tcb_level_isv_svn >= qe_report_body.isv_svn)
+        if (
+          !options.historical && qe_tcb_level_isv_svn >= qe_report_body.isv_svn)
           throw std::runtime_error("QE isv svn too small");
 
         uint32_t msel_mask = from_hex_t<uint32_t>(
