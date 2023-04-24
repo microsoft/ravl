@@ -106,7 +106,7 @@ namespace ravl
         const Options& options = {},
         const std::optional<HTTPResponses>& http_responses = {}) const override;
 
-      void compress_pck_certificate_chain();
+      void compress_pck_certificate_chain(bool resize_evidence = true);
     };
   }
 }

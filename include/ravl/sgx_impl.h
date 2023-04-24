@@ -1070,7 +1070,8 @@ namespace ravl
       sgx_ql_certification_data_t* cd_raw = nullptr;
       std::string tmp_certification_data_pem;
 
-      size_t compress_pck_certificate_chain(std::vector<uint8_t>& evidence)
+      size_t compress_pck_certificate_chain(
+        std::vector<uint8_t>& evidence, bool resize_evidence = true)
       {
         if (
           cd_raw && certification_data.size() > 5 &&
@@ -1096,7 +1097,8 @@ namespace ravl
           certification_data = {cd_raw->certification_data, cd_raw->size};
 
           size_t r = sz_before - sz_after;
-          evidence.resize(evidence.size() - r);
+          if (resize_evidence)
+            evidence.resize(evidence.size() - r);
           return r;
         }
 
@@ -1361,7 +1363,8 @@ namespace ravl
         *(const sgx_quote_t*)quote.data(), signature_data, *collateral);
     }
 
-    RAVL_VISIBILITY void Attestation::compress_pck_certificate_chain()
+    RAVL_VISIBILITY void Attestation::compress_pck_certificate_chain(
+      bool resize_evidence)
     {
       static constexpr size_t sgx_quote_t_signed_size =
         sizeof(sgx_quote_t) - sizeof(uint32_t); // (minus signature_len)
@@ -1385,7 +1388,8 @@ namespace ravl
 
       SignatureData signature_data(pquote, *this);
 
-      auto k = signature_data.compress_pck_certificate_chain(evidence);
+      auto k = signature_data.compress_pck_certificate_chain(
+        evidence, resize_evidence);
       if (k > 0 && k < quote->signature_len)
         quote->signature_len -= k;
     }
