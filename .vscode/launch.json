@@ -121,6 +121,17 @@
       "args": ["-tc=SEV/SNP asynchronous"]
     },
     {
+      "name": "Unit tests (PCK certificate chain compression)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/test/unit_tests",
+      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "args": [
+        "-tc=PCK certificate chain compression"
+      ]
+    },
+    {
       "name": "WASM via Edge",
       "type": "msedge",
       "request": "launch",

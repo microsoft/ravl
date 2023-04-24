@@ -121,4 +121,44 @@ namespace ravl
   {
     return parse(nlohmann::json::from_cbor(cbor), false);
   }
+
+  /*
+    // Add binary encoding along these lines?
+
+    std::shared_ptr<Attestation> parse_attestation_bin(
+      const std::vector<uint8_t>& data)
+    {
+      size_t pos = 0;
+
+      Source source = static_cast<Source>(get<uint8_t>(data, pos));
+
+      size_t evidence_size = get<uint32_t>(data, pos);
+      auto evidence = get_n(data, evidence_size, pos);
+
+      size_t endorsements_size = get<uint32_t>(data, pos);
+      auto endorsements = get_n(data, endorsements_size, pos);
+
+      std::shared_ptr<Attestation> r = nullptr;
+
+      switch (source)
+      {
+        case Source::SGX:
+          r = std::make_shared<sgx::Attestation>(evidence, endorsements);
+          break;
+        case Source::SEV_SNP:
+          r = std::make_shared<sev_snp::Attestation>(evidence, endorsements);
+          break;
+        case Source::OPEN_ENCLAVE:
+          r = std::make_shared<oe::Attestation>(evidence, endorsements);
+          break;
+        default:
+          throw std::runtime_error(
+            "unsupported attestation source '" +
+            std::to_string((unsigned)source) + "'");
+          break;
+      };
+
+      return r;
+    }
+    */
 }
