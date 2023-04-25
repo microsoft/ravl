@@ -595,6 +595,48 @@ namespace ravl
       return claims;
 #endif
     }
+
+    RAVL_VISIBILITY void Attestation::compress_pck_certificate_chain(
+      bool resize_evidence)
+    {
+      using namespace sgx;
+
+      static constexpr size_t sgx_quote_t_signed_size =
+        sizeof(sgx_quote_t) - sizeof(uint32_t); // (minus signature_len)
+
+      sgx_quote_t* quote = (sgx_quote_t*)evidence.data();
+
+      if (evidence.size() < (sizeof(sgx_quote_t) + quote->signature_len))
+        throw std::runtime_error(
+          "Unknown evidence format: too small to contain an sgx_quote_t");
+
+      std::span pquote = {(uint8_t*)quote, sgx_quote_t_signed_size};
+      verify_within(pquote, evidence);
+
+      if (quote->version != SGX_QUOTE_VERSION)
+        throw std::runtime_error(
+          "Unknown evidence format: unsupported quote version");
+
+      if (quote->sign_type != SGX_QL_ALG_ECDSA_P256)
+        throw std::runtime_error(
+          "Unknown evidence format: unsupported signing type");
+
+      SignatureData signature_data(pquote, *(sgx::Attestation*)this);
+
+      auto k = signature_data.compress_pck_certificate_chain(evidence, false);
+      if (0 < k && k < quote->signature_len)
+      {
+        // Move OE claims forward
+        size_t quote_and_sig_len = sizeof(sgx_quote_t) + quote->signature_len;
+        for (size_t i = quote_and_sig_len; i < evidence.size(); i++)
+          evidence[i - k] = evidence[i];
+
+        quote->signature_len -= k;
+
+        if (resize_evidence)
+          evidence.resize(evidence.size() - k);
+      }
+    }
   }
 
   template <>

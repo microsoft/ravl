@@ -48,6 +48,8 @@ namespace ravl
         const Options& options = {},
         const std::optional<HTTPResponses>& http_responses = {}) const override;
 
+      void compress_pck_certificate_chain(bool resize_evidence = true);
+
     protected:
       mutable std::shared_ptr<ravl::Attestation> sgx_attestation;
       mutable std::vector<uint8_t> custom_claims;

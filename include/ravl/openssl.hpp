@@ -883,6 +883,13 @@ namespace OpenSSL
       return (std::string)mem;
     }
 
+    std::vector<uint8_t> der() const
+    {
+      UqBIO mem;
+      CHECK1(i2d_X509_bio(mem, p.get()));
+      return (std::vector<uint8_t>)mem;
+    }
+
     UqX509_NAME get_subject_name() const
     {
       return UqX509_NAME(make_unique_nodelete(X509_get_subject_name(*this)));

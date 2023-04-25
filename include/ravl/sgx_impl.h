@@ -5,6 +5,7 @@
 
 #include "crypto.h"
 #include "http_client.h"
+#include "openssl.hpp"
 #include "sgx.h"
 #include "sgx_defs.h"
 #include "util.h"
@@ -14,6 +15,7 @@
 
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>
+#include <nlohmann/json.hpp>
 
 #define SGX_QUOTE_VERSION 3
 
@@ -1023,17 +1025,36 @@ namespace ravl
         if (ad_raw == NULL || ad_raw->size == 0)
           throw std::runtime_error("missing authentication data");
 
-        const sgx_ql_certification_data_t* cd_raw =
+        cd_raw =
         (sgx_ql_certification_data_t*)(sig_data->auth_certification_data + sizeof(sgx_ql_auth_data_t) + ad_raw->size);
-
-        certification_data = {cd_raw->certification_data, cd_raw->size};
-        verify_within(certification_data, a.evidence);
 
         if (cd_raw == NULL || cd_raw->size == 0)
           throw std::runtime_error("missing certification data");
 
+        certification_data = {cd_raw->certification_data, cd_raw->size};
+        verify_within(certification_data, a.evidence);
+
         if (cd_raw->cert_key_type != PCK_CERT_CHAIN)
           throw std::runtime_error("unsupported certification data key type");
+
+        if (
+          certification_data.size() > 5 &&
+          strncmp((const char*)certification_data.data(), "-----", 5) != 0)
+        {
+          OpenSSL::UqBIO bio(certification_data);
+
+          while (BIO_ctrl_pending(bio) > 1)
+          {
+            OpenSSL::UqX509 x509(bio, false);
+            auto pem = x509.pem();
+            tmp_certification_data_pem.insert(
+              tmp_certification_data_pem.end(), pem.begin(), pem.end());
+          }
+
+          certification_data = {
+            (uint8_t*)&tmp_certification_data_pem[0],
+            tmp_certification_data_pem.size()};
+        }
       }
 
       ~SignatureData() = default;
@@ -1045,6 +1066,44 @@ namespace ravl
       std::span<const uint8_t> report_data;
       std::span<const uint8_t> auth_data;
       std::span<const uint8_t> certification_data;
+
+      sgx_ql_certification_data_t* cd_raw = nullptr;
+      std::string tmp_certification_data_pem;
+
+      size_t compress_pck_certificate_chain(
+        std::vector<uint8_t>& evidence, bool resize_evidence = true)
+      {
+        if (
+          cd_raw && certification_data.size() > 5 &&
+          strncmp((const char*)certification_data.data(), "-----", 5) == 0)
+        {
+          auto sz_before = certification_data.size();
+          OpenSSL::UqBIO bio(certification_data);
+
+          std::vector<uint8_t> der_data;
+          while (BIO_ctrl_pending(bio) > 1)
+          {
+            OpenSSL::UqX509 x509(bio, true);
+            auto der = x509.der();
+            der_data.insert(der_data.end(), der.begin(), der.end());
+          }
+
+          auto sz_after = der_data.size();
+
+          for (size_t i = 0; i < der_data.size(); i++)
+            cd_raw->certification_data[i] = der_data[i];
+
+          cd_raw->size = sz_after;
+          certification_data = {cd_raw->certification_data, cd_raw->size};
+
+          size_t r = sz_before - sz_after;
+          if (resize_evidence)
+            evidence.resize(evidence.size() - r);
+          return r;
+        }
+
+        return 0;
+      }
     };
 
     RAVL_VISIBILITY std::optional<HTTPRequests> Attestation::
@@ -1302,6 +1361,37 @@ namespace ravl
 
       return make_claims(
         *(const sgx_quote_t*)quote.data(), signature_data, *collateral);
+    }
+
+    RAVL_VISIBILITY void Attestation::compress_pck_certificate_chain(
+      bool resize_evidence)
+    {
+      static constexpr size_t sgx_quote_t_signed_size =
+        sizeof(sgx_quote_t) - sizeof(uint32_t); // (minus signature_len)
+
+      sgx_quote_t* quote = (sgx_quote_t*)evidence.data();
+
+      if (evidence.size() < (sizeof(sgx_quote_t) + quote->signature_len))
+        throw std::runtime_error(
+          "Unknown evidence format: too small to contain an sgx_quote_t");
+
+      std::span pquote = {(uint8_t*)quote, sgx_quote_t_signed_size};
+      verify_within(pquote, evidence);
+
+      if (quote->version != SGX_QUOTE_VERSION)
+        throw std::runtime_error(
+          "Unknown evidence format: unsupported quote version");
+
+      if (quote->sign_type != SGX_QL_ALG_ECDSA_P256)
+        throw std::runtime_error(
+          "Unknown evidence format: unsupported signing type");
+
+      SignatureData signature_data(pquote, *this);
+
+      auto k = signature_data.compress_pck_certificate_chain(
+        evidence, resize_evidence);
+      if (k > 0 && k < quote->signature_len)
+        quote->signature_len -= k;
     }
   }
 

@@ -444,3 +444,41 @@ TEST_CASE("Open Enclave CoffeeLake CBOR")
   REQUIRE(nj.contains("sgx_claims"));
   REQUIRE(nj["sgx_claims"] == nullptr);
 }
+
+TEST_CASE("PCK certificate chain compression")
+{
+  auto generic_att = parse_attestation(coffeelake_quote);
+  auto att = std::dynamic_pointer_cast<sgx::Attestation>(generic_att);
+
+  REQUIRE_NOTHROW(verify_synchronized(att, default_options, http_client));
+
+  auto cbor_before = att->cbor();
+  att->compress_pck_certificate_chain();
+  auto cbor_after = att->cbor();
+
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(
+    claims = verify_synchronized(att, default_options, http_client));
+
+  REQUIRE(claims != nullptr);
+  REQUIRE(cbor_after.size() < cbor_before.size());
+}
+
+TEST_CASE("OE PCK certificate chain compression")
+{
+  auto generic_att = parse_attestation(oe_coffeelake_attestation);
+  auto att = std::dynamic_pointer_cast<oe::Attestation>(generic_att);
+
+  REQUIRE_NOTHROW(verify_synchronized(att, default_options, http_client));
+
+  auto cbor_before = att->cbor();
+  att->compress_pck_certificate_chain();
+  auto cbor_after = att->cbor();
+
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(
+    claims = verify_synchronized(att, default_options, http_client));
+
+  REQUIRE(claims != nullptr);
+  REQUIRE(cbor_after.size() < cbor_before.size());
+}
