@@ -137,6 +137,7 @@ namespace ravl
       }
       catch (std::exception& ex)
       {
+        log(fmt::format("- exception: {}", ex.what()), 2);
         req.state = RequestState::ERROR;
       }
 
