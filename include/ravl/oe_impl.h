@@ -4,7 +4,7 @@
 #pragma once
 
 #include "http_client.h"
-#include "nlohmann/json.hpp"
+#include "json.h"
 #include "oe.h"
 #include "sgx.h"
 #include "sgx_defs.h"
@@ -125,13 +125,13 @@ namespace ravl
 
 #endif
 
-namespace nlohmann
+namespace ravl
 {
   template <>
-  struct adl_serializer<std::shared_ptr<ravl::sgx::Claims>>
+  struct ravl_json_serializer<std::shared_ptr<ravl::sgx::Claims>>
   {
     inline static void to_json(
-      json& j, const std::shared_ptr<ravl::sgx::Claims>& x)
+      ravl::json& j, const std::shared_ptr<ravl::sgx::Claims>& x)
     {
       if (!x)
         j = nullptr;
@@ -140,24 +140,21 @@ namespace nlohmann
     }
 
     inline static void from_json(
-      const json& j, std::shared_ptr<ravl::sgx::Claims>& x)
+      const ravl::json& j, std::shared_ptr<ravl::sgx::Claims>& x)
     {
       x = std::make_shared<ravl::sgx::Claims>(j.get<ravl::sgx::Claims>());
     }
   };
-}
 
-namespace ravl
-{
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(oe::Claims, sgx_claims, custom_claims);
+
   namespace oe
   {
     static constexpr oe_uuid_t sgx_remote_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Claims, sgx_claims, custom_claims);
-
     RAVL_VISIBILITY std::string Claims::to_json() const
     {
-      return nlohmann::json(*this).dump();
+      return ravl::json(*this).dump();
     }
 
 #ifndef RAVL_USE_OE_VERIFIER
@@ -603,6 +600,9 @@ namespace ravl
 
       static constexpr size_t sgx_quote_t_signed_size =
         sizeof(sgx_quote_t) - sizeof(uint32_t); // (minus signature_len)
+
+      if (evidence.empty())
+        throw std::runtime_error("empty evidence");
 
       sgx_quote_t* quote = (sgx_quote_t*)evidence.data();
 

@@ -5,22 +5,23 @@
 
 #include "crypto.h"
 #include "http_client.h"
+#include "json.h"
 #include "sev_snp.h"
 #include "util.h"
 #include "visibility.h"
 
-#include <nlohmann/json.hpp>
 #include <span>
 
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
-namespace nlohmann
+namespace ravl
 {
   template <>
-  struct adl_serializer<std::optional<std::string>>
+  struct ravl_json_serializer<std::optional<std::string>>
   {
-    inline static void to_json(json& j, const std::optional<std::string>& x)
+    inline static void to_json(
+      ravl::json& j, const std::optional<std::string>& x)
     {
       if (x)
         j = *x;
@@ -28,7 +29,8 @@ namespace nlohmann
         j = nullptr;
     }
 
-    inline static void from_json(const json& j, std::optional<std::string>& x)
+    inline static void from_json(
+      const ravl::json& j, std::optional<std::string>& x)
     {
       if (j == nullptr)
         x = std::nullopt;
@@ -204,53 +206,56 @@ QPHfbkH0CyPfhl1jWhJFZasCAwEAAQ==
         MSG_TYPE_MAX
       };
     }
+  }
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
-      Claims::TCBVersion, boot_loader, tee, snp, microcode);
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sev_snp::Claims::TCBVersion, boot_loader, tee, snp, microcode);
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Claims::Signature, r, s);
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(sev_snp::Claims::Signature, r, s);
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
-      Endorsements,
-      root_ca_certificate,
-      vcek_certificate_chain,
-      vcek_issuer_chain_crl);
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sev_snp::Endorsements,
+    root_ca_certificate,
+    vcek_certificate_chain,
+    vcek_issuer_chain_crl);
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
-      Claims,
-      version,
-      guest_svn,
-      policy,
-      family_id,
-      image_id,
-      vmpl,
-      signature_algo,
-      platform_version,
-      platform_info,
-      flags,
-      report_data,
-      measurement,
-      host_data,
-      id_key_digest,
-      author_key_digest,
-      report_id,
-      report_id_ma,
-      reported_tcb,
-      chip_id,
-      committed_tcb,
-      current_minor,
-      current_build,
-      current_major,
-      committed_build,
-      committed_minor,
-      committed_major,
-      launch_tcb,
-      signature,
-      endorsements);
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sev_snp::Claims,
+    version,
+    guest_svn,
+    policy,
+    family_id,
+    image_id,
+    vmpl,
+    signature_algo,
+    platform_version,
+    platform_info,
+    flags,
+    report_data,
+    measurement,
+    host_data,
+    id_key_digest,
+    author_key_digest,
+    report_id,
+    report_id_ma,
+    reported_tcb,
+    chip_id,
+    committed_tcb,
+    current_minor,
+    current_build,
+    current_major,
+    committed_build,
+    committed_minor,
+    committed_major,
+    launch_tcb,
+    signature,
+    endorsements);
 
+  namespace sev_snp
+  {
     RAVL_VISIBILITY std::string Claims::to_json() const
     {
-      return nlohmann::json(*this).dump();
+      return ravl::json(*this).dump();
     }
 
 #define SEV_GUEST_IOC_TYPE 'S'
