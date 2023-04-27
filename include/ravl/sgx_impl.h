@@ -5,6 +5,7 @@
 
 #include "crypto.h"
 #include "http_client.h"
+#include "json.h"
 #include "openssl.hpp"
 #include "sgx.h"
 #include "sgx_defs.h"
@@ -15,7 +16,6 @@
 
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>
-#include <nlohmann/json.hpp>
 
 #define SGX_QUOTE_VERSION 3
 
@@ -27,6 +27,60 @@
 
 namespace ravl
 {
+
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sgx::Claims::ReportAttributes, flags, xfrm);
+
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sgx::Claims::ReportBody,
+    cpu_svn,
+    misc_select,
+    isv_ext_prod_id,
+    attributes,
+    mr_enclave,
+    mr_signer,
+    config_id,
+    isv_prod_id,
+    isv_svn,
+    config_svn,
+    isv_family_id,
+    report_data);
+
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sgx::Claims::SignatureData,
+    signature,
+    attest_pub_key,
+    qe_report,
+    qe_report_sig,
+    auth_data);
+
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sgx::Endorsements,
+    major_version,
+    minor_version,
+    tee_type,
+    root_ca,
+    pck_crl_issuer_chain,
+    root_ca_crl,
+    pck_crl,
+    tcb_info_issuer_chain,
+    tcb_info,
+    qe_identity_issuer_chain,
+    qe_identity);
+
+  RAVL_JSON_DEFINE_TYPE_NON_INTRUSIVE(
+    sgx::Claims,
+    version,
+    sign_type,
+    epid_group_id,
+    qe_svn,
+    pce_svn,
+    xeid,
+    basename,
+    report_body,
+    signature_data,
+    endorsements);
+
   namespace sgx
   {
     static const std::string pck_cert_common_name = "Intel SGX PCK Certificate";
@@ -40,67 +94,15 @@ namespace ravl
     static const char* datetime_format = "%Y-%m-%dT%H:%M:%SZ";
     static const char* sgx_earliest_tcb_crl_date = "2017-03-17T00:00:00Z";
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Claims::ReportAttributes, flags, xfrm);
-
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
-      Claims::ReportBody,
-      cpu_svn,
-      misc_select,
-      isv_ext_prod_id,
-      attributes,
-      mr_enclave,
-      mr_signer,
-      config_id,
-      isv_prod_id,
-      isv_svn,
-      config_svn,
-      isv_family_id,
-      report_data);
-
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
-      Claims::SignatureData,
-      signature,
-      attest_pub_key,
-      qe_report,
-      qe_report_sig,
-      auth_data);
-
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
-      Endorsements,
-      major_version,
-      minor_version,
-      tee_type,
-      root_ca,
-      pck_crl_issuer_chain,
-      root_ca_crl,
-      pck_crl,
-      tcb_info_issuer_chain,
-      tcb_info,
-      qe_identity_issuer_chain,
-      qe_identity);
-
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
-      Claims,
-      version,
-      sign_type,
-      epid_group_id,
-      qe_svn,
-      pce_svn,
-      xeid,
-      basename,
-      report_body,
-      signature_data,
-      endorsements);
-
     RAVL_VISIBILITY std::string Claims::to_json() const
     {
-      return nlohmann::json(*this).dump();
+      return ravl::json(*this).dump();
     }
 
     RAVL_VISIBILITY std::vector<uint8_t> Claims::to_cbor() const
     {
-      auto j = nlohmann::json(*this);
-      return nlohmann::json::to_cbor(j);
+      auto j = ravl::json(*this);
+      return ravl::json::to_cbor(j);
     }
 
     class QL_QVE_Collateral // ~ sgx_ql_qve_collateral_t
@@ -353,7 +355,7 @@ namespace ravl
     }
 
     RAVL_VISIBILITY bool json_vector_eq(
-      const nlohmann::json& tcbinfo_j,
+      const ravl::json& tcbinfo_j,
       const std::string& key,
       const std::vector<uint8_t>& ref,
       bool optional = false)
@@ -631,7 +633,7 @@ namespace ravl
 
       try
       {
-        auto col_tcb_info_j = nlohmann::json::parse(tcb_info_s);
+        auto col_tcb_info_j = ravl::json::parse(tcb_info_s);
         auto tcbinfo_j = col_tcb_info_j["tcbInfo"];
 
         if (
@@ -680,8 +682,8 @@ namespace ravl
           {
             // See
             // https://github.com/openenclave/openenclave/blob/master/common/sgx/tcbinfo.c#L398
-            // "Choose the first tcb level for which all of the platform's comp
-            // svn values and pcesvn values are greater than or equal to
+            // "Choose the first tcb level for which all of the platform's
+            // comp svn values and pcesvn values are greater than or equal to
             // corresponding values of the tcb level."
             bool good = true;
             for (size_t i = 0; i < comp_svn_size && good; i++)
@@ -808,7 +810,8 @@ namespace ravl
         options.check_root_certificate_manufacturer_key &&
         !qe_id_issuer_root.has_public_key(intel_root_public_key_pem))
         throw std::runtime_error(
-          "QE identity issuer root certificate does not use the expected Intel "
+          "QE identity issuer root certificate does not use the expected "
+          "Intel "
           "SGX public key");
 
       std::string qe_identity_s = {
@@ -821,7 +824,7 @@ namespace ravl
         std::string qe_tcb_date = "";
         uint16_t qe_tcb_level_isv_svn = 0;
 
-        auto qe_id_j = nlohmann::json::parse(qe_identity_s);
+        auto qe_id_j = ravl::json::parse(qe_identity_s);
         auto enclave_identity = qe_id_j["enclaveIdentity"];
 
         auto version = enclave_identity["version"].get<uint64_t>();
@@ -1073,6 +1076,9 @@ namespace ravl
       size_t compress_pck_certificate_chain(
         std::vector<uint8_t>& evidence, bool resize_evidence = true)
       {
+        if (evidence.empty())
+          throw std::runtime_error("empty evidence");
+
         if (
           cd_raw && certification_data.size() > 5 &&
           strncmp((const char*)certification_data.data(), "-----", 5) == 0)

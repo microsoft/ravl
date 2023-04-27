@@ -2,9 +2,9 @@
 // Licensed under the MIT License.
 
 #include <chrono>
-#include <nlohmann/json.hpp>
 #include <ravl/attestation.h>
 #include <ravl/http_client.h>
+#include <ravl/json.h>
 #include <ravl/oe.h>
 #include <ravl/ravl.h>
 #include <ravl/request_tracker.h>
@@ -390,12 +390,12 @@ TEST_CASE("Open Enclave CoffeeLake JSON claims")
   auto oec = Claims::get<ravl::oe::Claims>(claims);
 
   auto s = claims->to_json();
-  auto nj = nlohmann::json::parse(s);
+  auto nj = ravl::json::parse(s);
   REQUIRE(nj.contains("sgx_claims"));
 
   oec->sgx_claims = nullptr;
   s = claims->to_json();
-  nj = nlohmann::json::parse(s);
+  nj = ravl::json::parse(s);
   REQUIRE(nj.contains("sgx_claims"));
   REQUIRE(nj["sgx_claims"] == nullptr);
 }
@@ -410,13 +410,13 @@ TEST_CASE("SEV/SNP JSON claims")
   auto sc = Claims::get<ravl::sev_snp::Claims>(claims);
 
   auto s = claims->to_json();
-  auto nj = nlohmann::json::parse(s);
+  auto nj = ravl::json::parse(s);
   REQUIRE(nj.contains("endorsements"));
   REQUIRE(nj["endorsements"].contains("vcek_issuer_chain_crl"));
 
   sc->endorsements.vcek_issuer_chain_crl = std::nullopt;
   s = claims->to_json();
-  nj = nlohmann::json::parse(s);
+  nj = ravl::json::parse(s);
   REQUIRE(nj.contains("endorsements"));
   REQUIRE(nj["endorsements"].contains("vcek_issuer_chain_crl"));
 
@@ -435,12 +435,12 @@ TEST_CASE("Open Enclave CoffeeLake CBOR")
   auto oec = Claims::get<ravl::oe::Claims>(claims);
 
   auto s = claims->to_json();
-  auto nj = nlohmann::json::parse(s);
+  auto nj = ravl::json::parse(s);
   REQUIRE(nj.contains("sgx_claims"));
 
   oec->sgx_claims = nullptr;
   s = claims->to_json();
-  nj = nlohmann::json::parse(s);
+  nj = ravl::json::parse(s);
   REQUIRE(nj.contains("sgx_claims"));
   REQUIRE(nj["sgx_claims"] == nullptr);
 }
