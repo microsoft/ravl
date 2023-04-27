@@ -30,6 +30,8 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
 
+list(APPEND RAVL_FLAGS -fPIC)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   list(APPEND RAVL_FLAGS -Wall -pedantic)
   if(NOT DEFINED SAN)
@@ -61,7 +63,8 @@ set(RAVL_SRC
   ${RAVL_SRC_DIR}/http_client.cpp
   ${RAVL_SRC_DIR}/ravl.cpp
   ${RAVL_SRC_DIR}/attestation.cpp
-  ${RAVL_SRC_DIR}/request_tracker.cpp)
+  ${RAVL_SRC_DIR}/request_tracker.cpp
+  ${RAVL_SRC_DIR}/capi.cpp)
 set(RAVL_INCLUDE 3rdparty ${RAVL_DIR}/include)
 set(RAVL_DEFS RAVL_LIBRARY_BUILD)
 set(RAVL_LIB_DEPS pthread)
