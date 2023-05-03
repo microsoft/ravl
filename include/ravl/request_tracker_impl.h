@@ -228,6 +228,8 @@ namespace ravl
           if (options.certificate_verification.verification_time)
             log("- Use custom certificate verification time", 6);
         }
+        if (options.partial)
+          log("- Partial verification", 4);
       }
 
       std::optional<HTTPRequests> http_requests;
