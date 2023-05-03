@@ -1116,8 +1116,9 @@ namespace ravl
       prepare_endorsements(const Options& options) const
     {
       if (
-        !this->endorsements.empty() && !options.fresh_endorsements &&
-        !options.fresh_root_ca_certificate)
+        (!this->endorsements.empty() && !options.fresh_endorsements &&
+         !options.fresh_root_ca_certificate) ||
+        options.partial)
         return std::nullopt;
 
       std::span quote = parse_quote(*this);
@@ -1170,9 +1171,7 @@ namespace ravl
     };
 
     RAVL_VISIBILITY std::shared_ptr<Claims> make_claims(
-      const sgx_quote_t& raw,
-      const SignatureData& signature_data,
-      const QL_QVE_Collateral& collateral)
+      const sgx_quote_t& raw, const SignatureData& signature_data)
     {
       auto claims = std::make_shared<Claims>();
 
@@ -1197,6 +1196,16 @@ namespace ravl
       claims->signature_data.auth_data.assign(
         signature_data.auth_data.begin(), signature_data.auth_data.end());
 
+      return claims;
+    }
+
+    RAVL_VISIBILITY std::shared_ptr<Claims> make_claims(
+      const sgx_quote_t& raw,
+      const SignatureData& signature_data,
+      const QL_QVE_Collateral& collateral)
+    {
+      auto claims = make_claims(raw, signature_data);
+
       claims->endorsements = {
         .major_version = collateral.major_version,
         .minor_version = collateral.minor_version,
@@ -1213,11 +1222,79 @@ namespace ravl
       return claims;
     }
 
+    RAVL_VISIBILITY std::shared_ptr<ravl::Claims> Attestation::partial_verify(
+      const Options& options) const
+    {
+      using namespace crypto;
+
+      size_t indent = 0;
+
+      UqX509_STORE store;
+
+      store.set_flags(X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+
+      std::span quote = parse_quote(*this);
+      SignatureData signature_data(quote, *this);
+
+      if (options.verbosity > 0)
+        log("- PCK certificate chain verification", indent + 2);
+      auto pck_cert_chain = verify_certificate_chain(
+        signature_data.certification_data,
+        store,
+        options.certificate_verification,
+        true,
+        options.verbosity,
+        indent + 4);
+
+      auto pck_leaf = pck_cert_chain.front();
+      auto pck_root = pck_cert_chain.back();
+
+      if (!pck_leaf.has_common_name(pck_cert_common_name))
+        throw std::runtime_error(
+          "PCK certificate does not have expected common name");
+
+      if (
+        options.check_root_certificate_manufacturer_key &&
+        !pck_root.has_public_key(intel_root_public_key_pem))
+        throw std::runtime_error(
+          "root CA certificate does not have the expected Intel SGX public "
+          "key");
+
+      if (!pck_root.is_ca())
+        throw std::runtime_error("root certificate is not from a CA");
+
+      // Verify QE and quote signatures and the authentication hash
+      UqEVP_PKEY qe_leaf_pubkey(pck_leaf);
+
+      bool qe_sig_ok = verify_signature(
+        qe_leaf_pubkey, signature_data.report, signature_data.report_signature);
+      if (!qe_sig_ok)
+        throw std::runtime_error("QE signature verification failed");
+
+      bool quote_sig_ok = verify_signature(
+        UqEVP_PKEY_P256(signature_data.public_key),
+        quote,
+        signature_data.quote_signature);
+      if (!quote_sig_ok)
+        throw std::runtime_error("quote signature verification failed");
+
+      bool pk_auth_hash_matches = verify_hash_match(
+        {signature_data.public_key, signature_data.auth_data},
+        signature_data.report_data.subspan(0, 32));
+      if (!pk_auth_hash_matches)
+        throw std::runtime_error("QE authentication message hash mismatch");
+
+      return make_claims(*(const sgx_quote_t*)quote.data(), signature_data);
+    }
+
     RAVL_VISIBILITY std::shared_ptr<ravl::Claims> Attestation::verify(
       const Options& options,
       const std::optional<HTTPResponses>& http_responses) const
     {
       using namespace crypto;
+
+      if (options.partial)
+        return partial_verify(options);
 
       if (
         this->endorsements.empty() &&

@@ -50,5 +50,9 @@ namespace ravl
     /// Accept historical attestations where SVNs may be smaller than for fresh
     /// attestations
     bool historical = false;
+
+    /// Partial verification: only critical fields in the attestation (e.g. when
+    /// TCB info and others have been verified previously)
+    bool partial = false;
   };
 }

@@ -169,6 +169,17 @@ TEST_CASE("SGX CoffeeLake w/o endorsements")
   REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
 }
 
+TEST_CASE("SGX CoffeeLake quick-check")
+{
+  auto options = default_options;
+  options.partial = true;
+  options.historical = true;
+  auto att = parse_attestation(coffeelake_quote);
+  att->endorsements = {};
+  std::shared_ptr<ravl::Claims> claims;
+  REQUIRE_NOTHROW(claims = verify_synchronized(att, options, http_client));
+}
+
 TEST_CASE("SGX IceLake")
 {
   auto att = parse_attestation(icelake_quote);
