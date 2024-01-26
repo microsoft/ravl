@@ -14,8 +14,8 @@
 namespace ravl
 {
   SynchronousHTTPClient::SynchronousHTTPClient(
-    size_t request_timeout, size_t max_attempts, bool verbose) :
-    HTTPClient(request_timeout, max_attempts, verbose)
+    size_t request_timeout_, size_t max_attempts_, bool verbose_) :
+    HTTPClient(request_timeout_, max_attempts_, verbose_)
   {}
 
   HTTPRequestSetId SynchronousHTTPClient::submit(

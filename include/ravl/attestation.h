@@ -34,7 +34,7 @@ namespace ravl
     Claims() : source(Source::UNKNOWN) {}
 
     /// Constructor
-    Claims(Source source) : source(source) {}
+    Claims(Source source_) : source(source_) {}
 
     /// Copy constructor
     Claims(const Claims&) = default;
@@ -68,10 +68,10 @@ namespace ravl
 
     /// Constructor
     Attestation(
-      Source source,
-      const std::vector<uint8_t>& evidence,
-      const std::vector<uint8_t>& endorsements) :
-      source(source), evidence(evidence), endorsements(endorsements)
+      Source source_,
+      const std::vector<uint8_t>& evidence_,
+      const std::vector<uint8_t>& endorsements_) :
+      source(source_), evidence(evidence_), endorsements(endorsements_)
     {}
 
     /// Copy constructor

@@ -92,9 +92,9 @@ namespace ravl
     {
     public:
       Attestation(
-        const std::vector<uint8_t>& evidence,
-        const std::vector<uint8_t>& endorsements) :
-        ravl::Attestation(Source::SGX, evidence, endorsements)
+        const std::vector<uint8_t>& evidence_,
+        const std::vector<uint8_t>& endorsements_) :
+        ravl::Attestation(Source::SGX, evidence_, endorsements_)
       {}
 
       virtual ~Attestation() = default;

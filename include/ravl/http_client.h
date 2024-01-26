@@ -36,7 +36,7 @@ namespace ravl
   struct HTTPRequest
   {
     HTTPRequest() {}
-    HTTPRequest(const std::string& url) : url(url) {}
+    HTTPRequest(const std::string& url_) : url(url_) {}
     virtual ~HTTPRequest() = default;
 
     std::string url = "";
@@ -51,12 +51,12 @@ namespace ravl
   {
   public:
     HTTPClient(
-      size_t request_timeout = 0,
-      size_t max_attempts = 5,
-      bool verbose = false) :
-      request_timeout(request_timeout),
-      max_attempts(max_attempts),
-      verbose(verbose)
+      size_t request_timeout_ = 0,
+      size_t max_attempts_ = 5,
+      bool verbose_ = false) :
+      request_timeout(request_timeout_),
+      max_attempts(max_attempts_),
+      verbose(verbose_)
     {}
     virtual ~HTTPClient() = default;
 
@@ -77,9 +77,9 @@ namespace ravl
   {
   public:
     SynchronousHTTPClient(
-      size_t request_timeout = 0,
-      size_t max_attempts = 5,
-      bool verbose = false);
+      size_t request_timeout_ = 0,
+      size_t max_attempts_ = 5,
+      bool verbose_ = false);
     virtual ~SynchronousHTTPClient() = default;
 
     virtual HTTPRequestSetId submit(
@@ -92,7 +92,7 @@ namespace ravl
       const HTTPRequest& request,
       size_t timeout = 0,
       size_t max_attempts = 5,
-      bool verbose = false);
+      bool verbose_ = false);
 
     virtual void erase(const HTTPRequestSetId& id) override;
 
@@ -105,9 +105,9 @@ namespace ravl
   {
   public:
     AsynchronousHTTPClient(
-      size_t request_timeout = 0,
-      size_t max_attempts = 5,
-      bool verbose = false);
+      size_t request_timeout_ = 0,
+      size_t max_attempts_ = 5,
+      bool verbose_ = false);
     virtual ~AsynchronousHTTPClient();
 
     virtual HTTPRequestSetId submit(

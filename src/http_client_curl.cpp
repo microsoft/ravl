@@ -172,8 +172,8 @@ namespace ravl
   class CurlClient : public HTTPClient
   {
   public:
-    CurlClient(size_t request_timeout, size_t max_attempts, bool verbose) :
-      HTTPClient(request_timeout, max_attempts, verbose)
+    CurlClient(size_t request_timeout_, size_t max_attempts_, bool verbose_) :
+      HTTPClient(request_timeout_, max_attempts_, verbose_)
     {}
 
     virtual ~CurlClient() {}
@@ -182,15 +182,15 @@ namespace ravl
     {
     public:
       MonitorThread(
-        CurlClient* client,
-        HTTPRequestSetId id,
-        CURLM* multi,
-        std::function<void(HTTPResponses&&)> callback) :
+        CurlClient* client_,
+        HTTPRequestSetId id_,
+        CURLM* multi_,
+        std::function<void(HTTPResponses&&)> callback_) :
         keep_going(true),
-        client(client),
-        id(id),
-        multi(multi),
-        callback(callback)
+        client(client_),
+        id(id_),
+        multi(multi_),
+        callback(callback_)
       {
         std::thread(&MonitorThread::run, this).detach();
       }
@@ -448,9 +448,9 @@ namespace ravl
   };
 
   AsynchronousHTTPClient::AsynchronousHTTPClient(
-    size_t request_timeout, size_t max_attempts, bool verbose)
+    size_t request_timeout_, size_t max_attempts_, bool verbose_)
   {
-    implementation = new CurlClient(request_timeout, max_attempts, verbose);
+    implementation = new CurlClient(request_timeout_, max_attempts_, verbose_);
   }
 
   AsynchronousHTTPClient::~AsynchronousHTTPClient()

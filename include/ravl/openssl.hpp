@@ -489,9 +489,9 @@ namespace OpenSSL
     UqASN1_STRING string()
     {
       int r = 0;
-      void* p = GENERAL_NAME_get0_value(*this, &r);
+      void* p_ = GENERAL_NAME_get0_value(*this, &r);
       if (r == 1 || r == 2 || r == 4 || r == 6 || r == 7 || r == 8)
-        return make_unique_nodelete(static_cast<ASN1_STRING*>(p));
+        return make_unique_nodelete(static_cast<ASN1_STRING*>(p_));
       else
         throw std::runtime_error("non-string GENERAL_NAME");
     }

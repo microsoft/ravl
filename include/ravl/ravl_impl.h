@@ -27,8 +27,8 @@ namespace ravl
       options,
       attestation,
       http_client,
-      [request_tracker](AttestationRequestTracker::RequestID id) {
-        request_tracker->advance(id);
+      [request_tracker](AttestationRequestTracker::RequestID id_) {
+        request_tracker->advance(id_);
       });
 
     auto state = request_tracker->state(id);

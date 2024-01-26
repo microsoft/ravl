@@ -26,16 +26,16 @@ namespace ravl
     struct Request
     {
       Request(
-        AttestationRequestTracker::RequestState state,
-        Options options,
-        std::shared_ptr<const Attestation> attestation,
-        std::shared_ptr<HTTPClient> http_client,
-        std::function<void(RequestID)>&& callback) :
-        state(state),
-        options(options),
-        attestation(attestation),
-        http_client(http_client),
-        callback(callback),
+        AttestationRequestTracker::RequestState state_,
+        Options options_,
+        std::shared_ptr<const Attestation> attestation_,
+        std::shared_ptr<HTTPClient> http_client_,
+        std::function<void(RequestID)>&& callback_) :
+        state(state_),
+        options(options_),
+        attestation(attestation_),
+        http_client(http_client_),
+        callback(callback_),
         http_request_set_id(std::nullopt)
       {}
 
