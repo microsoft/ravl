@@ -63,7 +63,7 @@ namespace ravl
     RequestID submit(
       const Options& options,
       std::shared_ptr<const Attestation> attestation,
-      std::shared_ptr<HTTPClient> http_client,
+      std::shared_ptr<HTTPClient> http_client_,
       std::function<void(RequestID)>&& callback)
     {
       RequestID request_id;
@@ -79,7 +79,7 @@ namespace ravl
           RequestState::SUBMITTED,
           options,
           attestation,
-          http_client,
+          http_client_,
           std::move(callback));
 
         if (!ok)
@@ -204,7 +204,7 @@ namespace ravl
 
       const auto& attestation = *request.attestation;
       const auto& options = request.options;
-      auto http_client = request.http_client;
+      auto http_client_ = request.http_client;
 
       if (options.verbosity > 0)
       {
@@ -257,7 +257,7 @@ namespace ravl
           advance(id);
         };
         request.http_request_set_id =
-          http_client->submit(std::move(*http_requests), callback);
+          http_client_->submit(std::move(*http_requests), callback);
         return true;
       }
 
@@ -271,7 +271,7 @@ namespace ravl
 
       auto& attestation = *request.attestation;
       const auto& options = request.options;
-      auto http_client = request.http_client;
+      auto http_client_ = request.http_client;
 
       std::shared_ptr<Claims> claims;
 

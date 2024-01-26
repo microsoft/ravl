@@ -33,7 +33,14 @@ endif()
 list(APPEND RAVL_FLAGS -fPIC)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  list(APPEND RAVL_FLAGS -Wall -pedantic)
+  list(APPEND RAVL_FLAGS -Wall
+                         -Wextra
+                         -Werror
+                         -Wundef
+                         -Wpedantic
+                         -Wno-unused
+                         -Wno-unused-parameter
+                         -Wshadow)
   if(NOT DEFINED SAN)
     set(SAN on)
   endif()

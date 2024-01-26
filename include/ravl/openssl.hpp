@@ -2199,8 +2199,8 @@ namespace OpenSSL
         int sz = sk_GENERAL_NAME_num(names);
         if (sz != -1)
         {
-          for (int i = 0; i < sz; i++)
-            r.push(names.at(i));
+          for (int j = 0; j < sz; j++)
+            r.push(names.at(j));
         }
       }
     }
