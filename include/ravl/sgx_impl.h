@@ -599,8 +599,8 @@ namespace ravl
             if (t.size() != r.cpu_svn.size())
               throw std::runtime_error(
                 "SGX X509 TCB extension: ASN.1 octet string of invalid size");
-            for (size_t i = 0; i < r.cpu_svn.size(); i++)
-              r.cpu_svn.at(i) = t.at(i);
+            for (size_t j = 0; j < r.cpu_svn.size(); j++)
+              r.cpu_svn.at(j) = t.at(j);
           }
           else
             throw std::runtime_error("unreachable");
