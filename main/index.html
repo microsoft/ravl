@@ -1,13 +1,12 @@
 
-
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html lang="en" data-content_root="./" >
 
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>ravl Documentation &#8212; ravl 1.0.0 documentation</title>
   
@@ -19,25 +18,26 @@
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
-<link href="_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
 
   
-  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+  <link href="_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
 
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/documentation_options.js?v=8d563738"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -50,7 +50,15 @@
 
   
   
-  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
   
   <input type="checkbox"
           class="sidebar-toggle"
@@ -85,18 +93,21 @@
 </form></div>
   </div>
   
-    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
 <div class="bd-header__inner bd-page-width">
   <label class="sidebar-toggle primary-toggle" for="__primary">
     <span class="fa-solid fa-bars"></span>
   </label>
   
-  <div class="navbar-header-items__start">
+  
+  <div class="col-lg-3 navbar-header-items__start">
     
       <div class="navbar-item">
+
   
 
 <a class="navbar-brand logo" href="#">
+  
   
   
   
@@ -108,18 +119,12 @@
     
   </div>
   
-  
   <div class="col-lg-9 navbar-header-items">
     
     <div class="me-auto navbar-header-items__center">
       
-        <div class="navbar-item"><nav class="navbar-nav">
-  <p class="sidebar-header-items__title"
-     role="heading"
-     aria-level="1"
-     aria-label="Site Navigation">
-    Site Navigation
-  </p>
+        <div class="navbar-item">
+<nav class="navbar-nav">
   <ul class="bd-navbar-elements navbar-nav">
     
   </ul>
@@ -132,23 +137,27 @@
       
         <div class="navbar-item navbar-persistent--container">
           
-<script>
-document.write(`
-  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass"></i>
-  </button>
-`);
-</script>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
         </div>
       
       
         <div class="navbar-item">
+
 <script>
 document.write(`
-  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
-    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
-    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
   </button>
 `);
 </script></div>
@@ -159,27 +168,35 @@ document.write(`
   
   
     <div class="navbar-persistent--mobile">
-<script>
-document.write(`
-  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass"></i>
-  </button>
-`);
-</script>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
     </div>
   
 
   
-    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
       <span class="fa-solid fa-outdent"></span>
     </label>
   
 </div>
 
-    </nav>
+    </header>
   
+
   <div class="bd-container">
     <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
       
       <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
         
@@ -190,13 +207,8 @@ document.write(`
     
       <div class="sidebar-header-items__center">
         
-          <div class="navbar-item"><nav class="navbar-nav">
-  <p class="sidebar-header-items__title"
-     role="heading"
-     aria-level="1"
-     aria-label="Site Navigation">
-    Site Navigation
-  </p>
+          <div class="navbar-item">
+<nav class="navbar-nav">
   <ul class="bd-navbar-elements navbar-nav">
     
   </ul>
@@ -209,12 +221,13 @@ document.write(`
       <div class="sidebar-header-items__end">
         
           <div class="navbar-item">
+
 <script>
 document.write(`
-  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
-    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
-    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
   </button>
 `);
 </script></div>
@@ -244,10 +257,10 @@ document.write(`
               
                 
 <div id="searchbox"></div>
-                <article class="bd-article" role="main">
+                <article class="bd-article">
                   
   <section id="ravl-documentation">
-<h1>ravl Documentation<a class="headerlink" href="#ravl-documentation" title="Permalink to this heading">#</a></h1>
+<h1>ravl Documentation<a class="headerlink" href="#ravl-documentation" title="Link to this heading">#</a></h1>
 <p>RAVL is a library of remote attestation verification procedures that enables clients of confidential services to verify the remote attestation of the service.</p>
 <p>An example of the most basic usage pattern is as follows:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">att</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_attestation</span><span class="p">(</span><span class="n">sev_snp_quote</span><span class="p">);</span>
@@ -258,71 +271,71 @@ document.write(`
 </pre></div>
 </div>
 <section id="generic-attestations">
-<h2>Generic Attestations<a class="headerlink" href="#generic-attestations" title="Permalink to this heading">#</a></h2>
+<h2>Generic Attestations<a class="headerlink" href="#generic-attestations" title="Link to this heading">#</a></h2>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11AttestationE">
-<span id="_CPPv3N4ravl11AttestationE"></span><span id="_CPPv2N4ravl11AttestationE"></span><span id="ravl::Attestation"></span><span class="target" id="classravl_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11AttestationE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11AttestationE"></span><span id="_CPPv2N4ravl11AttestationE"></span><span id="ravl::Attestation"></span><span class="target" id="classravl_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11AttestationE" title="Link to this definition">#</a><br /></dt>
 <dd><p><a class="reference internal" href="#classravl_1_1Attestation"><span class="std std-ref">Attestation</span></a> class. </p>
 <p>Subclassed by <a class="reference internal" href="#classravl_1_1oe_1_1Attestation"><span class="std std-ref">ravl::oe::Attestation</span></a>, <a class="reference internal" href="#classravl_1_1sev__snp_1_1Attestation"><span class="std std-ref">ravl::sev_snp::Attestation</span></a>, <a class="reference internal" href="#classravl_1_1sgx_1_1Attestation"><span class="std std-ref">ravl::sgx::Attestation</span></a></p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation11AttestationEv">
-<span id="_CPPv3N4ravl11Attestation11AttestationEv"></span><span id="_CPPv2N4ravl11Attestation11AttestationEv"></span><span id="ravl::Attestation::Attestation"></span><span class="target" id="classravl_1_1Attestation_1a8acdea2e160470c64861b0139dfdd7d6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation11AttestationEv"></span><span id="_CPPv2N4ravl11Attestation11AttestationEv"></span><span id="ravl::Attestation::Attestation"></span><span class="target" id="classravl_1_1Attestation_1a8acdea2e160470c64861b0139dfdd7d6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationEv" title="Link to this definition">#</a><br /></dt>
 <dd><p>Constructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE">
-<span id="_CPPv3N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE"></span><span id="_CPPv2N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE"></span><span id="ravl::Attestation::Attestation__Source.std::vector:uint8_t:CR.std::vector:uint8_t:CR"></span><span class="target" id="classravl_1_1Attestation_1a8e92e86164a637754f3e8c4baa38e2f2"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">Source</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">source</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">evidence</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">endorsements</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE"></span><span id="_CPPv2N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE"></span><span id="ravl::Attestation::Attestation__Source.std::vector:uint8_t:CR.std::vector:uint8_t:CR"></span><span class="target" id="classravl_1_1Attestation_1a5d7a032182a9b59471bf146b9f6da499"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">Source</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">source_</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">evidence_</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">endorsements_</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Constructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation11AttestationERK11Attestation">
-<span id="_CPPv3N4ravl11Attestation11AttestationERK11Attestation"></span><span id="_CPPv2N4ravl11Attestation11AttestationERK11Attestation"></span><span id="ravl::Attestation::Attestation__AttestationCR"></span><span class="target" id="classravl_1_1Attestation_1aa8373b456eb5cf5129f79512e43c44d1"></span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N4ravl11Attestation11AttestationERK11Attestation" title="ravl::Attestation::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationERK11Attestation" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation11AttestationERK11Attestation"></span><span id="_CPPv2N4ravl11Attestation11AttestationERK11Attestation"></span><span id="ravl::Attestation::Attestation__AttestationCR"></span><span class="target" id="classravl_1_1Attestation_1aa8373b456eb5cf5129f79512e43c44d1"></span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N4ravl11Attestation11AttestationERK11Attestation" title="ravl::Attestation::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationERK11Attestation" title="Link to this definition">#</a><br /></dt>
 <dd><p>Copy constructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation11AttestationERR11Attestation">
-<span id="_CPPv3N4ravl11Attestation11AttestationERR11Attestation"></span><span id="_CPPv2N4ravl11Attestation11AttestationERR11Attestation"></span><span id="ravl::Attestation::Attestation__AttestationRR"></span><span class="target" id="classravl_1_1Attestation_1a42f0ee7e2bddcfe89e058c2271194375"></span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N4ravl11Attestation11AttestationERR11Attestation" title="ravl::Attestation::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationERR11Attestation" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation11AttestationERR11Attestation"></span><span id="_CPPv2N4ravl11Attestation11AttestationERR11Attestation"></span><span id="ravl::Attestation::Attestation__AttestationRR"></span><span class="target" id="classravl_1_1Attestation_1a42f0ee7e2bddcfe89e058c2271194375"></span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N4ravl11Attestation11AttestationERR11Attestation" title="ravl::Attestation::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation11AttestationERR11Attestation" title="Link to this definition">#</a><br /></dt>
 <dd><p>Move constructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11AttestationD0Ev">
-<span id="_CPPv3N4ravl11AttestationD0Ev"></span><span id="_CPPv2N4ravl11AttestationD0Ev"></span><span id="ravl::Attestation::~Attestation"></span><span class="target" id="classravl_1_1Attestation_1ab448a54e3563c0c73a60bf13230a7c8b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11AttestationD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11AttestationD0Ev"></span><span id="_CPPv2N4ravl11AttestationD0Ev"></span><span id="ravl::Attestation::~Attestation"></span><span class="target" id="classravl_1_1Attestation_1ab448a54e3563c0c73a60bf13230a7c8b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11AttestationD0Ev" title="Link to this definition">#</a><br /></dt>
 <dd><p>Destructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl11Attestation20prepare_endorsementsERK7Options">
-<span id="_CPPv3NK4ravl11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1Attestation_1a47f70e3ff052f3906421a82bbdd8b0f2"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK4ravl11Attestation20prepare_endorsementsERK7Options" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1Attestation_1a47f70e3ff052f3906421a82bbdd8b0f2"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK4ravl11Attestation20prepare_endorsementsERK7Options" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to prepare network requests for endorsements. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE">
-<span id="_CPPv3NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1Attestation_1ae03f023242f880988fb00a527f091278"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1Attestation_1ae03f023242f880988fb00a527f091278"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to verify the attestation (with all endorsements present either in the attestation object or in the http_responses). </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl11AttestationcvNSt6stringEEv">
-<span id="_CPPv3NK4ravl11AttestationcvNSt6stringEEv"></span><span id="_CPPv2NK4ravl11AttestationcvNSt6stringEEv"></span><span id="ravl::Attestation::castto-ss-operatorC"></span><span class="target" id="classravl_1_1Attestation_1aff7a9c76acdbe5062ffca77c6789c706"></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl11AttestationcvNSt6stringEEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl11AttestationcvNSt6stringEEv"></span><span id="_CPPv2NK4ravl11AttestationcvNSt6stringEEv"></span><span id="ravl::Attestation::castto-ss-operatorC"></span><span class="target" id="classravl_1_1Attestation_1aff7a9c76acdbe5062ffca77c6789c706"></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl11AttestationcvNSt6stringEEv" title="Link to this definition">#</a><br /></dt>
 <dd><p>(JSON) String representation </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11AttestationaSERK11Attestation">
-<span id="_CPPv3N4ravl11AttestationaSERK11Attestation"></span><span id="_CPPv2N4ravl11AttestationaSERK11Attestation"></span><span id="ravl::Attestation::assign-operator__AttestationCR"></span><span class="target" id="classravl_1_1Attestation_1a9da1e52b5c653e203a8c31d4cde0c78d"></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl11AttestationaSERK11Attestation" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11AttestationaSERK11Attestation"></span><span id="_CPPv2N4ravl11AttestationaSERK11Attestation"></span><span id="ravl::Attestation::assign-operator__AttestationCR"></span><span class="target" id="classravl_1_1Attestation_1a9da1e52b5c653e203a8c31d4cde0c78d"></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl11AttestationaSERK11Attestation" title="Link to this definition">#</a><br /></dt>
 <dd><p>Assignment operator. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation4cborEv">
-<span id="_CPPv3N4ravl11Attestation4cborEv"></span><span id="_CPPv2N4ravl11Attestation4cborEv"></span><span id="ravl::Attestation::cbor"></span><span class="target" id="classravl_1_1Attestation_1a90b8fe5927d3a3140546c2769effc53c"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">cbor</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11Attestation4cborEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation4cborEv"></span><span id="_CPPv2N4ravl11Attestation4cborEv"></span><span id="ravl::Attestation::cbor"></span><span class="target" id="classravl_1_1Attestation_1a90b8fe5927d3a3140546c2769effc53c"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">cbor</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl11Attestation4cborEv" title="Link to this definition">#</a><br /></dt>
 <dd><p>CBOR conversion. </p>
 </dd></dl>
 
@@ -331,19 +344,19 @@ document.write(`
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation6sourceE">
-<span id="_CPPv3N4ravl11Attestation6sourceE"></span><span id="_CPPv2N4ravl11Attestation6sourceE"></span><span id="ravl::Attestation::source__Source"></span><span class="target" id="classravl_1_1Attestation_1a14dd9197fc9679cacc64335f196f0489"></span><span class="n"><span class="pre">Source</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">source</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation6sourceE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation6sourceE"></span><span id="_CPPv2N4ravl11Attestation6sourceE"></span><span id="ravl::Attestation::source__Source"></span><span class="target" id="classravl_1_1Attestation_1a14dd9197fc9679cacc64335f196f0489"></span><span class="n"><span class="pre">Source</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">source</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation6sourceE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Source (platform) of the attestation. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation8evidenceE">
-<span id="_CPPv3N4ravl11Attestation8evidenceE"></span><span id="_CPPv2N4ravl11Attestation8evidenceE"></span><span id="ravl::Attestation::evidence__std::vector:uint8_t:"></span><span class="target" id="classravl_1_1Attestation_1ad26b063559181f293523b60bc2ac5a66"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">evidence</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation8evidenceE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation8evidenceE"></span><span id="_CPPv2N4ravl11Attestation8evidenceE"></span><span id="ravl::Attestation::evidence__std::vector:uint8_t:"></span><span class="target" id="classravl_1_1Attestation_1ad26b063559181f293523b60bc2ac5a66"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">evidence</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation8evidenceE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Evidence. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl11Attestation12endorsementsE">
-<span id="_CPPv3N4ravl11Attestation12endorsementsE"></span><span id="_CPPv2N4ravl11Attestation12endorsementsE"></span><span id="ravl::Attestation::endorsements__std::vector:uint8_t:"></span><span class="target" id="classravl_1_1Attestation_1a25c458f363e49a1283a9b70a9dc7c04c"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">endorsements</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation12endorsementsE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl11Attestation12endorsementsE"></span><span id="_CPPv2N4ravl11Attestation12endorsementsE"></span><span id="ravl::Attestation::endorsements__std::vector:uint8_t:"></span><span class="target" id="classravl_1_1Attestation_1a25c458f363e49a1283a9b70a9dc7c04c"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">uint8_t</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">endorsements</span></span></span><a class="headerlink" href="#_CPPv4N4ravl11Attestation12endorsementsE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Endorsements. </p>
 </dd></dl>
 
@@ -352,27 +365,27 @@ document.write(`
 
 </section>
 <section id="platform-specific-attestations">
-<h2>Platform-specific Attestations<a class="headerlink" href="#platform-specific-attestations" title="Permalink to this heading">#</a></h2>
+<h2>Platform-specific Attestations<a class="headerlink" href="#platform-specific-attestations" title="Link to this heading">#</a></h2>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl3sgx11AttestationE">
-<span id="_CPPv3N4ravl3sgx11AttestationE"></span><span id="_CPPv2N4ravl3sgx11AttestationE"></span><span id="ravl::sgx::Attestation"></span><span class="target" id="classravl_1_1sgx_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><a class="headerlink" href="#_CPPv4N4ravl3sgx11AttestationE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl3sgx11AttestationE"></span><span id="_CPPv2N4ravl3sgx11AttestationE"></span><span id="ravl::sgx::Attestation"></span><span class="target" id="classravl_1_1sgx_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><a class="headerlink" href="#_CPPv4N4ravl3sgx11AttestationE" title="Link to this definition">#</a><br /></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl3sgx11AttestationD0Ev">
-<span id="_CPPv3N4ravl3sgx11AttestationD0Ev"></span><span id="_CPPv2N4ravl3sgx11AttestationD0Ev"></span><span id="ravl::sgx::Attestation::~Attestation"></span><span class="target" id="classravl_1_1sgx_1_1Attestation_1a32ae3a00b8d48346f9030ca189ef2572"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl3sgx11AttestationD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl3sgx11AttestationD0Ev"></span><span id="_CPPv2N4ravl3sgx11AttestationD0Ev"></span><span id="ravl::sgx::Attestation::~Attestation"></span><span class="target" id="classravl_1_1sgx_1_1Attestation_1a32ae3a00b8d48346f9030ca189ef2572"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl3sgx11AttestationD0Ev" title="Link to this definition">#</a><br /></dt>
 <dd><p>Destructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options">
-<span id="_CPPv3NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::sgx::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1sgx_1_1Attestation_1a03a43ef97da9b0366a7321aa39cfba98"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::sgx::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1sgx_1_1Attestation_1a03a43ef97da9b0366a7321aa39cfba98"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to prepare network requests for endorsements. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE">
-<span id="_CPPv3NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::sgx::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1sgx_1_1Attestation_1aaa6262ec49e2c6088ad1d9df4678180d"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::sgx::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1sgx_1_1Attestation_1aaa6262ec49e2c6088ad1d9df4678180d"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to verify the attestation (with all endorsements present either in the attestation object or in the http_responses). </p>
 </dd></dl>
 
@@ -381,24 +394,24 @@ document.write(`
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl7sev_snp11AttestationE">
-<span id="_CPPv3N4ravl7sev_snp11AttestationE"></span><span id="_CPPv2N4ravl7sev_snp11AttestationE"></span><span id="ravl::sev_snp::Attestation"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><a class="headerlink" href="#_CPPv4N4ravl7sev_snp11AttestationE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl7sev_snp11AttestationE"></span><span id="_CPPv2N4ravl7sev_snp11AttestationE"></span><span id="ravl::sev_snp::Attestation"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><a class="headerlink" href="#_CPPv4N4ravl7sev_snp11AttestationE" title="Link to this definition">#</a><br /></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl7sev_snp11AttestationD0Ev">
-<span id="_CPPv3N4ravl7sev_snp11AttestationD0Ev"></span><span id="_CPPv2N4ravl7sev_snp11AttestationD0Ev"></span><span id="ravl::sev_snp::Attestation::~Attestation"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation_1abf32e56109a9cb2dfd24a56b411220d4"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl7sev_snp11AttestationD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl7sev_snp11AttestationD0Ev"></span><span id="_CPPv2N4ravl7sev_snp11AttestationD0Ev"></span><span id="ravl::sev_snp::Attestation::~Attestation"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation_1abf32e56109a9cb2dfd24a56b411220d4"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl7sev_snp11AttestationD0Ev" title="Link to this definition">#</a><br /></dt>
 <dd><p>Destructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options">
-<span id="_CPPv3NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::sev_snp::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation_1ae377175f2f59780cd08409e4935037ed"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::sev_snp::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation_1ae377175f2f59780cd08409e4935037ed"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to prepare network requests for endorsements. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE">
-<span id="_CPPv3NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::sev_snp::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation_1ae88ce8c58f5501344cd14d3d4413a804"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::sev_snp::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1sev__snp_1_1Attestation_1ae88ce8c58f5501344cd14d3d4413a804"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to verify the attestation (with all endorsements present either in the attestation object or in the http_responses). </p>
 </dd></dl>
 
@@ -407,24 +420,24 @@ document.write(`
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl2oe11AttestationE">
-<span id="_CPPv3N4ravl2oe11AttestationE"></span><span id="_CPPv2N4ravl2oe11AttestationE"></span><span id="ravl::oe::Attestation"></span><span class="target" id="classravl_1_1oe_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><a class="headerlink" href="#_CPPv4N4ravl2oe11AttestationE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl2oe11AttestationE"></span><span id="_CPPv2N4ravl2oe11AttestationE"></span><span id="ravl::oe::Attestation"></span><span class="target" id="classravl_1_1oe_1_1Attestation"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Attestation</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><a class="headerlink" href="#_CPPv4N4ravl2oe11AttestationE" title="Link to this definition">#</a><br /></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl2oe11AttestationD0Ev">
-<span id="_CPPv3N4ravl2oe11AttestationD0Ev"></span><span id="_CPPv2N4ravl2oe11AttestationD0Ev"></span><span id="ravl::oe::Attestation::~Attestation"></span><span class="target" id="classravl_1_1oe_1_1Attestation_1acf867f83fd456dfe29b81fb53aa18138"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl2oe11AttestationD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl2oe11AttestationD0Ev"></span><span id="_CPPv2N4ravl2oe11AttestationD0Ev"></span><span id="ravl::oe::Attestation::~Attestation"></span><span class="target" id="classravl_1_1oe_1_1Attestation_1acf867f83fd456dfe29b81fb53aa18138"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Attestation</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N4ravl2oe11AttestationD0Ev" title="Link to this definition">#</a><br /></dt>
 <dd><p>Destructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl2oe11Attestation20prepare_endorsementsERK7Options">
-<span id="_CPPv3NK4ravl2oe11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl2oe11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::oe::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1oe_1_1Attestation_1a28149a4da4f95c694bc847a2a04ec666"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl2oe11Attestation20prepare_endorsementsERK7Options" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl2oe11Attestation20prepare_endorsementsERK7Options"></span><span id="_CPPv2NK4ravl2oe11Attestation20prepare_endorsementsERK7Options"></span><span id="ravl::oe::Attestation::prepare_endorsements__OptionsCRC"></span><span class="target" id="classravl_1_1oe_1_1Attestation_1a28149a4da4f95c694bc847a2a04ec666"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPRequests</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prepare_endorsements</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl2oe11Attestation20prepare_endorsementsERK7Options" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to prepare network requests for endorsements. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE">
-<span id="_CPPv3NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::oe::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1oe_1_1Attestation_1a6cee5f9ebf9b8e835b11c25758cfdde2"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="_CPPv2NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"></span><span id="ravl::oe::Attestation::verify__OptionsCR.std::optional:HTTPResponses:CRC"></span><span class="target" id="classravl_1_1oe_1_1Attestation_1a6cee5f9ebf9b8e835b11c25758cfdde2"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">ravl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">verify</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPResponses</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">http_responses</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Function to verify the attestation (with all endorsements present either in the attestation object or in the http_responses). </p>
 </dd></dl>
 
@@ -433,45 +446,45 @@ document.write(`
 
 </section>
 <section id="verification">
-<h2>Verification<a class="headerlink" href="#verification" title="Permalink to this heading">#</a></h2>
+<h2>Verification<a class="headerlink" href="#verification" title="Link to this heading">#</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>doxygenfunction: Cannot find function “ravl::verify_sync” in doxygen xml output for project “ravl” from directory: /home/runner/work/ravl/ravl/doc/xml</p>
 </div>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTrackerE">
-<span id="_CPPv3N4ravl25AttestationRequestTrackerE"></span><span id="_CPPv2N4ravl25AttestationRequestTrackerE"></span><span id="ravl::AttestationRequestTracker"></span><span class="target" id="classravl_1_1AttestationRequestTracker"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">AttestationRequestTracker</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTrackerE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTrackerE"></span><span id="_CPPv2N4ravl25AttestationRequestTrackerE"></span><span id="ravl::AttestationRequestTracker"></span><span class="target" id="classravl_1_1AttestationRequestTracker"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">AttestationRequestTracker</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTrackerE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Tracker for asynchronous attestation verification. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
 <dl class="cpp enum">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker12RequestStateE">
-<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestStateE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestStateE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6b"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">RequestState</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestStateE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestStateE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestStateE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6b"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">RequestState</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestStateE" title="Link to this definition">#</a><br /></dt>
 <dd><p>States of async verification requests. </p>
 <p><em>Values:</em></p>
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE">
-<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6ba20c649b43b02fbb1d21dbef3eea1efbb"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SUBMITTED</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6ba20c649b43b02fbb1d21dbef3eea1efbb"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SUBMITTED</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE">
-<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6baff82acb01c3c7233215d119f6cbb407d"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WAITING_FOR_ENDORSEMENTS</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6baff82acb01c3c7233215d119f6cbb407d"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WAITING_FOR_ENDORSEMENTS</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE">
-<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6bad80188a28e63d045aa425864fa6e579c"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">HAVE_ENDORSEMENTS</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6bad80188a28e63d045aa425864fa6e579c"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">HAVE_ENDORSEMENTS</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker12RequestState8FINISHEDE">
-<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState8FINISHEDE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState8FINISHEDE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6ba1dd9fbabd8f3a101ccd9af95461d5d7b"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">FINISHED</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState8FINISHEDE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState8FINISHEDE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState8FINISHEDE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6ba1dd9fbabd8f3a101ccd9af95461d5d7b"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">FINISHED</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState8FINISHEDE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker12RequestState5ERRORE">
-<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState5ERRORE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState5ERRORE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6ba305598d22dc8ca7ba90453e44d2f8047"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ERROR</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState5ERRORE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker12RequestState5ERRORE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker12RequestState5ERRORE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a65474ab1d7de59e8a8ae00e467574c6ba305598d22dc8ca7ba90453e44d2f8047"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ERROR</span></span></span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState5ERRORE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -481,55 +494,55 @@ document.write(`
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv">
-<span id="_CPPv3N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv"></span><span id="_CPPv2N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv"></span><span id="ravl::AttestationRequestTracker::AttestationRequestTracker"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a33af1d9fc3c2619df03c60a62eaf3644"></span><span class="sig-name descname"><span class="n"><span class="pre">AttestationRequestTracker</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv"></span><span id="_CPPv2N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv"></span><span id="ravl::AttestationRequestTracker::AttestationRequestTracker"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a33af1d9fc3c2619df03c60a62eaf3644"></span><span class="sig-name descname"><span class="n"><span class="pre">AttestationRequestTracker</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv" title="Link to this definition">#</a><br /></dt>
 <dd><p>Constructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTrackerD0Ev">
-<span id="_CPPv3N4ravl25AttestationRequestTrackerD0Ev"></span><span id="_CPPv2N4ravl25AttestationRequestTrackerD0Ev"></span><span id="ravl::AttestationRequestTracker::~AttestationRequestTracker"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a5282e31f9f0dc6b2435911f02b7ccdd8"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~AttestationRequestTracker</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTrackerD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTrackerD0Ev"></span><span id="_CPPv2N4ravl25AttestationRequestTrackerD0Ev"></span><span id="ravl::AttestationRequestTracker::~AttestationRequestTracker"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a5282e31f9f0dc6b2435911f02b7ccdd8"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~AttestationRequestTracker</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTrackerD0Ev" title="Link to this definition">#</a><br /></dt>
 <dd><p>Destructor. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE">
-<span id="_CPPv3N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a2c636b89f0c2fb91299014f020ed1546"></span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">submit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">attestation</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPClient</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">http_client</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">nullptr</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">RequestID</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">callback</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">nullptr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE"></span><span id="_CPPv2N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a2c636b89f0c2fb91299014f020ed1546"></span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">submit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Options</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">options</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N4ravl11AttestationE" title="ravl::Attestation"><span class="n"><span class="pre">Attestation</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">attestation</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">HTTPClient</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">http_client</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">nullptr</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">RequestID</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">callback</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">nullptr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Submit an async attestation verification request. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl25AttestationRequestTracker5stateE9RequestID">
-<span id="_CPPv3NK4ravl25AttestationRequestTracker5stateE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker5stateE9RequestID"></span><span id="ravl::AttestationRequestTracker::state__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1ae9e46cc4e04e2826eced67a82aeb01ea"></span><a class="reference internal" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestStateE" title="ravl::AttestationRequestTracker::RequestState"><span class="n"><span class="pre">RequestState</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">state</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker5stateE9RequestID" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl25AttestationRequestTracker5stateE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker5stateE9RequestID"></span><span id="ravl::AttestationRequestTracker::state__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1ae9e46cc4e04e2826eced67a82aeb01ea"></span><a class="reference internal" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestStateE" title="ravl::AttestationRequestTracker::RequestState"><span class="n"><span class="pre">RequestState</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">state</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker5stateE9RequestID" title="Link to this definition">#</a><br /></dt>
 <dd><p>The state of an async verification request. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker7advanceE9RequestID">
-<span id="_CPPv3N4ravl25AttestationRequestTracker7advanceE9RequestID"></span><span id="_CPPv2N4ravl25AttestationRequestTracker7advanceE9RequestID"></span><span id="ravl::AttestationRequestTracker::advance__RequestID"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1ad696f4ca272dbec8dfe318c30d3d52b7"></span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">advance</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker7advanceE9RequestID" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker7advanceE9RequestID"></span><span id="_CPPv2N4ravl25AttestationRequestTracker7advanceE9RequestID"></span><span id="ravl::AttestationRequestTracker::advance__RequestID"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1ad696f4ca272dbec8dfe318c30d3d52b7"></span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">advance</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker7advanceE9RequestID" title="Link to this definition">#</a><br /></dt>
 <dd><p>Advance the state of an async verification request. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl25AttestationRequestTracker8finishedE9RequestID">
-<span id="_CPPv3NK4ravl25AttestationRequestTracker8finishedE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker8finishedE9RequestID"></span><span id="ravl::AttestationRequestTracker::finished__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a1631ed9c99370606d8289358329d00c1"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">finished</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker8finishedE9RequestID" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl25AttestationRequestTracker8finishedE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker8finishedE9RequestID"></span><span id="ravl::AttestationRequestTracker::finished__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a1631ed9c99370606d8289358329d00c1"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">finished</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker8finishedE9RequestID" title="Link to this definition">#</a><br /></dt>
 <dd><p>Predicate indicating successful completion of an async verification request. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl25AttestationRequestTracker9completedE9RequestID">
-<span id="_CPPv3NK4ravl25AttestationRequestTracker9completedE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker9completedE9RequestID"></span><span id="ravl::AttestationRequestTracker::completed__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a5b30f4e8b15591c9022c7b98427c1aff"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">completed</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker9completedE9RequestID" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl25AttestationRequestTracker9completedE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker9completedE9RequestID"></span><span id="ravl::AttestationRequestTracker::completed__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a5b30f4e8b15591c9022c7b98427c1aff"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">completed</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker9completedE9RequestID" title="Link to this definition">#</a><br /></dt>
 <dd><p>Predicate indicating completion (successful or failed) of an async verification request. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK4ravl25AttestationRequestTracker6resultE9RequestID">
-<span id="_CPPv3NK4ravl25AttestationRequestTracker6resultE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker6resultE9RequestID"></span><span id="ravl::AttestationRequestTracker::result__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1ab2a177213b01fcbc302683b3b4f62161"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">result</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker6resultE9RequestID" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK4ravl25AttestationRequestTracker6resultE9RequestID"></span><span id="_CPPv2NK4ravl25AttestationRequestTracker6resultE9RequestID"></span><span id="ravl::AttestationRequestTracker::result__RequestIDC"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1ab2a177213b01fcbc302683b3b4f62161"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">Claims</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">result</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK4ravl25AttestationRequestTracker6resultE9RequestID" title="Link to this definition">#</a><br /></dt>
 <dd><p>Get the result of an async verification request. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N4ravl25AttestationRequestTracker5eraseE9RequestID">
-<span id="_CPPv3N4ravl25AttestationRequestTracker5eraseE9RequestID"></span><span id="_CPPv2N4ravl25AttestationRequestTracker5eraseE9RequestID"></span><span id="ravl::AttestationRequestTracker::erase__RequestID"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a36be6130e03a70803c66ea7593e2ee2d"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">erase</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker5eraseE9RequestID" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N4ravl25AttestationRequestTracker5eraseE9RequestID"></span><span id="_CPPv2N4ravl25AttestationRequestTracker5eraseE9RequestID"></span><span id="ravl::AttestationRequestTracker::erase__RequestID"></span><span class="target" id="classravl_1_1AttestationRequestTracker_1a36be6130e03a70803c66ea7593e2ee2d"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">erase</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">RequestID</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N4ravl25AttestationRequestTracker5eraseE9RequestID" title="Link to this definition">#</a><br /></dt>
 <dd><p>Erase an async verification request (including its result). </p>
 </dd></dl>
 
@@ -543,7 +556,7 @@ document.write(`
 </section>
 </section>
 <section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading">#</a></h1>
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">#</a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
@@ -555,16 +568,12 @@ document.write(`
               
               
               
-                <footer class="bd-footer-article">
+              
+              
+                <footer class="prev-next-footer">
                   
-<div class="footer-article-items footer-article__inner">
-  
-    <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
-</div></div>
-  
 </div>
-
                 </footer>
               
             </div>
@@ -573,16 +582,79 @@ document.write(`
               
                 <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
   <div class="sidebar-secondary-item">
-  <div class="page-toc tocsection onthispage">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc">
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">ravl Documentation</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generic-attestations">Generic Attestations</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#platform-specific-attestations">Platform-specific Attestations</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verification">Verification</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generic-attestations">Generic Attestations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11AttestationE"><code class="docutils literal notranslate"><span class="pre">Attestation</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation11AttestationEv"><code class="docutils literal notranslate"><span class="pre">Attestation::Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation11AttestationE6SourceRKNSt6vectorI7uint8_tEERKNSt6vectorI7uint8_tEE"><code class="docutils literal notranslate"><span class="pre">Attestation::Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation11AttestationERK11Attestation"><code class="docutils literal notranslate"><span class="pre">Attestation::Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation11AttestationERR11Attestation"><code class="docutils literal notranslate"><span class="pre">Attestation::Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11AttestationD0Ev"><code class="docutils literal notranslate"><span class="pre">Attestation::~Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl11Attestation20prepare_endorsementsERK7Options"><code class="docutils literal notranslate"><span class="pre">Attestation::prepare_endorsements()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"><code class="docutils literal notranslate"><span class="pre">Attestation::verify()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl11AttestationcvNSt6stringEEv"><code class="docutils literal notranslate"><span class="pre">Attestation::operator</span> <span class="pre">std::string()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11AttestationaSERK11Attestation"><code class="docutils literal notranslate"><span class="pre">Attestation::operator=()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation4cborEv"><code class="docutils literal notranslate"><span class="pre">Attestation::cbor()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation6sourceE"><code class="docutils literal notranslate"><span class="pre">Attestation::source</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation8evidenceE"><code class="docutils literal notranslate"><span class="pre">Attestation::evidence</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl11Attestation12endorsementsE"><code class="docutils literal notranslate"><span class="pre">Attestation::endorsements</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#platform-specific-attestations">Platform-specific Attestations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl3sgx11AttestationE"><code class="docutils literal notranslate"><span class="pre">Attestation</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl3sgx11AttestationD0Ev"><code class="docutils literal notranslate"><span class="pre">Attestation::~Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl3sgx11Attestation20prepare_endorsementsERK7Options"><code class="docutils literal notranslate"><span class="pre">Attestation::prepare_endorsements()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl3sgx11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"><code class="docutils literal notranslate"><span class="pre">Attestation::verify()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl7sev_snp11AttestationE"><code class="docutils literal notranslate"><span class="pre">Attestation</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl7sev_snp11AttestationD0Ev"><code class="docutils literal notranslate"><span class="pre">Attestation::~Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl7sev_snp11Attestation20prepare_endorsementsERK7Options"><code class="docutils literal notranslate"><span class="pre">Attestation::prepare_endorsements()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl7sev_snp11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"><code class="docutils literal notranslate"><span class="pre">Attestation::verify()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl2oe11AttestationE"><code class="docutils literal notranslate"><span class="pre">Attestation</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl2oe11AttestationD0Ev"><code class="docutils literal notranslate"><span class="pre">Attestation::~Attestation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl2oe11Attestation20prepare_endorsementsERK7Options"><code class="docutils literal notranslate"><span class="pre">Attestation::prepare_endorsements()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl2oe11Attestation6verifyERK7OptionsRKNSt8optionalI13HTTPResponsesEE"><code class="docutils literal notranslate"><span class="pre">Attestation::verify()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verification">Verification</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTrackerE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestStateE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::RequestState</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState9SUBMITTEDE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::RequestState::SUBMITTED</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState24WAITING_FOR_ENDORSEMENTSE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::RequestState::WAITING_FOR_ENDORSEMENTS</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState17HAVE_ENDORSEMENTSE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::RequestState::HAVE_ENDORSEMENTS</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState8FINISHEDE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::RequestState::FINISHED</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker12RequestState5ERRORE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::RequestState::ERROR</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker25AttestationRequestTrackerEv"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::AttestationRequestTracker()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTrackerD0Ev"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::~AttestationRequestTracker()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker6submitERK7OptionsNSt10shared_ptrIK11AttestationEENSt10shared_ptrI10HTTPClientEERRNSt8functionIFv9RequestIDEEE"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::submit()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl25AttestationRequestTracker5stateE9RequestID"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::state()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker7advanceE9RequestID"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::advance()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl25AttestationRequestTracker8finishedE9RequestID"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::finished()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl25AttestationRequestTracker9completedE9RequestID"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::completed()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK4ravl25AttestationRequestTracker6resultE9RequestID"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::result()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N4ravl25AttestationRequestTracker5eraseE9RequestID"><code class="docutils literal notranslate"><span class="pre">AttestationRequestTracker::erase()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#indices-and-tables">Indices and tables</a></li>
@@ -591,6 +663,7 @@ document.write(`
   </nav></div>
 
   <div class="sidebar-secondary-item">
+
   <div class="tocsection sourcelink">
     <a href="_sources/index.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
@@ -611,8 +684,8 @@ document.write(`
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
-<script src="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+  <script src="_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -620,6 +693,7 @@ document.write(`
     <div class="footer-items__start">
       
         <div class="footer-item">
+
   <p class="copyright">
     
       © Copyright 2022, Microsoft.
@@ -629,8 +703,9 @@ document.write(`
 </div>
       
         <div class="footer-item">
+
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 6.2.1.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
     <br/>
   </p>
 </div>
@@ -638,10 +713,12 @@ document.write(`
     </div>
   
   
+  
     <div class="footer-items__end">
       
-        <div class="footer-item"><p class="theme-version">
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.2.
 </p></div>
       
     </div>
